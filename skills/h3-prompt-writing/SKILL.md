@@ -212,6 +212,19 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 6. **Wide and crowd shots:** the named leads are at least medium size or in the foreground, with their clothing IDs; extras are described as "other guests" and must not wear a lead's colour.
 7. **Who does the action comes from the novel/script, not from a similar-looking extra.** If the visual line names a character (e.g. "支架青年 deletes the clip"), the reference bound for that action must be that character; flag the shot if the binding names someone else.
 
+## Multi-view scene sheet (`_MV`) for shots with two or more people — 多人同场绑多视角定义图（2026-11-22, temporary rule, in force now）
+
+Source: moviePro `docs/临时规则/场景多视角定义图_临时规则.md` (Andy, in force from 2026-11-22 13:45 without waiting for the S400 test; still temporary until Andy makes it permanent).
+
+- **When:** a shot has two or more people in the same location, and that location has a `<场景号>_MV` asset (one 16:9 2×2 sheet: A main view, B reverse view, C side view, D 90-degree top-down floor plan). Single-person shots keep the ordinary single scene image.
+- **Binding:** bind the `_MV` asset in `scene_ids` *instead of* the single scene image. It takes one reference slot. Never bind both for the same location.
+- **Before writing the episode:** write the location's D-plan position table first (where every person stands or sits on D, which side the door, window, aisle and fixed furniture are on, and which of A/B/C each multi-person shot is shot from). Keep every shot of that location consistent with the table.
+- **The prompt must contain this spatial paragraph** (replace N with the sheet's REF number):
+  `__MINIMAX_H3_REF_N__ is a multi-view spatial definition sheet of one single location, not a storyboard and not the first frame of the video. Panel A is the main view of the location, panel B the reverse view of the same location, panel C a side view of the same location, and panel D a 90-degree orthographic top-down floor plan. All four panels show the same physical space. The final video shows only one normal perspective shot and never shows the grid, the panel letters or the floor plan. Take object positions and spatial directions from D, and appearance, materials and structure from A, B and C. When the camera moves, the doors, windows, furniture, walls and the characters' positions keep the same relative layout.`
+- **Per person:** say where each person is on the D plan (e.g. "at the window-side workstation", "in the aisle behind the desks"), and say which direction the shot is taken from ("shot from the A direction", "from the C direction, along the aisle"). These go alongside the headcount first sentence; they do not replace it.
+- **Never** describe the sheet's layout as the picture ("a four-panel image", "split screen"), never ask for panel letters or a floor plan on screen, and do not write compass directions.
+- The `_MV` sheet carries no story props or people; hand-held or changing objects still come from prop references and the prompt.
+
 ## Scene reference image time-of-day and lighting — 场景图时段光色一致（2026-11-18, narrowed 14:51; ch30 16b fix）
 
 H3 copies the lighting of a bound scene reference image almost unchanged: time of day, sun angle, warm or cool cast, and which lamps are lit. Text such as "use it only as a layout reference; do not take its lighting" does not override it (ch30 16b, 2026-11-18: S189 is a low warm-sun image with the wall lamps and hallway lights on; the prompt said "mid-morning, not dusk, entrance hallway lights off, layout reference only" in English and Chinese, and the clip still came out warm with every lamp lit). Before binding a scene reference, look up its class in the project's scene time-and-lighting table (built by looking at the images; the asset description's 状态 field is not reliable): daylight from above / low-angle warm sun / night / interior artificial light / multi-panel board; lamps lit or not; indoor, outdoor or car.
