@@ -36,6 +36,7 @@ import SkillPipelinePanel from '../components/SkillPipelinePanel.jsx';
 import SubtitlePanel from '../components/SubtitlePanel.jsx';
 import WorkflowConfigPanel from '../components/WorkflowConfigPanel.jsx';
 import DeliverySettings from '../components/DeliverySettings.jsx';
+import UpscaleSettings from '../components/UpscaleSettings.jsx';
 import { useToast } from '../components/toast.jsx';
 
 const TIER_OPTIONS = RUNNINGHUB_TIERS.map((t) => ({ value: t.id, label: t.label }));
@@ -50,6 +51,7 @@ const CATEGORIES = [
   { id: 'general', label: '通用配置', desc: '分镜数量 · 任务调度', icon: SlidersHorizontal },
   { id: 'comfyui', label: 'ComfyUI 服务', desc: '执行端 · 并发队列', icon: Server },
   { id: 'llm', label: 'LLM 模型', desc: 'Agent 大脑 · 提示词改写', icon: Sparkles },
+  { id: 'upscale2k', label: '升级2K', desc: '火山 / 本地 · 成片超分', icon: Film },
   { id: 'subtitle', label: '字幕与语音识别', desc: 'Whisper 模型 · 本地环境', icon: Captions },
   { id: 'agent', label: 'Agent 运行时', desc: '内置 / 外部 CLI · MCP 桥', icon: Bot },
   { id: 'skills', label: '技能库', desc: '全局技能包管理', icon: Wand2 },
@@ -850,6 +852,12 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                   建议默认 4000；任务报「LLM 输出被截断」时优先调大。
                 </p>
               </details>
+            </Section>
+          ) : null}
+
+          {active === 'upscale2k' ? (
+            <Section icon={Film} title="升级2K" description="给已有成片做画质增强；原片始终保留，升级版与原片可切换选用。此处单独保存。">
+              <UpscaleSettings />
             </Section>
           ) : null}
 

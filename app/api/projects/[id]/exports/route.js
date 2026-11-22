@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Projects, projectDir } from '@/lib/core/index.js';
+import { decorateExports } from '@/lib/core/upscale2k.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export async function GET(_req, { params }) {
       })
       .sort((a, b) => b.mtime - a.mtime);
   } catch {}
+  // ic31：附上实际宽高 / 2K 角标 / 新旧片关系 / 选用状态 / 升级任务（ffprobe 失败只影响角标，不影响列表）
+  try { files = await decorateExports(id, files); } catch { /* 保持原列表 */ }
   return NextResponse.json({ files });
 }
 
