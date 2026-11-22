@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clapperboard, Feather, Github, Image as ImageIcon, LayoutGrid, Mic2, Music4, Repeat2, Sparkles, UserRound, Video } from 'lucide-react';
+import { BookOpen, Clapperboard, Feather, Github, Image as ImageIcon, LayoutGrid, Mic2, Music4, Repeat2, Sparkles, UserRound, Video } from 'lucide-react';
 import { ToastProvider } from './components/toast.jsx';
 import BackToTop from './components/BackToTop.jsx';
 import SurveyPrompt from './components/SurveyPrompt.jsx';
@@ -15,6 +15,7 @@ import VoiceDesignPage from './pages/VoiceDesignPage.jsx';
 import VoiceClonePage from './pages/VoiceClonePage.jsx';
 import RankShadowPage from './pages/RankShadowPage.jsx';
 import NovelPage from './pages/NovelPage.jsx';
+import ManualPage from './pages/ManualPage.jsx';
 import { useServerInfo } from './lib/hooks.js';
 
 // 左侧菜单：与经典界面保持一致，每种创作类型对应一个独立工作台。
@@ -29,6 +30,7 @@ const MENU = [
   { id: 'music', label: '音乐生成', icon: Music4 },
   { id: 'tts', label: '音色设计', icon: Mic2 },
   { id: 'tts_clone', label: '音色克隆', icon: Repeat2 },
+  { id: 'manual', label: '手册', icon: BookOpen },
 ];
 
 function parseState() {
@@ -210,6 +212,7 @@ export default function App() {
               {state.view.type !== 'settings' && state.mode === 'music' ? <MusicGenPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'tts' ? <VoiceDesignPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'tts_clone' ? <VoiceClonePage /> : null}
+              {state.view.type !== 'settings' && state.mode === 'manual' ? <ManualPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'opuscar' ? <RankShadowPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'novel' ? (
                 <NovelPage onOpenAgentProject={(id) => openProject(id)} />
