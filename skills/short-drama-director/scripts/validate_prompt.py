@@ -650,7 +650,7 @@ H13_PROP_POS_RE = re.compile(r"at\s+(?:his|her|their|the)?\s*(?:chest|waist|stom
 H13_GLASSES_RE = re.compile(r"(?<!wine\s)(?<!water\s)(?<!champagne\s)(?<!drinking\s)\b(?:eye)?glasses\b(?!\s+of)|\bspectacles\b|戴(?:着)?眼镜", re.I)
 H13_GLASSES_NEG_RE = re.compile(r"\bno\s+(?:eye)?glasses|without\s+(?:eye)?glasses|not\s+wear(?:ing)?\s+(?:any\s+)?(?:eye)?glasses|不戴眼镜|无眼镜", re.I)
 H13_GLASSES_CTX_RE = re.compile(r"clink|raise[sd]?\s+(?:their|the)\s+glasses|glasses\s+of|wine|champagne|toast", re.I)
-# H13e 混合镜（有出口台词又有心声）：心声走后期（本地H3生产工作流 r58；剪辑与配乐基础规范 v3 §8 D19）
+# H13e 混合镜判定（规则已于 2026-11-22 停用，判定函数保留）
 H13_OS_D_CTX_RE = re.compile(r"off[- ]screen|voice[- ]?over|inner[- ](?:voice|monologue)|\bnarrates\b|画外音|心声|内心独白|[（(]OS[）)]", re.I)
 H13_OS_VOREF_RE = re.compile(r"used\s+only\s+as\s+an\s+off[- ]screen\s+inner\s+voice[- ]?over", re.I)
 
@@ -738,13 +738,7 @@ def _h13_checks(text, sec, is_ref):
     g = H13_GLASSES_RE.search(text)
     if g and not H13_GLASSES_NEG_RE.search(text) and not H13_GLASSES_CTX_RE.search(text[max(0, g.start() - 40):g.end() + 20]):
         out.append("H13d 提示词里人物戴眼镜——剧情没有理由就去掉，并在人物锁定句写 no glasses；设定就戴的，每镜同一副、镜中不出现/消失")
-    if _h13_mixed(text):
-        out.append("H13e 混合镜（有出口台词又有心声）：心声一律走后期——video_prompt 删去心声的 <d>、off-screen voiceover / inner-monologue 句和心声声线参考行；"
-                   "该段写闭嘴表演（眼、眉、头、手、道具 + 一句自然闭嘴句）；心声时间窗记入 windows（voiceover）和台账，"
-                   "音频按 本地H3生产工作流.md r58 单独出、后期铺配音轨（剪辑与配乐基础规范.md v3 §8 D19）")
-    if _h13_phone_far_lines(text) or H13_PHONE_VOREF_RE.search(text):
-        out.append("H13f 电话那头的声音进了生成段——电话声一律走后期：删去对方的 <d> 和电话声/声线参考句；接电话的人照常演（听筒贴耳、听的反应、自己的回话照常 <d>），"
-                   "对方说话时接听人闭嘴；时间窗记入 windows（voiceover）和台账，声源片按说话人本人声线样本一人一条，存 画外音声源/ 并登记 index.json")
+    # H13e / H13f 停用（2026-11-22，Andy 作废「心声 / 电话声走后期」口径）：心声和电话那头的声音都写 <d> 由 H3 直出，不再报警。
     if H13_PHONE_CTX_RE.search(text) and H13_FAR_IN_FRAME_RE.search(text):
         out.append("H13g 电话镜里出现了对方（分屏/画中画/插切/对方入画）——不出声的一方绝不入画；要拍对方就另起一镜、在对方所在地点、对方的话写成普通出口台词")
     return out
