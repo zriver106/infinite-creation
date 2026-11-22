@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowUpCircle, CaptionsOff, CheckCircle2, Download, Film, Play, RefreshCw, Send, Subtitles, Trash2 } from 'lucide-react';
+import { ArrowUpCircle, CaptionsOff, Wand2, CheckCircle2, Download, Film, Play, RefreshCw, Send, Subtitles, Trash2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { exportTitle, fmtBytes, fmtTime, withSession } from '../lib/format.js';
 import { Badge, Button, Checkbox, EmptyState, Spinner } from '../components/ui.jsx';
 import { Modal } from '../components/overlays.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import { useToast } from '../components/toast.jsx';
+import PostProduceDialog from '../components/PostProduceDialog.jsx';
 
 const UP_ACTIVE = new Set(['queued', 'uploading', 'submitting', 'running', 'downloading', 'remuxing']);
 
@@ -20,6 +21,9 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
   // ic31：批量模式分两种——删除 / 升级2k，共用同一套勾选
   const [batchKind, setBatchKind] = useState('delete');
   const [upBusy, setUpBusy] = useState(false);
+  // ic32：后期成片
+  const [postOpen, setPostOpen] = useState(false);
+  const [postWatch, setPostWatch] = useState(0);
 
   const load = useCallback(
     () => api.get('/api/projects/' + projectId + '/exports').then((r) => setFiles(r.files || [])).catch((e) => toast.error(e.message)),
@@ -38,6 +42,13 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, [anyActive, load]);
+
+  // 后期任务起了之后每 5 秒刷新一次列表，最多 30 分钟（新成片落盘即出现）
+  useEffect(() => {
+    if (!postWatch) return undefined;
+    const t = setInterval(() => { if (Date.now() - postWatch > 30 * 60 * 1000) setPostWatch(0); else load(); }, 5000);
+    return () => clearInterval(t);
+  }, [postWatch, load]);
 
   const canUpscale = (f) => !f.res_tier && !(f.upscaled_to && f.upscaled_to.length) && !(f.upscale_task && UP_ACTIVE.has(f.upscale_task.status));
   const upscalable = files.filter(canUpscale);
@@ -139,9 +150,14 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
       <PageHeader
         eyebrow="Delivery"
         title="成片"
-        description="按章节平铺展示；点击封面预览，下载、字幕、升2k 与删除都在卡片上。右上角「2K」按实测分辨率标注；同一条的原片与升级版并排，交付用「选用」的那条。"
+        description="按章节平铺展示；「后期成片」在 IC 里做心声配音、剪空档、字幕和 BGM。点击封面预览，下载、字幕、升2k 与删除都在卡片上。右上角「2K」按实测分辨率标注；同一条的原片与升级版并排，交付用「选用」的那条。"
         actions={
           <>
+            {!batchMode && canExport && !readOnly ? (
+              <Button variant="primary" size="md" title="心声静音+配音、剪空档、一句一条字幕、BGM，输出一条新成片" onClick={() => setPostOpen(true)}>
+                <Wand2 size={13} /> 后期成片
+              </Button>
+            ) : null}
             {files.length > 0 && !batchMode && canExport && !readOnly ? (
               <Button variant="secondary" size="md" disabled={upBusy} onClick={() => { setBatchKind('upscale'); setSelected(new Set(upscalable.map((f) => f.name))); setBatchMode(true); }}>
                 <ArrowUpCircle size={13} /> 批量升级2k
@@ -254,6 +270,7 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
                       <Badge tone="neutral">{title.split(' · ')[0]}</Badge>
                       <span>{fmtTime(f.mtime)}</span>
                       {f.group_size > 1 && f.selected ? <Badge tone="success" dot>选用</Badge> : null}
+                      {/_后期_/.test(f.name) ? <Badge tone="accent">后期</Badge> : null}
                     </div>
                     {f.upscaled_from ? (
                       <p className="m-0 mt-1 truncate text-[10.5px] text-[var(--fg-3)]" title={f.upscaled_from}>
@@ -325,6 +342,8 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
           />
         </div>
       )}
+
+      <PostProduceDialog projectId={projectId} open={postOpen} onOpenChange={setPostOpen} onStarted={() => setPostWatch(Date.now())} />
 
       <Modal
         open={!!player}
