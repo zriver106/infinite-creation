@@ -1,6 +1,6 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Assets, Queue, withWriteContext } from '@/lib/core/index.js';
+import { Assets, Queue, withWriteContext, logSubmitRequest } from '@/lib/core/index.js';
 import { startAssetImageJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -28,5 +28,6 @@ export async function POST(req, { params }) {
   });
   // 去重检查通过后入全局队列，逐个执行
   const job = startAssetImageJob({ projectId: id, assetId: aid, mode, prompt, referenceImagePath: reference_image_path, onProgress: (p) => broadcast(p) });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/assets/:aid/generate', projectId: id, jobId: job && job.id });
   return NextResponse.json(job);
 }

@@ -59,7 +59,7 @@ export async function GET(_req, { params }) {
   const overallTotal = stageList.reduce((n, s) => n + s.total, 0);
 
   const activeJobs = jobs
-    .filter((j) => j.status === 'running' || j.status === 'queued')
+    .filter((j) => j.status === 'running' || j.status === 'queued' || j.status === 'adopted')
     .map((j) => ({
       id: j.id,
       type: j.type,

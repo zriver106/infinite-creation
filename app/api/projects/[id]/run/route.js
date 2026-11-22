@@ -1,7 +1,7 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Chapters, Projects } from '@/lib/core/index.js';
-import { startCreateJob, startCreateAllJobs, activeJobOfChapter } from '@/lib/agent/index.js';
+import { Chapters, Projects, logSubmitRequest } from '@/lib/core/index.js';
+import { startCreateAllJobs, activeJobOfChapter, startSingleChapterRun } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
 export const dynamic = 'force-dynamic';
@@ -16,14 +16,15 @@ export async function POST(req, { params }) {
 
   // 单章：同一章已有任务就返回原任务，不再重复建（防重复点击/重复扣 LLM）；
   // 其他章节不受影响，可以并行跑。
+  // 单章分支抽成 startSingleChapterRun（lib/agent/auto-chain.js），「自动生成下一章」也只调它：同一条路、同一个去重。
+  // 行为与原来一致：去重命中返回原任务（deduped:true）；起任务失败复位 idle 回 400。
   if (chapter) {
-    const active = activeJobOfChapter(id, chapter);
-    if (active) return NextResponse.json([{ ...active, deduped: true }]);
-    Projects.update(id, { status: 'running' });
     try {
-      return NextResponse.json([startCreateJob({ projectId: id, chapter, onProgress })]);
+      const r = startSingleChapterRun({ projectId: id, chapter, onProgress });
+      const job = r.job;
+      logSubmitRequest(req, { route: 'POST /api/projects/:id/run', projectId: id, chapter, jobId: job && job.id });
+      return NextResponse.json([r.deduped ? { ...job, deduped: true } : job]);
     } catch (e) {
-      Projects.update(id, { status: 'idle' });
       return NextResponse.json({ error: e.message }, { status: 400 });
     }
   }
@@ -36,6 +37,12 @@ export async function POST(req, { params }) {
   Projects.update(id, { status: 'running' });
   try {
     const jobs = startCreateAllJobs({ projectId: id, chapters: targets.map((c) => c.title), onProgress });
+    logSubmitRequest(req, {
+      route: 'POST /api/projects/:id/run',
+      projectId: id,
+      chapter: '',
+      jobIds: (jobs || []).map((j) => j && j.id).filter(Boolean),
+    });
     return NextResponse.json(jobs);
   } catch (e) {
     // 起任务失败（如项目已被删）：复位项目运行态再回 400，而不是留下一个永远「运行中」的项目。

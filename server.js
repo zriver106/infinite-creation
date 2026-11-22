@@ -8,7 +8,9 @@ import next from 'next';
 import { WebSocketServer } from 'ws';
 import { PROJECTS_DIR, ensureDirs, loadConfig, Workflows, DEFAULT_SPECS, logger, startupCleanup, maskComfyBaseUrl } from './lib/core/index.js';
 import { scanSkills } from './lib/agent/index.js';
-import { setBroadcaster } from './lib/ws.js';
+import { setBroadcaster, broadcast } from './lib/ws.js';
+import { startRestartRecovery, settleOrphanQueuedJobs, planAdoptionAtBoot, commitAdoption } from './lib/agent/restart-recovery.js';
+import { startChapterGuardian } from './lib/agent/chapter-guardian.js';
 import { startScheduler } from './lib/core/scheduler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,7 +23,39 @@ const handle = app.getRequestHandler();
 
 // 启动时注册默认工作流 + 扫描技能
 ensureDirs();
-startupCleanup();
+// 重启恢复（2026-11-17 第三轮）：记下清理前的时间，只接手「本次启动」被标 interrupted 的任务
+const bootAt = Date.now();
+// ic25 重启恢复接管：清理前先查进程表，外部 Agent（claude）进程还活着的出片任务标 adopted（接管中）而不是 interrupted，
+// 守护算项目忙，重启恢复接着监视（跨重启，见 lib/agent/recovery-adopt.js）。
+// IC_DISABLE_RECOVERY_ADOPT=1 关闭（回到全部标 interrupted）；关了重启恢复（IC_DISABLE_RESTART_RECOVERY=1）时也不接管，免得没人收尾。
+let adoption = null;
+if (process.env.IC_DISABLE_RESTART_RECOVERY !== '1') {
+  try {
+    adoption = planAdoptionAtBoot({ bootAt });
+  } catch (e) {
+    logger.error('重启恢复接管：查进程表失败，按原行为全部标 interrupted', { error: e && e.message });
+    adoption = null;
+  }
+}
+startupCleanup({ adopt: adoption ? adoption.adopt : [] });
+if (adoption && adoption.entries && adoption.entries.length) {
+  try {
+    const adopted = commitAdoption(adoption, { bootAt });
+    if (adopted.length) logger.info('启动：外部 Agent 仍在运行，接管 ' + adopted.length + ' 个任务（重启恢复正在等外部 Agent 退出）', { jobs: adopted.map((r) => r.jobId + ' pid=' + r.pids) });
+  } catch (e) {
+    logger.error('重启恢复接管：记录失败', { error: e && e.message });
+  }
+}
+// 孤儿排队任务（2026-11-17 第四轮）：启动前就排着队的任务，执行者随旧进程没了 → 落 cancelled（不重提、不删），
+// 免得出片守护一直判「项目忙」。只碰 queued，running 已由 startupCleanup 标 interrupted。IC_DISABLE_ORPHAN_SETTLE=1 可关闭（只用于排障）。
+if (process.env.IC_DISABLE_ORPHAN_SETTLE !== '1') {
+  try {
+    const settled = settleOrphanQueuedJobs({ since: bootAt });
+    if (settled.length) logger.info('启动：孤儿排队任务已作废 ' + settled.filter((r) => r.action === 'cancelled').length + ' 个', { jobs: settled.map((r) => r.jobId + ' ' + r.action) });
+  } catch (e) {
+    logger.error('孤儿排队任务收尾失败', { error: e && e.message });
+  }
+}
 // RunningHub 渲染公平队列：进程内调度器（本地 ComfyUI 模式不启用，见 scheduler.queueEnabled）
 startScheduler();
 // 清理已被改名/删除的陈旧工作流记录：upsert 按 name 匹配，改名后会留下孤儿行（下拉出现重复选项），
@@ -35,6 +69,24 @@ for (const spec of DEFAULT_SPECS) {
 }
 const skills = scanSkills();
 logger.info('启动：注册工作流 ' + DEFAULT_SPECS.length + ' 个，技能 ' + skills.length + ' 个');
+// 本次启动被打断的出片任务：Agent 进程还在就等它结束；已出片 → 记完成 + 交付 + 自动续章；没出完 → 等同本章「继续」。
+// IC_DISABLE_RESTART_RECOVERY=1 可关闭（只用于排障）。
+if (process.env.IC_DISABLE_RESTART_RECOVERY !== '1') {
+  try {
+    startRestartRecovery({ since: bootAt - 1000, onProgress: (patch) => broadcast(patch) });
+  } catch (e) {
+    logger.error('重启恢复启动失败', { error: e && e.message });
+  }
+}
+// 续章守护（2026-11-17）：出片守护 + 分镜守护，每 60 秒检查勾了「自动生成下一章 / 下一章分镜」的项目，首轮在 60 秒后
+// （先让重启恢复接手被打断的任务）。IC_DISABLE_CHAPTER_GUARDIAN=1 只用于排障；常规开关是 config.generation.chapterGuardian。
+if (process.env.IC_DISABLE_CHAPTER_GUARDIAN !== '1') {
+  try {
+    startChapterGuardian({ onProgress: (patch) => broadcast(patch) });
+  } catch (e) {
+    logger.error('续章守护启动失败', { error: e && e.message });
+  }
+}
 
 // —— /files 静态托管：把 data/ 目录下的资产/分镜/成片映射为 /files/<相对路径> ——
 const MIME = {
@@ -103,6 +155,14 @@ app.prepare().then(() => {
     delete req.headers['x-ic-user-id'];
     delete req.headers['x-ic-user-role'];
     delete req.headers['x-ic-guest'];
+    // 请求日志用来源 IP：丢掉客户端自带的同名头，改写成本次连接的 remoteAddress。
+    delete req.headers['x-ic-remote-ip'];
+    try {
+      const ra = (req.socket && req.socket.remoteAddress) || (req.connection && req.connection.remoteAddress) || '';
+      if (ra) req.headers['x-ic-remote-ip'] = ra;
+    } catch {
+      /* 取不到 IP 就留空，不影响后续处理 */
+    }
     // req.url 是客户端给的原文，这一层又跑在 Next 之外（抛出的异常没有任何兜底）：
     // `GET //` 会让 new URL 抛 TypeError、`/files/%E0%A4%A` 会让 decodeURIComponent 抛 URIError，
     // 两者都会直接杀死整个进程——正在跑的任务一起没了、jobs 留在 running。

@@ -1,6 +1,8 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Assets, Queue, withWriteContext } from '@/lib/core/index.js';
+import fs from 'node:fs';
+import { Assets, Queue, withWriteContext, resolveProjectPath } from '@/lib/core/index.js';
+import { sanitizeVoiceRef } from '@/lib/shared/asset-policy.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +21,13 @@ export async function GET(_req, { params }) {
   return NextResponse.json(a);
 }
 
-// 允许经 HTTP 手工编辑的字段白名单。清单里绝不能出现路径类字段
-// （image_path / audio_path / video_path / voice_ref）与内部状态字段
-// （source / status / parent_id / versions / consistency_key）：
-// 路径字段是「可写的磁盘句柄」——客户端若能把 asset.image_path 改成 '..\..\x'，
+// 允许经 HTTP 手工编辑的字段白名单。清单里绝不能出现 image_path / audio_path / video_path
+// 与内部状态字段（source / status / parent_id / versions / consistency_key）：
+// 这些路径字段是「可写的磁盘句柄」——客户端若能把 asset.image_path 改成 '..\..\x'，
 // 它就会在 references 删除时被 unlinkSync、在提交参考图时被 uploadToInput 上传到
 // ComfyUI。路径只允许内部流程（references 上传、生成任务）写入。
+// 例外：voice_ref 允许登记到本项目 assets/voice/ 下已经存在的文件（供把已上传音色绑到人物），
+// 由 sanitizeVoiceRef 做越界与存在性校验；不能指向任意路径。
 const EDITABLE_FIELDS = ['name', 'description', 'category', 'prompt', 'negative_prompt', 'voice_desc'];
 
 export async function PATCH(req, { params }) {
@@ -42,6 +45,17 @@ export async function PATCH(req, { params }) {
   }
   const patch = {};
   for (const k of EDITABLE_FIELDS) if (body[k] !== undefined) patch[k] = body[k];
+  if (body.voice_ref !== undefined) {
+    const rel = sanitizeVoiceRef(body.voice_ref, {
+      resolveAbs: (p) => resolveProjectPath(id, p),
+      exists: (abs) => { try { return fs.existsSync(abs); } catch { return false; } },
+    });
+    if (!rel) {
+      return NextResponse.json({ error: 'voice_ref 只能指向本项目 assets/voice/ 下已存在的文件' }, { status: 400 });
+    }
+    patch.voice_ref = rel;
+    if (a.voice_desc_used == null || a.voice_desc_used === '') patch.voice_desc_used = a.voice_desc || '';
+  }
   // 这是「用户在素材库里手动改」的唯一入口：保存的提示词要加锁（prompt_locked），
   // 让 LLM 阶段的 update_asset 不得覆盖它——用户改的提示词必须真的生效。
   // 清空提示词（保存空串）等于解锁：之后允许 LLM 重新写。

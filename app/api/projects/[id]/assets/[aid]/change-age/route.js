@@ -1,6 +1,6 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Assets, Queue } from '@/lib/core/index.js';
+import { Assets, Queue, logSubmitRequest } from '@/lib/core/index.js';
 import { startAgeJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -22,5 +22,6 @@ export async function POST(req, { params }) {
   }
   // 提交即入全局队列，逐个执行（不再因已有任务而拒绝）
   const job = startAgeJob({ projectId: id, characterId: aid, age: body.age, prompt: body?.prompt, onProgress: (p) => broadcast(p) });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/assets/:aid/change-age', projectId: id, jobId: job && job.id });
   return NextResponse.json(job);
 }

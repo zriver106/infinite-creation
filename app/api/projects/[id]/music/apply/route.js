@@ -1,6 +1,6 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Projects } from '@/lib/core/index.js';
+import { Projects, logSubmitRequest } from '@/lib/core/index.js';
 import { startMusicApplyJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -18,5 +18,6 @@ export async function POST(req, { params }) {
   const titles = chapters.filter((t) => typeof t === 'string' && t.trim());
   if (!titles.length) return NextResponse.json({ error: '缺少有效的 chapters' }, { status: 400 });
   const job = startMusicApplyJob({ projectId: id, chapters: titles, musicId: music_id, onProgress: (p) => broadcast(p) });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/music/apply', projectId: id, chapter: titles.join(','), jobId: job && job.id });
   return NextResponse.json(job);
 }

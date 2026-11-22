@@ -281,6 +281,8 @@ Assign `(Sx)` once according to the order of actual vocal events in the target v
 
 ## 6. `overall_soundscape` and `non_diegetic_music`
 
+> Project override (2026-11-18): every shot in this project writes `non_diegetic_music: N/A` and binds no music asset as `<Audio N>`. Scoring is laid in post from the chapter BGM cue table; see SKILL.md "Project rule: no in-shot score". The music examples below are format reference only.
+
 The definitions of these two sound categories follow the Video Prompt Writing Guide (T2VA / I2VA / FL2VA / L2VA).
 
 `overall_soundscape` summarizes ambience and physical sounds across the full video. Dialogue, singing, and sound events synchronized to a particular shot remain in `detailed_description`:

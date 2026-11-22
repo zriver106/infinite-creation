@@ -199,16 +199,18 @@ export default function ProjectsPage({ onOpen, type = '', showCreate = true, sho
     const ids = projects.filter((p) => selected.has(p.id)).map((p) => p.id);
     if (!ids.length) return;
     if (!(await toast.confirm('删除选中的 ' + ids.length + ' 个项目及其所有素材？', { danger: true }))) return;
-    // 逐个删除：单个删除接口里已包含「停任务 + 删库 + 删目录」，批量不需要另开一套后端逻辑。
-    // 某一个失败不影响其余，最后统一汇报失败项。
+    // 只发 DELETE，不先调 /stop 或 cancel。有活动任务或等待断点续跑的项目由后端 409，本页汇总：已删除 N 个，跳过 M 个。
+    // 某一个失败不影响其余。
     const failed = [];
+    let deleted = 0;
     for (let i = 0; i < ids.length; i++) {
       setBusy('正在删除项目 ' + (i + 1) + '/' + ids.length + '…');
-      try { await api.del('/api/projects/' + ids[i]); } catch (e) { failed.push((e.message || '未知错误')); }
+      try { await api.del('/api/projects/' + ids[i]); deleted++; } catch (e) { failed.push((e.message || '未知错误')); }
     }
     setBusy(null);
-    if (failed.length) toast.error('有 ' + failed.length + ' 个项目删除失败：' + failed.join('；'));
-    else toast.success('已删除 ' + ids.length + ' 个项目');
+    if (!failed.length) toast.success('已删除 ' + deleted + ' 个项目');
+    else if (!deleted) toast.error('跳过 ' + failed.length + ' 个：' + failed.join('；'));
+    else toast.error('已删除 ' + deleted + ' 个，跳过 ' + failed.length + ' 个：' + failed.join('；'));
     load();
   }
 

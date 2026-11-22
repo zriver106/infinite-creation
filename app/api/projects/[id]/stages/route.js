@@ -1,6 +1,6 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Projects } from '@/lib/core/index.js';
+import { Projects, logSubmitRequest } from '@/lib/core/index.js';
 import { STAGES, pendingByStage, preflight, startStageJob, activeJobOf, activeJobOfChapter, validateStageDependencies } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -32,7 +32,10 @@ export async function POST(req, { params }) {
   // 同一章已有任务：直接返回原任务（不重复提交、不重复扣费）；其他章节不受影响。
   if (chapter) {
     const active = activeJobOfChapter(id, chapter);
-    if (active) return NextResponse.json({ job: active, deduped: true });
+    if (active) {
+      logSubmitRequest(req, { route: 'POST /api/projects/:id/stages', projectId: id, chapter, jobId: active.id });
+      return NextResponse.json({ job: active, deduped: true });
+    }
   }
   let marked = false;
   try {
@@ -47,6 +50,7 @@ export async function POST(req, { params }) {
     Projects.update(id, { status: 'running' });
     marked = true;
     const job = startStageJob({ projectId: id, stages, chapter, onProgress: (patch) => broadcast(patch) });
+    logSubmitRequest(req, { route: 'POST /api/projects/:id/stages', projectId: id, chapter, jobId: job && job.id });
     return NextResponse.json({ job, ...info });
   } catch (e) {
     // 任务实际没起来（startStageJob 抛错）时复位刚设上的运行态，与 /run 写法对齐，

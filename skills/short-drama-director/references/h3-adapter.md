@@ -60,7 +60,7 @@ L2VA:  How the reference pictures align with the target video — <Picture 1> (f
 | 【核心人物】`@CHR-xxx` × N（含 `（在场）` 标记） | 六段式：`<Subject N>`（人物类） | 外观特征写进定义行（发式/肤色/服装/兵器）；`@` 锚点**全删**；音色锁（2.5 可选）转写成主体描述里的音色短语；**`（在场）` 两级标记在 H3 侧不保留标记词**，只体现在该角色是否被镜头带到 |
 | 【站位声明】（四要素 + 轴线 + 位移） | **无对应栏** | **必须转写成画面语言句**并入对应 `[Shot N]`（"三步外停住""身子半侧向庭院""两人之间"）；禁坐标表、禁 ASCII 布局、禁 `@` 锚点。⚠️ **摆位必入画（法则 20）在 H3 侧照旧成立**：站位里摆了位的每个人，转换后**必须在至少一个 `[Shot N]` 出现**（正拍/焦外身影/全景群像/反应镜头均算），否则写明"已出画/已退场·去向"——H3 没有站位栏可查，这条只能由转换者守住（机检 H5 兜底：定义了却全文未引用 → 告警） |
 | 【时间轴分镜】镜行 | `[Shot 1]`（无时间戳）/ `[Shot N] At MM:SS.mmm,` + 切点 | 首镜**不带时间戳**；后续镜以 `At 00:04.000,` **严格递增**且 ≤ 段时长（英文正文用官方格式；中文"在…处"仅旧稿兼容）。**切镜动词用官方绑定短语**：`the camera cuts to` / `the shot cuts to` / `the shot transitions to` / `the shot changes to` / `the shot switches to`；**cross-dissolve / fade / wipe 仅在用户明确要求时使用**；景别/角度微变优先用运镜不切镜（base-en §4.2）。⚠️ **首镜锚定（法则 21）照旧成立**：`[Shot 1]` 必须带**一个具名主体**（`<Subject N>` 或注明归属的部位，如 "her right hand"）；空镜开场须在镜行首写明「空镜：…」且每段至多 1 镜（机检 H12a） |
-| 镜行 `声音：…` | 拆三层 | 环境音/物理音/非语言人声 → `overall_soundscape`；BGM → `non_diegetic_music`；对白/歌唱 → 留在正文 `<d>` |
+| 镜行 `声音：…` | 拆三层 | 环境音/物理音/非语言人声 → `overall_soundscape`；BGM → 不进 H3（`non_diegetic_music` 固定写 `N/A`，配乐在合成时按章节 BGM cue 表垫入）；对白/歌唱 → 留在正文 `<d>` |
 | **镜行 `台词：【角色（语气）："…"】`（法则 19）** | `(Sx)` + 说话人身份短语写在 `<d>` **外面** + `<d>[Chinese] 原文</d>` | **语气位必须继承，且用英文合成说话人短语**（官方 base-en §4.4：首次出现要给足 character type / age / gender / on-screen 与否 / **pitch / timbre / speaking rate / accent**）——`The young woman with a low, flat, cool voice (S1) says at an even pace: <d>[Chinese] …</d>`；`<d>` 内**只放语言标签 + 台词原文**，逐字不改（含标点）；**语气词禁写进画面段**（写了会被当视觉信息渲染，同 C16a 判据）。⚠️ **同性别多说话人高危**（官方 issue #17，open 未修复）：声音身份会互串、同性别必崩——同场景说话人声学画像**拉满对比**（音高/音质反着写）、优先"一段一开口者"、非对白人声词（轻笑/窃语/抽气类）清理成群杂环境音、声音只前进不回头（A→B→A 恢复旧声必翻车） |
 | `（OS·音色）/（VO·音色）` 画外声（`vo-os-weaving.md`） | `<Subject N> (Sx) says in an off-screen voiceover: <d>[Chinese] …</d> while his/her lips remain completely closed.` | **官方固定公式**（base-en §4.4）：固定短语 `says in an off-screen voiceover` + 画外声源自具体人物时**必须给 `(Sx)`** + 闭口证据 `while … lips remain completely closed` **紧跟 `</d>` 之后**。⚠️ 实测（本包两轮抽卡）：中文自创措辞 + 无 `(Sx)` 时该通道**压不住口型**（画面角色照样张嘴）——按官方公式英文书写，或摘出正文走后期贴声；与本包声画分离红线同款；`{}` 锁口型通道**不得**用于画外声 |
 | 画内文字 / 字幕【】 | 双引号内保原文 | `木牌写着"静心"`；用**英文直角双引号**，不用中文引号/书名号 |
@@ -163,7 +163,7 @@ POST {MINIMAX_API_BASE}/v2/h3_context_ir
 | H7 | `(Sx)` 按首现顺序编号；未发声角色无 ID |
 | H8 | 泄漏检查：七段式栏名【】/`@` 锚点 → FAIL；工作流规则词/内部术语/**否定式** → WARN（否定式对应法则 22/C19） |
 | H9 | 画外声含闭口证据（"lips remain completely closed" 紧跟 `</d>`）；**官方固定短语 `says in an off-screen voiceover` 缺失 → WARN**；禁用 `{}` 锁口型 |
-| H10 | 声音分层：`overall_soundscape` 不含台词；BGM 只出现在 `non_diegetic_music`；BGM 段不复述台词 |
+| H10 | 声音分层：`overall_soundscape` 不含台词；`non_diegetic_music`：本项目该段固定 N/A（镜内不生成配乐，配乐在合成时按章节 cue 表垫入）；H10b（WARN）：该段不是 silence / 没有配乐 / N/A / none（不分大小写，可带一个句号）→ 告警；段在但为空或只有标点 → 按 ndm_missing 告警 |
 | H11 | **语气位继承（WARN）**：发言人首次出场处缺语气/音色/语速描述 → 告警（对应法则 19）。声学提示词表含英文词（pitch / timbre / rate / accent / low / flat / husky…），与 H3 正文英文口径一致 |
 | H12 | **首镜锚定与单主体（WARN）**：a) `[Shot 1]` 无具名主体；b) 并列主体/同框句式；c) 悬空指示代词（对应 C18a / C20a / C20b，即法则 21/23） |
 

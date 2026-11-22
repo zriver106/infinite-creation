@@ -22,6 +22,8 @@ import TaskDrawer from '../components/TaskDrawer.jsx';
 import ProjectSettingsDialog from '../components/ProjectSettingsDialog.jsx';
 import { MetaItem, RatioMeta, ResolutionMeta } from '../components/visuals.jsx';
 import ProgressPanel from '../components/ProgressPanel.jsx';
+import AutoNextPanel from '../components/AutoNextPanel.jsx';
+import { defaultChapterId } from '../components/ChapterPicker.jsx';
 import { useToast } from '../components/toast.jsx';
 import { useProjectProgress } from '../lib/hooks.js';
 import ChaptersPage from './ChaptersPage.jsx';
@@ -60,6 +62,15 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
   const [queueOpen, setQueueOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const { progress, refreshProgress } = useProjectProgress(id, project?.status === 'running');
+
+  // 记住最近打开的项目：「系统设置 - 通用配置 - 交付目录」的项目选择默认选它
+  useEffect(() => {
+    try {
+      localStorage.setItem('ic:lastProjectId', id);
+    } catch {
+      /* 隐私模式等拿不到 localStorage 时忽略 */
+    }
+  }, [id]);
 
   // 渲染队列快照：面板打开时轮询「排在第几位 / 预计多久」，关闭时不请求。
   const [queue, setQueue] = useState(null);
@@ -112,7 +123,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
     setProject((prev) => (JSON.stringify(prev) === JSON.stringify(p) ? prev : p));
     setJobs((prev) => (JSON.stringify(prev) === JSON.stringify(j) ? prev : j));
     setChapters((prev) => (JSON.stringify(prev) === JSON.stringify(c) ? prev : c));
-    setCursorId((x) => (c.some((ch) => ch.id === x) ? x : c.length ? c[c.length - 1].id : ''));
+    setCursorId((x) => (c.some((ch) => ch.id === x) ? x : defaultChapterId(c)));
     if (firstJobsLoadRef.current) firstJobsLoadRef.current = false;
     else if (j.some((x) => !seenJobIdsRef.current.has(x.id))) setQueueOpen(true);
     seenJobIdsRef.current = new Set(j.map((x) => x.id));
@@ -125,6 +136,15 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
     let delay = 1000;
 
     const notify = (m) => {
+      // 交付目录复制失败：只报错不拦（成片照常算成功），这里弹一条常驻错误提示
+      if (m.phase === '交付失败') {
+        const k = (m.jobId || 'export') + ':delivery:' + String(m.detail || '');
+        if (!notifiedRef.current.has(k)) {
+          notifiedRef.current.add(k);
+          toast.error('交付失败：' + String(m.detail || '').slice(0, 200), { ttl: 0 });
+        }
+        return;
+      }
       const st = m.status;
       if (st !== 'done' && st !== 'failed' && st !== 'cancelled') return;
       if (m.type === 'llm') return;
@@ -294,7 +314,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
   }, [activeJobs.length]);
 
   const setTab = (t) => {
-    if (t === 'shots') setCursorId(chapters.length ? chapters[chapters.length - 1].id : '');
+    if (t === 'shots') setCursorId(defaultChapterId(chapters));
     setPview(t);
     if (onTabChange) onTabChange(t);
   };
@@ -454,6 +474,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
                 <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">生成按章节串行推进；在「章节管理」里选择一章开始。</p>
               </>
             )}
+            <AutoNextPanel projectId={id} project={project} readOnly={readOnly} onSaved={loadProject} refreshKey={jobsSig} />
           </div>
 
           <div className="panel flex flex-col gap-2 p-3.5 text-[11px] text-[var(--fg-3)]">

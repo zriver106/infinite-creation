@@ -2,9 +2,18 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Chapters, Shots, Projects, ensureChapterPoster, withWriteContext, chapterStats, pickChapterFields, projectDir, slugify } from '@/lib/core/index.js';
+import { Chapters, Shots, Projects, Jobs, ensureChapterPoster, withWriteContext, chapterStats, pickChapterFields, projectDir, slugify } from '@/lib/core/index.js';
+import { readStore as readAssetCheckStore, readAssetCheckSettings } from '@/lib/agent/asset-check.js';
 
 export const dynamic = 'force-dynamic';
+
+const assetFields = (a) => ({
+  assetState: a ? a.state : 'unchecked',
+  assetMissing: a ? Number(a.missing) || 0 : 0,
+  assetReview: a ? Number(a.review) || 0 : 0,
+  assetCheckedAt: a ? a.checkedAt || 0 : 0,
+  assetGapFile: a ? a.gapFile || '' : '',
+});
 
 export async function GET(_req, { params }) {
   const { id } = await params;
@@ -26,6 +35,11 @@ export async function GET(_req, { params }) {
     const hit = exportVideos.find((f) => f.name.startsWith(prefix));
     return hit ? '/files/projects/' + id + '/exports/' + hit.name : '';
   };
+  // 本项目的 create 任务（已按 started_at DESC），用于给章节卡片判断「继续 / 生成」
+  const createJobs = Jobs.list(id).filter((j) => j.type === 'create');
+  // 本章资产齐全检查的最近结果（项目目录 asset-checks.json）；assetMode=auto 的项目前端不显示徽标
+  const assetMode = readAssetCheckSettings(proj).mode;
+  const assetChecks = (readAssetCheckStore(id).chapters) || {};
   const out = [];
   for (const c of chs) {
     const shots = all.filter((s) => s.chapter === c.title);
@@ -34,7 +48,17 @@ export async function GET(_req, { params }) {
     // 进度摘要走 lib/core 的唯一实现：分镜的「生成中」状态是 generating，不是 running
     // （早先这里内联判 running，永远不命中 → 正在出视频的章节被显示成「待生成」）
     const st = chapterStats(id, c.title);
-    out.push({ ...c, shotCount: st.total, doneCount: st.done, genStatus: st.status, poster, video: latestVideo(c.title) });
+    const lastJob = createJobs.find((j) => j.checkpoint?.chapter === c.title);
+    // 「提示词撰写」按钮：缺 video_prompt 的镜数（与 lib/agent/prompt-write.js 的 chapterPromptGap 同口径：
+    // 已出视频但没提示词的不算缺，只单列报数，不补写）
+    let missingPromptCount = 0;
+    let missingPromptWithVideo = 0;
+    for (const s of shots) {
+      if (String(s.video_prompt ?? '').trim()) continue;
+      if (s.status === 'done' && s.video_path) missingPromptWithVideo++;
+      else missingPromptCount++;
+    }
+    out.push({ ...c, shotCount: st.total, doneCount: st.done, genStatus: st.status, poster, video: latestVideo(c.title), hasScript: String(c.script ?? '').trim() !== '', lastJobStatus: lastJob ? lastJob.status : '', missingPromptCount, missingPromptWithVideo, assetMode, ...assetFields(assetChecks[c.id]) });
   }
   return NextResponse.json(out);
 }

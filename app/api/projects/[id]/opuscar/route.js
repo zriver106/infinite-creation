@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Projects, Assets, Jobs, SKILLS_DIR, uid, slugify, resolveProjectPath, withWriteContext } from '@/lib/core/index.js';
+import { Projects, Assets, Jobs, SKILLS_DIR, uid, slugify, resolveProjectPath, withWriteContext, logSubmitRequest } from '@/lib/core/index.js';
 import { startOpuscarJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -141,6 +141,7 @@ export async function POST(req, { params }) {
       turn,
       onProgress: (patch) => broadcast(patch),
     });
+    logSubmitRequest(req, { route: 'POST /api/projects/:id/opuscar', projectId: id, jobId: job && job.id });
     return NextResponse.json(job);
   }
 
@@ -203,5 +204,6 @@ export async function POST(req, { params }) {
     turn: 0,
     onProgress: (patch) => broadcast(patch),
   });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/opuscar', projectId: id, jobId: job && job.id });
   return NextResponse.json(job);
 }

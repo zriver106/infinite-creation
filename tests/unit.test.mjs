@@ -637,17 +637,17 @@ test('项目路由：自定义宽高区间（BAD_PROJECT_DIM）必须翻 400，�
   }
 });
 
-test('项目删除：先给本项目活动任务打停止标记再删（否则任务继续跑、把孤儿行写回已删项目）', () => {
-  // 任务行会随 Projects.remove 一起删掉，而进程里那条任务不会停（停止注册表按 jobId 在内存里）：
-  // 它会继续出图/出片，把 chapters/shots/assets 重新插回一个「已不存在的项目」——界面看不到也停不掉。
+test('项目删除：有活动任务或待续跑 interrupted 时 409，不 stopJob、不 interrupt，避免删记录后镜头无人收尾', () => {
+  // 第二批 v1.1：活动任务或尚未被接续的 interrupted 出片任务都不准删项目（也不能在删除时硬停/软停）。
   const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'api', 'projects', '[id]', 'route.js'), 'utf8');
-  const stop = src.indexOf('stopJob(j.id)');
+  const policy = src.indexOf('applyDeleteProjectPolicy');
+  const reject = src.indexOf("policy.kind !== 'delete-ok'");
   const remove = src.indexOf('Projects.remove(id)');
-  assert.ok(stop > 0, '删除项目必须先停本项目活动任务');
-  assert.ok(/status === 'running' \|\| j\.status === 'queued'/.test(src), 'running 与 queued 都算活动任务');
-  assert.ok(/interruptTask\(loadConfig\(\)\)/.test(src), '执行中的任务要主动打断 ComfyUI（与 /stop、/cancel 同一口径）');
-  assert.ok(remove > stop, '停止必须发生在删除之前');
-  assert.ok(/stopped: active\.map/.test(src), '接口要回报实际停了哪几条任务');
+  assert.ok(policy > 0, '删除项目必须走统一策略函数');
+  assert.ok(reject > policy, '策略未通过（活动任务或待续跑 interrupted）要 409');
+  assert.ok(remove > reject, '只有通过策略后才能删项目');
+  assert.ok(!/stopJob\s*\(/.test(src), '删除项目不得 stopJob');
+  assert.ok(!/interruptTask\s*\(/.test(src), '删除项目不得 interruptTask');
 });
 
 test('nameMatches: 规范化后精确相等（短名不被同场更长角色名误命中）', () => {
@@ -1410,24 +1410,39 @@ test('取消/删除任务：只有占着渲染槽位的任务才打断 ComfyUI�
   // 行内任务（runInlineJob：llm 参考图分析 / export 按章导出）在请求内同步执行、不进闸门、
   // 也没人读它的停止标记，但状态同样是 running。旧代码用「状态是 running」决定 /interrupt，
   // 于是取消/删除它们会把**当时真正在跑的渲染任务**（全局槽位串行，可能是另一个项目的整片生成）
-  // 打断成 failed。这里钉住「用 holdsRenderSlot 决定是否打断」+「行内任务如实拒绝」。
+  // 打断成 failed。这里钉住「用任务类型识别行内任务并 409」+「用 holdsRenderSlot 决定是否打断」。
+  // 出片任务在镜间不占渲染槽，不能再因此 409；create 的取消走软停止，不在这里 /interrupt。
   const read = (...segs) => fs.readFileSync(path.join(__dirname, '..', ...segs), 'utf8');
   const cancel = read('app', 'api', 'projects', '[id]', 'jobs', '[jobId]', 'cancel', 'route.js');
-  assert.ok(/holdsRenderSlot\(jobId\)/.test(cancel), '取消：running 要看是否真占槽位');
-  assert.ok(/不占渲染队列/.test(cancel), '取消行内任务要如实拒绝（409），不能假成功');
-  assert.ok(cancel.indexOf('holdsRenderSlot(jobId)') < cancel.indexOf('await interruptTask(cfg)'), '判断必须发生在打断之前');
+  const runner = read('lib', 'agent', 'job-runner.js');
+  assert.ok(/dispatchCancel\(job\)/.test(cancel), '取消路由走统一 dispatchCancel');
+  assert.ok(/applyCancelPolicy\(job\)/.test(runner), '策略函数仍按任务类型决定 409 / 软停止 / 硬停止');
+  assert.ok(/isInlineJob\(job\)/.test(runner), '用任务类型识别行内任务，而不是用「此刻没占槽」推断');
+  assert.ok(/不占渲染队列/.test(runner), '取消行内任务要如实拒绝（409），不能假成功');
+  assert.ok(/job\.type === 'create'/.test(runner) && /requestSoftStop\(job\.id\)/.test(runner), 'create 取消必须走软停止');
+  assert.ok(/cancelShouldInterrupt\(job\)/.test(runner) && /holdsRenderSlot\(job\.id\)/.test(runner), '是否打断由 cancelShouldInterrupt 看 holdsRenderSlot');
+  assert.ok(cancel.indexOf('shouldInterrupt') < cancel.indexOf('await interruptTask(cfg)'), '是否打断必须看是否真占槽，且判断在打断之前');
+  assert.ok(cancel.indexOf("result.kind === 'soft-stop'") < cancel.indexOf('await interruptTask(cfg)'), 'create 软停必须在 interruptTask 之前 return');
+  assert.ok(cancel.indexOf("result.kind === 'reject-inline'") < cancel.indexOf('await interruptTask(cfg)'), 'llm/export 409 必须在 interruptTask 之前 return');
+  assert.ok(cancel.indexOf("result.kind === 'orphan-queued'") < cancel.indexOf('await interruptTask(cfg)'), '排队出队（含孤儿）必须在 interruptTask 之前 return');
 
   const del = read('app', 'api', 'projects', '[id]', 'jobs', '[jobId]', 'route.js');
-  assert.ok(/holdsRenderSlot\(jobId\)/.test(del), '删除任务记录：行内任务同步执行中不得删记录（会成为看不见的孤儿）');
-  assert.ok(del.indexOf('holdsRenderSlot(jobId)') < del.indexOf('await interruptTask(cfg)'), '判断必须发生在打断之前');
+  assert.ok(/applyDeleteJobPolicy\(job\)/.test(del), '删除任务记录走统一策略：活动任务 409');
+  assert.ok(/请先取消，等任务结束后再删/.test(runner), '活动任务删除 409 文案固定');
+  assert.ok(/该任务等待断点续跑，请先在该章点「继续」，续跑开始后再删/.test(runner), '待续跑 interrupted 删除 409 文案固定');
+  assert.ok(!/stopJob\s*\(/.test(del), '删除任务路由不得 stopJob');
+  assert.ok(!/interruptTask\s*\(/.test(del), '删除任务路由不得调用 interruptTask');
 
   const stop = read('app', 'api', 'projects', '[id]', 'stop', 'route.js');
   assert.ok(/jobs\.some\(\(j\) => holdsRenderSlot\(j\.id\)\)/.test(stop), '/stop 只在本项目确实占槽位时才打断');
   assert.ok(stop.indexOf('holdsRenderSlot(j.id)') < stop.indexOf('await interruptTask(cfg)'), '判断必须发生在打断之前');
 
   const project = read('app', 'api', 'projects', '[id]', 'route.js');
-  assert.ok(/active\.some\(\(j\) => holdsRenderSlot\(j\.id\)\)/.test(project), '删项目同上（否则删一个只有行内任务的项目会打断别的项目）');
-  assert.ok(project.indexOf('holdsRenderSlot(j.id)') < project.indexOf('await interruptTask(loadConfig())'), '判断必须发生在打断之前');
+  assert.ok(/applyDeleteProjectPolicy\(/.test(project), '删项目走统一策略：有活动任务则 409');
+  assert.ok(/policy\.kind !== 'delete-ok'/.test(del), '删除任务路由对所有非 delete-ok 策略都 409');
+  assert.ok(/policy\.kind !== 'delete-ok'/.test(project), '删除项目路由对所有非 delete-ok 策略都 409');
+  assert.ok(!/stopJob\s*\(/.test(project), '删项目路由不得 stopJob');
+  assert.ok(!/interruptTask\s*\(/.test(project), '删项目路由不得调用 interruptTask');
 });
 
 test('variantReusable / variantPrompt: 变体内容或提示词改过就必须重做，并用用户改过的提示词', () => {

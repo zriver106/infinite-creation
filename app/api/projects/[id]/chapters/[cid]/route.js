@@ -29,7 +29,8 @@ export async function PATCH(req, { params }) {
         const updated = Chapters.update(cid, patch);
         if (!updated) return null;
         if (patch.title !== undefined && before.title !== updated.title) {
-          for (const s of Shots.list(id)) if (s.chapter === before.title) Shots.update(s.id, { chapter: updated.title });
+          // 作废镜也要跟着改标题，否则恢复时找不到所属章节
+          for (const s of Shots.list(id, { includeObsolete: true })) if (s.chapter === before.title) Shots.update(s.id, { chapter: updated.title });
         }
         return updated;
       });

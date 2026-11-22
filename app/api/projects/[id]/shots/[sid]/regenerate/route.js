@@ -1,6 +1,6 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Shots, Jobs, Queue } from '@/lib/core/index.js';
+import { Shots, Jobs, Queue, logSubmitRequest } from '@/lib/core/index.js';
 import { startRegenerateJob, activeJobOfChapter } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -22,7 +22,10 @@ export async function POST(req, { params }) {
       j.checkpoint &&
       j.checkpoint.subject === sid,
   );
-  if (active) return NextResponse.json({ ...active, deduped: true });
+  if (active) {
+    logSubmitRequest(req, { route: 'POST /api/projects/:id/shots/:sid/regenerate', projectId: id, chapter: shot.chapter, shots: [sid], jobId: active.id });
+    return NextResponse.json({ ...active, deduped: true });
+  }
   // 本章正在跑整条流水线/阶段任务：单镜按钮必须锁定，避免同一镜被并行生成、重复扣费。
   const chapterJob = activeJobOfChapter(id, shot.chapter);
   if (chapterJob && chapterJob.type !== 'regenerate') {
@@ -44,6 +47,7 @@ export async function POST(req, { params }) {
   // 不再因「已有任务」拒绝：提交即入全局队列，等前面任务跑完自动逐个执行（ComfyUI 单队列）
   try {
     const job = startRegenerateJob({ projectId: id, shotId: sid, feedback: body?.feedback, render: body?.render, append: body?.append, skill: body?.skill, onProgress: (p) => broadcast(p) });
+    logSubmitRequest(req, { route: 'POST /api/projects/:id/shots/:sid/regenerate', projectId: id, chapter: shot.chapter, shots: [sid], jobId: job && job.id });
     return NextResponse.json(job);
   } catch (e) {
     if (e && e.code === 'INSUFFICIENT_CREDITS') return NextResponse.json({ error: e.message, code: e.code }, { status: 402 });
