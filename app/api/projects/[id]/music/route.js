@@ -1,7 +1,7 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
 import { Projects, Assets, uid, withWriteContext, loadConfig, logger, optimizeMusicBrief } from '@/lib/core/index.js';
-import { startMusicJob } from '@/lib/agent/index.js';
+import { startMusicJob, brainChat, brainReady } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
 export const dynamic = 'force-dynamic';
@@ -35,10 +35,12 @@ export async function POST(req, { params }) {
   const cacheHit = !inputChanged && !!(cached && cached.caption
     && String(cached.source_caption || '') === baseCaption);
   let rewrite = cacheHit ? { caption: cached.caption, lyrics: cached.lyrics } : null;
-  if (!rewrite && optimize !== false && baseCaption && cfg?.llm?.baseUrl) {
+  if (!rewrite && optimize !== false && baseCaption && brainReady(cfg)) {
     try {
       rewrite = await optimizeMusicBrief({
         llm: cfg.llm,
+        // ic28：按「Agent 大脑」设置走（外部 Agent 为主，按设置回落 OpenAI 兼容接口）
+        chat: (messages, opts) => brainChat(cfg, messages, opts),
         caption: baseCaption,
         lyrics: baseLyrics,
         duration: max_duration,

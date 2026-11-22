@@ -53,10 +53,10 @@ const REWRITE_LANG_OPTIONS = [
 const CATEGORIES = [
   { id: 'general', label: '通用配置', desc: '分镜数量 · 任务调度', icon: SlidersHorizontal },
   { id: 'comfyui', label: 'ComfyUI 服务', desc: '执行端 · 并发队列', icon: Server },
-  { id: 'llm', label: 'LLM 模型', desc: 'Agent 大脑 · 提示词改写', icon: Sparkles },
+  // ic28：原「LLM 模型」并入「Agent 运行时」（OpenAI 兼容接口成为内置运行时的模型 / 外部 Agent 的后备）
+  { id: 'agent', label: 'Agent 运行时', desc: 'Agent 大脑 · CLI / OpenAI 兼容接口 · 改写', icon: Bot },
   { id: 'upscale2k', label: '升级2K', desc: '火山 / 本地 · 成片超分', icon: Film },
   { id: 'subtitle', label: '字幕与语音识别', desc: 'Whisper 模型 · 本地环境', icon: Captions },
-  { id: 'agent', label: 'Agent 运行时', desc: '内置 / 外部 CLI · MCP 桥', icon: Bot },
   { id: 'claudeapi', label: 'Claude API 密钥', desc: '指挥系统会话 · 只存本机', icon: KeyRound },
   { id: 'skills', label: '技能库', desc: '全局技能包管理', icon: Wand2 },
   { id: 'pipeline', label: '流水线编排', desc: '技能节点 · 导入导出', icon: Workflow, beta: true },
@@ -75,6 +75,7 @@ export default function SettingsPage({ onBack, publicMode = false }) {
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [agentsErr, setAgentsErr] = useState('');
   const [agentTest, setAgentTest] = useState('');
+  const [brainTest, setBrainTest] = useState('');
   const [mcpServer, setMcpServer] = useState(null);
   const [workflows, setWorkflows] = useState([]);
   const [activeCat, setActiveCat] = useState('general');
@@ -254,7 +255,7 @@ export default function SettingsPage({ onBack, publicMode = false }) {
           <div className="grid gap-2.5 rounded-xl border border-[var(--line)] bg-white/[0.015] p-3.5 text-[11.5px] sm:grid-cols-2">
             <ReadonlyRow label="执行端" value={isRunningHub ? '云端渲染' : '原生 ComfyUI'} />
             <ReadonlyRow label="云端版本" value={isRunningHub ? cfg.comfyui.tier || 'standard' : '—'} />
-            <ReadonlyRow label="LLM 模型" value={cfg.llm.model || '—'} />
+            <ReadonlyRow label="Agent 大脑" value={(cfg.agent?.runtime || 'openclaude') === 'openclaude' ? 'OpenAI 兼容接口 · ' + (cfg.llm.model || '—') : '外部 Agent · ' + cfg.agent.runtime} />
             <ReadonlyRow label="视觉输入" value={cfg.llm.vision ? '已开启' : '未开启'} />
             <ReadonlyRow label="视频超时" value={(cfg.generation.videoTimeoutMinutes || '—') + ' 分钟'} />
             <ReadonlyRow label="图片超时" value={(cfg.generation.imageTimeoutMinutes || '—') + ' 分钟'} />
@@ -350,6 +351,20 @@ export default function SettingsPage({ onBack, publicMode = false }) {
       );
     } catch (e) {
       setAgentTest('失败：' + e.message);
+    }
+  }
+
+  // 按当前（可未保存）的 Agent 大脑设置真的问一句，验证剧本/提示词改写这类一问一答走得通
+  async function testBrain() {
+    setBrainTest('试跑中…（外部 CLI 冷启动可能要十几秒）');
+    try {
+      const r = await api.post('/api/agents/test', { ping: true, agent: agentCfg, llm: cfg.llm });
+      const via = r.via === 'llm' ? 'OpenAI 兼容接口' : r.via === 'llm-fallback' ? 'OpenAI 兼容接口（外部 Agent 失败后回落）' : String(r.via || '').replace(/^agent:/, '外部 Agent · ');
+      setBrainTest(
+        timeLabel() + ' · ' + (r.ok ? '可用 · ' + via + ' · ' + (r.secs ?? '?') + ' 秒 · 回复「' + (r.content || '') + '」' : '不可用：' + (r.error || '未知错误')),
+      );
+    } catch (e) {
+      setBrainTest(timeLabel() + ' · 失败：' + e.message);
     }
   }
 
@@ -794,71 +809,6 @@ export default function SettingsPage({ onBack, publicMode = false }) {
             </Section>
           ) : null}
 
-          {active === 'llm' ? (
-            <Section icon={Sparkles} title="LLM · Agent 大脑" description="OpenAI 兼容接口，负责剧本、分镜与提示词">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Base URL" hint="需以 /v1 结尾。" className="sm:col-span-2">
-                  <Input value={cfg.llm.baseUrl} onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, baseUrl: e.target.value } })} placeholder="https://api.example.com/v1" />
-                </Field>
-                <Field label="模型">
-                  <Input value={cfg.llm.model} onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, model: e.target.value } })} placeholder="模型名" />
-                </Field>
-                <Field label="API Key">
-                  <Input
-                    type="password"
-                    value={cfg.llm.apiKey || ''}
-                    onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, apiKey: e.target.value } })}
-                    placeholder="API Key"
-                  />
-                </Field>
-              </div>
-
-              <Switch
-                checked={!!cfg.llm.vision}
-                onChange={(v) => setCfg({ ...cfg, llm: { ...cfg.llm, vision: v } })}
-                label="支持图片输入（多模态 / 视觉模型）"
-                hint="开启后，写分镜 / 图生图提示词时会把参考图提交给大模型；请确认模型确实支持视觉输入。"
-              />
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secondary" size="md" onClick={testLlm}>
-                  测试连接
-                </Button>
-                <TestResult text={llmTest} />
-              </div>
-
-              <div className="hairline" />
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="提示词改写语言" hint="分镜反馈选择「仅 LLM 改写」时的输出语言。">
-                  <Select
-                    value={cfg.llm.rewriteLanguage || 'same'}
-                    onChange={(v) => setCfg({ ...cfg, llm: { ...cfg.llm, rewriteLanguage: v } })}
-                    items={REWRITE_LANG_OPTIONS}
-                  />
-                </Field>
-                <Field label="改写最大输出（token）" hint="默认 4000；范围 256 - 32768。">
-                  <Input
-                    type="number"
-                    min={256}
-                    max={32768}
-                    value={String(cfg.llm.rewriteMaxTokens ?? 4000)}
-                    onChange={(e) =>
-                      setCfg({ ...cfg, llm: { ...cfg.llm, rewriteMaxTokens: Math.max(256, Math.min(32768, Math.round(Number(e.target.value) || 0))) } })
-                    }
-                  />
-                </Field>
-              </div>
-              <details className="rounded-xl border border-[var(--line)] bg-white/[0.015] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--fg-3)]">
-                <summary className="cursor-pointer text-[var(--fg-3)] hover:text-[var(--fg-2)]">为什么需要设置改写输出上限？</summary>
-                <p className="m-0 mt-2">
-                  思考型模型会先输出 reasoning、再写正文，二者共用这一份预算；预算不足时正文会被截断，表现为改写只剩一两句、参考占位符丢失。
-                  建议默认 4000；任务报「LLM 输出被截断」时优先调大。
-                </p>
-              </details>
-            </Section>
-          ) : null}
-
           {active === 'upscale2k' ? (
             <Section icon={Film} title="升级2K" description="给已有成片做画质增强；原片始终保留，升级版与原片可切换选用。此处单独保存。">
               <UpscaleSettings />
@@ -872,17 +822,19 @@ export default function SettingsPage({ onBack, publicMode = false }) {
           ) : null}
 
           {active === 'agent' ? (
-            <Section icon={Bot} title="Agent 运行时" description="内置 openclaude，或让本机 CLI Agent 通过 MCP 工具桥接管流水线">
+            <Section icon={Bot} title="Agent 运行时 · 大脑" description="剧本、分镜、提示词撰写与改写统一由这里的运行时完成">
               <Segmented
                 value={isExternalAgent ? 'external' : 'openclaude'}
                 onChange={switchAgentMode}
                 options={[
-                  { value: 'openclaude', label: '内置 openclaude（默认）' },
                   { value: 'external', label: '外部 Agent（本机 CLI）' },
+                  { value: 'openclaude', label: '内置 openclaude（OpenAI 兼容接口）' },
                 ]}
               />
               <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
-                内置 openclaude 使用「LLM 模型」里的配置；外部 Agent 使用它自己的模型与登录态，并通过本地 MCP 服务调用本项目的领域工具。
+                {isExternalAgent
+                  ? '外部 Agent 使用它自己的模型与登录态：流水线任务通过本地 MCP 服务调用本项目的领域工具；剧本生成/改写、按技能写提示词、反馈改写（仅 LLM 改写）等一问一答也由它完成。'
+                  : '内置 openclaude 的大脑就是下方的 OpenAI 兼容接口：流水线任务与剧本/提示词/改写等一问一答都打到这个接口。'}
               </p>
 
               {isExternalAgent ? (
@@ -895,6 +847,7 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                           if (!v) return;
                           setAgent({ runtime: v });
                           setAgentTest('');
+                          setBrainTest('');
                         }}
                         disabled={agentsLoading}
                         items={[
@@ -933,11 +886,26 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                     </p>
                   ) : null}
                   {selectedAgent?.hint ? <p className="m-0 text-[11.5px] text-[var(--accent)]">⚠ {selectedAgent.hint}</p> : null}
+                  {selectedAgent && selectedAgent.textChat === false ? (
+                    <p className="m-0 text-[11.5px] text-[var(--accent)]">
+                      ⚠ {selectedAgent.name} 目前只接流水线任务（MCP），暂不支持剧本/提示词改写这类一问一答：
+                      {agentCfg.llmFallback ? '这些调用会回落到下方 OpenAI 兼容接口。' : '这些调用会直接报错，建议打开下方「回落」。'}
+                    </p>
+                  ) : null}
                   {agentTest ? (
                     <p className={`m-0 text-[11.5px] ${agentTest.startsWith('可用') ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                       {agentTest}
                     </p>
                   ) : null}
+
+                  <Field label="文本调用模型" hint="剧本 / 提示词 / 改写这类一问一答用的模型；留空 = 跟随 CLI 自己的默认模型。Claude Code 可填 opus、sonnet 等。">
+                    <Input
+                      value={agentCfg.textModel || ''}
+                      onChange={(e) => setAgent({ textModel: e.target.value })}
+                      placeholder="留空 = CLI 默认"
+                      className="w-64"
+                    />
+                  </Field>
 
                   {agentRuntime === 'custom' ? (
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -955,7 +923,7 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                           checked={customCfg.promptViaStdin !== false}
                           onChange={(v) => setAgentCustom({ promptViaStdin: v })}
                           label="通过 stdin 传入 prompt（推荐）"
-                          hint="关闭后 prompt 会拼在启动参数末尾。"
+                          hint="关闭后 prompt 会拼在启动参数末尾。一问一答时 stdout 全文即结果。"
                         />
                       </div>
                       <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)] sm:col-span-2">
@@ -983,14 +951,99 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                   </Field>
 
                   <p className="m-0 rounded-xl border border-[color-mix(in_srgb,var(--danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--danger)_6%,transparent)] px-3 py-2.5 text-[11px] leading-relaxed text-[var(--fg-3)]">
-                    外部 Agent 使用其自身模型与登录态；本项目通过本地 MCP 服务提供领域工具。外部 Agent 拥有其 CLI 自身权限，请只选择可信 Agent，首次运行请在任务日志确认工具调用。
+                    外部 Agent 使用其自身模型与登录态；本项目通过本地 MCP 服务提供领域工具（一问一答不挂 MCP、禁用文件/命令工具）。外部 Agent 拥有其 CLI 自身权限，请只选择可信 Agent，首次运行请在任务日志确认工具调用。
                   </p>
                 </>
-              ) : (
-                <p className="m-0 text-[11.5px] leading-relaxed text-[var(--fg-3)]">
-                  当前使用内置 openclaude（进程内 SDK），无需额外安装；切换到外部 Agent 后由本机 CLI 接管流水线。
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" size="md" onClick={testBrain}>
+                  试跑一句
+                </Button>
+                <TestResult text={brainTest} />
+              </div>
+              <p className="m-0 -mt-1 text-[11px] text-[var(--fg-4)]">按当前（未保存也算）的设置真的问一句「回复 OK」，会消耗一次极短的模型调用。</p>
+
+              <div className="hairline" />
+
+              <div className="flex flex-col gap-1">
+                <h3 className="m-0 text-[12.5px] font-medium text-[var(--fg-2)]">OpenAI 兼容接口</h3>
+                <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
+                  {isExternalAgent ? '外部 Agent 模式下作后备：仅在外部 Agent 不可用（未安装 / 未登录 / 超时 / 不支持一问一答）且打开「回落」时使用。' : '内置 openclaude 的模型配置（原「LLM 模型」）。'}
                 </p>
-              )}
+              </div>
+
+              {isExternalAgent ? (
+                <Switch
+                  checked={!!agentCfg.llmFallback}
+                  onChange={(v) => setAgent({ llmFallback: v })}
+                  label="外部 Agent 不可用时回落 OpenAI 兼容接口"
+                  hint="关闭时外部 Agent 失败就直接报错（不会悄悄换模型）。打开前请确认下方接口已填好 Base URL / API Key 并「测试连接」通过。"
+                />
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Base URL" hint="需以 /v1 结尾。" className="sm:col-span-2">
+                  <Input value={cfg.llm.baseUrl} onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, baseUrl: e.target.value } })} placeholder="https://api.example.com/v1" />
+                </Field>
+                <Field label="模型">
+                  <Input value={cfg.llm.model} onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, model: e.target.value } })} placeholder="模型名" />
+                </Field>
+                <Field label="API Key">
+                  <Input
+                    type="password"
+                    value={cfg.llm.apiKey || ''}
+                    onChange={(e) => setCfg({ ...cfg, llm: { ...cfg.llm, apiKey: e.target.value } })}
+                    placeholder="API Key"
+                  />
+                </Field>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" size="md" onClick={testLlm}>
+                  测试连接
+                </Button>
+                <TestResult text={llmTest} />
+              </div>
+
+              <div className="hairline" />
+
+              <div className="flex flex-col gap-1">
+                <h3 className="m-0 text-[12.5px] font-medium text-[var(--fg-2)]">图片输入与改写</h3>
+                <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">对当前运行时生效（外部 Agent 或 OpenAI 兼容接口）。</p>
+              </div>
+              <Switch
+                checked={!!cfg.llm.vision}
+                onChange={(v) => setCfg({ ...cfg, llm: { ...cfg.llm, vision: v } })}
+                label="支持图片输入（多模态 / 视觉模型）"
+                hint="开启后，写分镜 / 图生图提示词、反馈改写、参考图命名时会把参考图交给大脑；Claude Code 原生支持，OpenAI 兼容接口请确认模型支持视觉。"
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="提示词改写语言" hint="分镜反馈选择「仅 LLM 改写」时的输出语言。">
+                  <Select
+                    value={cfg.llm.rewriteLanguage || 'same'}
+                    onChange={(v) => setCfg({ ...cfg, llm: { ...cfg.llm, rewriteLanguage: v } })}
+                    items={REWRITE_LANG_OPTIONS}
+                  />
+                </Field>
+                <Field label="改写最大输出（token）" hint="默认 4000；范围 256 - 32768。只对 OpenAI 兼容接口生效（外部 CLI 不支持限长）。">
+                  <Input
+                    type="number"
+                    min={256}
+                    max={32768}
+                    value={String(cfg.llm.rewriteMaxTokens ?? 4000)}
+                    onChange={(e) =>
+                      setCfg({ ...cfg, llm: { ...cfg.llm, rewriteMaxTokens: Math.max(256, Math.min(32768, Math.round(Number(e.target.value) || 0))) } })
+                    }
+                  />
+                </Field>
+              </div>
+              <details className="rounded-xl border border-[var(--line)] bg-white/[0.015] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--fg-3)]">
+                <summary className="cursor-pointer text-[var(--fg-3)] hover:text-[var(--fg-2)]">为什么需要设置改写输出上限？</summary>
+                <p className="m-0 mt-2">
+                  思考型模型会先输出 reasoning、再写正文，二者共用这一份预算；预算不足时正文会被截断，表现为改写只剩一两句、参考占位符丢失。
+                  建议默认 4000；任务报「LLM 输出被截断」时优先调大。
+                </p>
+              </details>
             </Section>
           ) : null}
 

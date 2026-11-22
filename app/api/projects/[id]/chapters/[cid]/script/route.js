@@ -1,7 +1,7 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Chapters, Projects, loadConfig, llmChat, buildChapterScriptMessages, withWriteContext } from '@/lib/core/index.js';
-import { activeJobOfChapter } from '@/lib/agent/index.js';
+import { Chapters, Projects, loadConfig, buildChapterScriptMessages, withWriteContext } from '@/lib/core/index.js';
+import { activeJobOfChapter, brainChat, brainReady } from '@/lib/agent/index.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,8 @@ export async function POST(req, { params }) {
   }
 
   const cfg = loadConfig();
-  if (!cfg?.llm?.baseUrl) return NextResponse.json({ error: '未配置 LLM Base URL，请先到「设置」里配置。' }, { status: 400 });
+  // ic28：按合并后的「Agent 大脑」设置走（外部 Agent 为主；内置运行时才要求 OpenAI 兼容接口的 Base URL）
+  if (!brainReady(cfg)) return NextResponse.json({ error: '未配置 Agent 大脑：内置运行时需要 OpenAI 兼容接口的 Base URL，请到「设置 → Agent 运行时」配置。' }, { status: 400 });
 
   const novel = String(chapter.novel || '').trim();
   const script = String(chapter.script || '').trim();
@@ -46,7 +47,7 @@ export async function POST(req, { params }) {
 
   let out;
   try {
-    out = await llmChat(cfg.llm, messages, { temperature: 0.6, maxTokens: 8192, timeoutMs: 300000 });
+    out = await brainChat(cfg, messages, { temperature: 0.6, maxTokens: 8192, timeoutMs: 300000 });
   } catch (e) {
     return NextResponse.json({ error: 'AI 生成失败：' + (e?.message || e) }, { status: 502 });
   }
@@ -55,5 +56,5 @@ export async function POST(req, { params }) {
 
   const saved = withWriteContext('POST /api/projects/:id/chapters/:cid/script', () => Chapters.update(cid, { script: next }));
   const text = String(saved?.script ?? next);
-  return NextResponse.json({ mode, script: text, chars: text.length, saved: true });
+  return NextResponse.json({ mode, script: text, chars: text.length, saved: true, via: out?.via || '' });
 }

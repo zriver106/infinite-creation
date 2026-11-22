@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loadConfig } from '@/lib/core/index.js';
-import { detectAll, mcpServerSpec } from '@/lib/agent/external/index.js';
+import { detectAll, mcpServerSpec, findAgentDef } from '@/lib/agent/external/index.js';
+import { agentSupportsChat } from '@/lib/agent/brain.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,8 @@ export async function GET(req) {
     },
     agents: [
       { id: 'openclaude', name: '内置 openclaude', bin: '', available: true, builtin: true, path: '', version: null, installUrl: '' },
-      ...agents,
+      // ic28：textChat = 该 CLI 能否承接剧本/提示词改写等纯文本调用（不能的会按设置回落 OpenAI 兼容接口）
+      ...agents.map((a) => ({ ...a, textChat: agentSupportsChat(findAgentDef(a.id)) })),
     ],
   });
 }
