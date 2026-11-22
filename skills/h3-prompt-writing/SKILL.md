@@ -212,6 +212,20 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 6. **Wide and crowd shots:** the named leads are at least medium size or in the foreground, with their clothing IDs; extras are described as "other guests" and must not wear a lead's colour.
 7. **Who does the action comes from the novel/script, not from a similar-looking extra.** If the visual line names a character (e.g. "支架青年 deletes the clip"), the reference bound for that action must be that character; flag the shot if the binding names someone else.
 
+## Visual follows the prompt — 改提示词就同步重写 visual（2026-11-22, temporary rule, in force now）
+
+`video_prompt` is what renders. Whenever you write or change a shot's `video_prompt`, rewrite these parts of that shot's `visual` from the new prompt in the same PATCH, then read the two back together:
+- who is in frame, who enters or exits, and who is only a voice;
+- whether each person stands, sits or walks, and where each one is;
+- movement direction and camera direction;
+- what each hand holds and where the props sit;
+- what any system UI or screen shows;
+- the end-frame state.
+
+When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten to match.
+- **Never edit only `visual` to get past a lint check if that makes it contradict the prompt.** Example: writing "the panel has not appeared yet" when the prompt opens the panel at 1 s. Fix the prompt or the binding instead, or report the lint item and ask for a waiver.
+- Before handing a batch in, compare each changed shot's `visual` with its prompt on the items above. List every contradiction in the report.
+
 ## Multi-view scene sheet (`_MV`) for shots with two or more people — 多人同场绑多视角定义图（2026-11-22, temporary rule, in force now）
 
 Source: moviePro `docs/临时规则/场景多视角定义图_临时规则.md` (Andy, in force from 2026-11-22 13:45 without waiting for the S400 test; still temporary until Andy makes it permanent).
