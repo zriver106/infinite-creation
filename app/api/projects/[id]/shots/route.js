@@ -1,6 +1,7 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Shots, ShotVideos, Chapters, Projects, pickShotFields, idxTakenBy, validateShotContent, withWriteContext } from '@/lib/core/index.js';
+import fs from 'node:fs';
+import { Shots, ShotVideos, Chapters, Projects, pickShotFields, idxTakenBy, validateShotContent, withWriteContext, firstFrameStatus, resolveProjectPath } from '@/lib/core/index.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,14 @@ export async function GET(req, { params }) {
   // 默认不含「已作废」镜（重写分镜后的残留旧镜）；审计 / 恢复时带 ?include_obsolete=1
   const includeObsolete = new URL(req.url).searchParams.get('include_obsolete') === '1';
   // 附带每个分镜的多候选视频列表（单选裁剪候选），前端据此渲染候选选择器
-  return NextResponse.json(Shots.list(id, { includeObsolete }).map((s) => ({ ...s, videos: ShotVideos.listByShot(s.id) })));
+  // ic27：附带首帧槽位状态（承接上一镜时上一镜换了选中候选 → stale=true，卡片提示「首帧已过期」）
+  const list = Shots.list(id, { includeObsolete });
+  const exists = (rel) => { const a = resolveProjectPath(id, rel); return !!a && fs.existsSync(a); };
+  return NextResponse.json(list.map((s) => ({
+    ...s,
+    videos: ShotVideos.listByShot(s.id),
+    first_frame_status: s.first_frame_source ? firstFrameStatus(s, list, { exists }) : null,
+  })));
 }
 
 // 创建分镜（外部写入 API / 人工补镜）。只接受内容字段，见 lib/core/shot-write.js。

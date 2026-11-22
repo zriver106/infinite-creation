@@ -195,6 +195,44 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
     else regen(shotId, true, true);
   }
 
+  // ic27 首尾帧衔接：卡片首帧/尾帧槽位（承接上一镜 / 手动上传 / 清空）
+  const [frameBusy, setFrameBusy] = useState(''); // `${shotId}:${which}`
+  const frameFileRef = useRef(null);
+  const frameTargetRef = useRef(null); // { shotId, which }
+  async function frameAction(shotId, body) {
+    const key = shotId + ':' + (body.which || 'first');
+    setFrameBusy(key);
+    try {
+      const updated = await api.post('/api/projects/' + projectId + '/shots/' + shotId + '/first-frame', body);
+      setShots((list) => list.map((x) => (x.id === shotId ? { ...x, ...updated, videos: x.videos } : x)));
+      if (body.action === 'chain_prev') toast.success('已承接第' + (updated.chained?.prev_idx ?? '?') + '镜最后一帧作为本镜首帧');
+      else if (body.action === 'set') toast.success(body.which === 'last' ? '已设置尾帧' : '已设置首帧');
+      else toast.success(body.which === 'last' ? '已清空尾帧' : '已清空首帧');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setFrameBusy('');
+    }
+  }
+  function pickFrameFile(shotId, which) {
+    frameTargetRef.current = { shotId, which };
+    frameFileRef.current?.click();
+  }
+  async function onFrameFile(e) {
+    const file = (e.target.files || [])[0];
+    e.target.value = '';
+    const target = frameTargetRef.current;
+    if (!file || !target) return;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const j = await uploadForm('/api/projects/' + projectId + '/media', fd);
+      await frameAction(target.shotId, { action: 'set', which: target.which, path: j.path });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
   // 勾选一条候选作为「导出用」：后端会同步 shots.video_path，导出/打包无需改链路。
   async function selectVideo(shotId, videoId) {
     if (!videoId || videoId === '__legacy__') return;
@@ -202,6 +240,12 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
       const videos = await api.post('/api/projects/' + projectId + '/shots/' + shotId + '/videos/' + videoId + '/select');
       const selected = videos.find((v) => v.selected) || videos[0] || null;
       setShots((list) => list.map((x) => (x.id === shotId ? { ...x, videos, video_path: selected?.video_path || x.video_path } : x)));
+      // ic27：下一镜若承接本镜最后一帧，换选中候选后它的首帧就过期了 → 立即重拉状态并提示
+      const followers = shots.filter((x) => x.first_frame_source === 'prev_shot' && x.first_frame_from_shot_id === shotId);
+      if (followers.length) {
+        toast.warn('第' + followers.map((x) => x.idx).join('、') + '镜的首帧承接自本镜，已过期：点该镜「重新承接」，或直接生成（出片前会自动重抽）');
+        loadShots();
+      }
     } catch (e) {
       toast.error(e.message);
     }
@@ -217,6 +261,7 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
         ? { ...x, videos, video_path: selected?.video_path || '', status: videos.length ? 'done' : 'pending' }
         : x)));
       toast.success('已删除候选');
+      if (shots.some((x) => x.first_frame_source === 'prev_shot' && x.first_frame_from_shot_id === shotId)) loadShots();
     } catch (e) {
       toast.error(e.message);
     }
@@ -888,6 +933,20 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
                       <span className="text-[11.5px] text-[var(--fg-4)]">（无参考素材，Agent 会按文本推断）</span>
                     )}
 
+                    {s.mode !== 'first_last' ? (
+                      <FrameSlots
+                        s={s}
+                        projectId={projectId}
+                        isFirstInChapter={!shown.slice(0, si).some((x) => (x.chapter || '') === (s.chapter || ''))}
+                        editable={!running && canEdit && !shotBlocked && s.status !== 'generating'}
+                        busy={frameBusy}
+                        onChain={() => frameAction(s.id, { action: 'chain_prev' })}
+                        onUpload={(which) => pickFrameFile(s.id, which)}
+                        onClear={(which) => frameAction(s.id, { action: 'clear', which })}
+                        onPreview={setPreview}
+                      />
+                    ) : null}
+
                     <details className="group rounded-xl border border-[var(--line)] bg-white/[0.015]">
                       <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-[11.5px] text-[var(--fg-3)] transition-colors hover:text-[var(--fg-2)]">
                         提示词 & 分镜脚本
@@ -1003,6 +1062,8 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
           />
         </div>
       )}
+
+      <input ref={frameFileRef} type="file" accept="image/*" className="hidden" onChange={onFrameFile} />
 
       <ImageLightbox
         open={!!preview}
@@ -1263,6 +1324,61 @@ function Detail({ label, value, pre }) {
     <div className="flex gap-2">
       <span className="shrink-0 text-[var(--fg-4)]">{label}</span>
       {pre ? <pre className="m-0 whitespace-pre-wrap font-sans">{value}</pre> : <span>{value}</span>}
+    </div>
+  );
+}
+
+// ic27 首尾帧衔接：分镜卡片的首帧（可承接上一镜 / 手动上传）+ 可选尾帧槽位。
+// 出片（生成候选 / 批量出片）时作为关键帧锚定叠加在参考素材上；承接上一镜过期时出片前会自动重抽。
+function FrameSlots({ s, projectId, isFirstInChapter, editable, busy, onChain, onUpload, onClear, onPreview }) {
+  const st = s.first_frame_status || null;
+  const hasFirst = !!(s.first_frame_source && s.first_frame_path);
+  const hasLast = !!(s.last_frame_source === 'upload' && s.last_frame_path);
+  const chained = s.first_frame_source === 'prev_shot';
+  const stale = !!(st && st.stale);
+  const linkBtn = 'rounded-md border border-[var(--line)] bg-white/[0.02] px-2 py-1 text-[10.5px] text-[var(--fg-3)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--fg-2)] disabled:cursor-not-allowed disabled:opacity-40';
+  const thumb = (path, label) => (
+    <div className="flex w-[72px] flex-col gap-1">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onPreview({ image_path: path, name: label })}
+        className={'h-[64px] w-[64px] cursor-zoom-in overflow-hidden rounded-lg border bg-black/30 ' + (stale && label.startsWith('首帧') ? 'border-[var(--danger)]' : 'border-[var(--line)]')}
+      >
+        <img src={fileUrl(projectId, path)} alt={label} loading="lazy" className="h-full w-full object-cover" />
+      </div>
+      <span className="truncate text-[9.5px] leading-tight text-[var(--fg-3)]">{label}</span>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl border border-[var(--line)] bg-white/[0.015] px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="section-label">首尾帧衔接</span>
+        {editable ? (
+          <div className="flex flex-wrap gap-1">
+            <button type="button" className={linkBtn} disabled={isFirstInChapter || !!busy} title={isFirstInChapter ? '本章第一镜没有上一镜' : '取上一镜已选中候选视频的最后一帧作为本镜首帧'} onClick={onChain}>
+              {busy === s.id + ':first' ? '抽帧中…' : chained ? '重新承接上一镜' : '承接上一镜'}
+            </button>
+            <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onUpload('first')}>{hasFirst ? '换首帧图' : '上传首帧'}</button>
+            {hasFirst ? <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onClear('first')}>清空首帧</button> : null}
+            <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onUpload('last')}>{hasLast ? '换尾帧图' : '上传尾帧（可选）'}</button>
+            {hasLast ? <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onClear('last')}>清空尾帧</button> : null}
+          </div>
+        ) : null}
+      </div>
+      {hasFirst || hasLast ? (
+        <div className="flex flex-wrap items-start gap-2">
+          {hasFirst ? thumb(s.first_frame_path, chained ? '首帧 · 承接第' + (st?.prev_idx ?? '?') + '镜' : '首帧 · 手动') : null}
+          {hasLast ? thumb(s.last_frame_path, '尾帧 · 手动') : null}
+          {stale ? (
+            <p className="m-0 max-w-[360px] rounded-lg border border-[color-mix(in_srgb,var(--danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] px-2 py-1.5 text-[10.5px] leading-relaxed text-[var(--danger)]">
+              首帧已过期：{st.reason}。{chained ? '点「重新承接上一镜」；或直接生成，出片前会自动按上一镜当前选中候选重抽。' : ''}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <span className="text-[10.5px] text-[var(--fg-4)]">未设置：本镜不锚定首/尾帧（与之前一样只用参考素材）。</span>
+      )}
     </div>
   );
 }
