@@ -197,7 +197,7 @@ H3 gives each spoken `<d>` line to whoever *looks like* the speaker on screen an
 
 1. **A speaker whose face can't be seen may speak only when no one else's face is visible in the shot** — a lone figure from behind, an empty frame, a voice from beyond the door or out of frame are all fine.
 2. **If another face is visible, a faceless speaker gets that person's voice.** Fix it one of three ways: the speaker turns his head so at least a profile with the mouth shows while he speaks (`he stops at the door and turns his head over his shoulder, face and mouth in profile to the camera, and says …`); or the line goes into its own shot in which no one else's face is visible; or only the speaker stays in frame. If the storyboard hands you such a shot, change it this way and say so in your report.
-3. **Over-the-shoulder shots:** the foreground shoulder does not speak; only the character facing the camera speaks.
+3. **No over-the-shoulder shots at all (2026-11-22):** never write an over-the-shoulder or 过肩/越肩 framing, including over the shoulder of someone looking at a phone. A phone being looked at becomes a separate close-up insert of the phone screen; a conversation is single-person shot / reverse shot plus a side two-shot medium shot with both faces in profile. If the storyboard hands you an over-the-shoulder shot, rewrite it this way and say so in your report. (Turning the head *over his shoulder* as an action is fine; this bans the framing only.)
 4. **The listener's lips stay closed** while the other person speaks: `<Listener> listens with his lips closed.`
 
 ## Same-scene presence and costume lock — 同场在场人物入画 + 服装锁（2026-11-18, A1 QC fix）
