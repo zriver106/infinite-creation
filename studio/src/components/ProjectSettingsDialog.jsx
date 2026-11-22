@@ -6,6 +6,7 @@ import { Button, Field, Input, Select, Switch } from './ui.jsx';
 import { FormSection, Modal } from './overlays.jsx';
 import { useToast } from './toast.jsx';
 import StylePicker from './StylePicker.jsx';
+import { EXPRESSION_SWITCHES, expressionSwitchValues } from '@shared';
 
 export default function ProjectSettingsDialog({ open, onOpenChange, project, onSaved }) {
   const toast = useToast();
@@ -20,6 +21,8 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   const [enableBgm, setEnableBgm] = useState(true);
   const [enableSub, setEnableSub] = useState(true);
   const [autoScript, setAutoScript] = useState(true);
+  // 表现手段开关：Q版插入 / 夸张特效 / 网络流行语与谐音 / 段子与接梗（老项目缺字段视为开）
+  const [exprSwitches, setExprSwitches] = useState(() => expressionSwitchValues(null));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setEnableBgm(project.enable_bgm !== false);
     setEnableSub(project.enable_subtitles !== false);
     setAutoScript(project.auto_script !== false);
+    setExprSwitches(expressionSwitchValues(project));
   }, [open, project]);
 
   async function save() {
@@ -52,6 +56,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
         enable_bgm: enableBgm,
         enable_subtitles: enableSub,
         auto_script: autoScript,
+        ...exprSwitches,
       });
       toast.success('项目设置已保存');
       onOpenChange(false);
@@ -146,6 +151,22 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
           >
             <Select value={imageRes} onChange={setImageRes} items={IMAGE_RESOLUTION_ITEMS} />
           </Field>
+        </FormSection>
+
+        <div className="hairline" />
+
+        <FormSection index="04" title="表现手段">
+          <div className="flex flex-col gap-3 pt-1">
+            {EXPRESSION_SWITCHES.map((s) => (
+              <Switch
+                key={s.key}
+                checked={exprSwitches[s.key] !== false}
+                onChange={(v) => setExprSwitches((prev) => ({ ...prev, [s.key]: !!v }))}
+                label={s.label}
+                hint={s.hint}
+              />
+            ))}
+          </div>
         </FormSection>
       </div>
     </Modal>

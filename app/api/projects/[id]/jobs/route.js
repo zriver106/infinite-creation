@@ -31,7 +31,8 @@ export async function GET(_req, { params }) {
 // 清除已结束任务（完成/失败/已取消/已中断）：只删记录与日志，不动活动任务、不动素材/成片。
 export async function DELETE(_req, { params }) {
   const { id } = await params;
-  const finished = Jobs.list(id).filter((j) => j.status !== 'running' && j.status !== 'queued');
+  // ic25：adopted（接管中）不是已结束任务，不清
+  const finished = Jobs.list(id).filter((j) => j.status !== 'running' && j.status !== 'queued' && j.status !== 'adopted');
   for (const j of finished) {
     try { fs.unlinkSync(path.join(projectDir(id), 'logs', j.id + '.log')); } catch {}
     if (j.logPath) { try { fs.unlinkSync(j.logPath); } catch {} }

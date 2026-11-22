@@ -245,7 +245,7 @@
         },
         "non_diegetic_music": {
           "type": "string",
-          "description": "H3 独立配乐段（英文，缺省/无配乐写 N/A）。",
+          "description": "H3 独立配乐段。本项目固定写 N/A（2026-11-18）：镜内不生成配乐，配乐在合成时按章节 BGM cue 表垫入；编译器一律输出 N/A。",
           "default": "N/A"
         },
         "preserve_avoid": {

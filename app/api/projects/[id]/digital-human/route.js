@@ -2,7 +2,7 @@
 // 简单模式页「数字人」：先语音克隆（参考音色 + 说话内容）生成语音，再以头像 + 语音跑 r2v 数字人。
 // avatar / ref_audio 为相对路径；ref_audio_project_id 用于跨项目复用已有音色（缺省当前项目）。
 import { NextResponse } from 'next/server';
-import { Projects, Assets, uid, withWriteContext } from '@/lib/core/index.js';
+import { Projects, Assets, uid, withWriteContext, logSubmitRequest } from '@/lib/core/index.js';
 import { startDigitalHumanTtsJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -54,5 +54,6 @@ export async function POST(req, { params }) {
     refAudioProjectId: String(ref_audio_project_id || ''),
     onProgress: (p) => broadcast(p),
   });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/digital-human', projectId: id, jobId: job && job.id });
   return NextResponse.json(job);
 }

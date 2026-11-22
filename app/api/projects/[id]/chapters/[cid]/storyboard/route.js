@@ -57,7 +57,8 @@ export async function PUT(req, { params }) {
       // 先删后建包在一个事务里：中途失败不留「旧分镜删了、新的没进来」的空章
       let removed = 0;
       if (replace) {
-        for (const s of Shots.list(id)) {
+        // 整章替换＝本章旧分镜全部换掉，作废镜也在其列（否则会和新镜同号并存）
+        for (const s of Shots.list(id, { includeObsolete: true })) {
           if (s.chapter === chapter.title) { Shots.remove(s.id); removed++; }
         }
       }

@@ -65,7 +65,7 @@ H3 一次生成不了长视频（硬件限制），只能**用短视频逐段生
 | `detailed_description` | ✅ | — | — | `art_style_prefix` + `shot_size_en/angle_en` + 站位段（`positions` + `world_pos` + `axis_en`）+ `lighting_en` + `camera_move_en` + `beats[].action` + 结尾固定句 |
 | `integrated_multimodal_description` | — | ✅ | ✅ | 同 `detailed_description` 内容，但**不带 `<Subject>`/`<Picture>` 标签**（T2VA/FL2VA 无标签），仍写全物理描述 |
 | `overall_soundscape` | ✅ | ✅ | ✅ | `shot.overall_soundscape`（缺省由 `beats[].sound` 汇总） |
-| `non_diegetic_music` | ✅ | ✅ | ✅ | `shot.non_diegetic_music`（缺省 `N/A`） |
+| `non_diegetic_music` | ✅ | ✅ | ✅ | 固定 `N/A`（2026-11-18：镜内不生成配乐，配乐在合成时按章节 BGM cue 表垫入；`shot.non_diegetic_music` 写了内容也输出 `N/A`） |
 | 保留/规避句 | ✅ | ✅ | ✅ | 结尾固定：资产不进成片（不复现参考板网格/并排视图）+ 无字幕/logo（可被 `shot.preserve_avoid` 覆盖） |
 
 **装配硬约束**：① Ref2VA 段必须有 `refs` + 完整文字；② T2VA 段（首镜无图）`refs` 留空但文字必须写全；③ FL2VA 段 `refs` 留空但文字必须重申身份/站位/光照；④ 全部展开后过 `PromptLinter` 才可提交。

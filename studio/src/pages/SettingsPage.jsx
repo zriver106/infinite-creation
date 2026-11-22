@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Cloud,
   Film,
+  FolderOutput,
   Lock,
   Save,
   Server,
@@ -34,6 +35,7 @@ import SkillsPanel from '../components/SkillsPanel.jsx';
 import SkillPipelinePanel from '../components/SkillPipelinePanel.jsx';
 import SubtitlePanel from '../components/SubtitlePanel.jsx';
 import WorkflowConfigPanel from '../components/WorkflowConfigPanel.jsx';
+import DeliverySettings from '../components/DeliverySettings.jsx';
 import { useToast } from '../components/toast.jsx';
 
 const TIER_OPTIONS = RUNNINGHUB_TIERS.map((t) => ({ value: t.id, label: t.label }));
@@ -479,6 +481,10 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                 <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
                   超出的章节会显示「等待 Agent 槽位」，不会占用模型请求，也不会触发模型停滞看门狗。渲染仍由云端渲染队列按并发数控制。
                 </p>
+              </Section>
+
+              <Section icon={FolderOutput} title="交付目录" description="按项目分别保存：某章成片导出成功后，自动复制为交付目录里的 EP<N>.mp4。">
+                <DeliverySettings />
               </Section>
 
               <Section icon={SlidersHorizontal} title="新建项目默认配置" description="创建新项目时表单的默认值；保存后对新创建的项目生效，不影响已有项目。">

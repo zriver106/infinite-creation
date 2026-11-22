@@ -626,6 +626,128 @@ H3_NEG_PAT = re.compile(r"不要出现|不要有|禁止出现|不能出现|不�
 # H12 首镜锚定 / 单主体（对应 C18a / C20a / C20b）
 H3_PARALLEL_PAT = re.compile(r"同框|同在画面|一同入画|同处一室")
 H3_DEIXIS_PAT = re.compile(r"(这只|那只|这个|那个|这双|那副)(手|脸|眼睛|脚|背影|身体)")
+# H13 镜头通用规则（2026-11-18 · 第30章）：全景场景图配中近景 / 心声不动嘴 / 手持道具位置 / 眼镜 / 混合镜心声与电话声走后期。
+# 只告警（口径同闸门 v2）：环境变量 H3_SHOT_RULES=block 时升为 issue，=off 关闭。
+H13_SIZE_RE = re.compile(r"\b(extreme\s+wide\s+shot|wide\s+shot|establishing\s+shot|full\s+shot|long\s+shot|"
+                         r"medium\s+close[- ]up|medium\s+shot|close[- ]up|MCU)\b|大远景|远景|大全景|全景|中近景|中景|近景|特写", re.I)
+H13_CLOSE_RE = re.compile(r"medium|close|MCU|中近景|中景|近景|特写", re.I)
+H13_CROP_RE = re.compile(r"waist[- ]up|from the waist|chest[- ]up|from the chest|shoulders?[- ]up|from the shoulders|"
+                         r"knees?[- ]up|from the knees|(?:face|faces|head)\b[^.\n]{0,40}\b(?:frame|height)|"
+                         r"(?:one|a)\s+(?:quarter|third|half)\s+of\s+the\s+frame|腰部以上|胸部以上|肩部以上|画面高度", re.I)
+H13_LOC_RE = re.compile(r"identity\s+and\s+location\s+references?|location\s+reference|Layout\s+from\s+__MINIMAX_H3_REF_\d+__", re.I)
+H13_BG_ONLY_RE = re.compile(r"background\s+only", re.I)
+H13_LAYOUT_SENT_RE = re.compile(r"(?:^|(?<=[.\n]))\s*(?:Layout|Location)\b[^.\n]*", re.I)
+H13_OS_RE = re.compile(r"画外音|内心独白|心声|inner[- ](?:voice|monologue)|voiceover|voice-over|\bOS\b", re.I)
+H13_OS_EVID_RE = re.compile(r"throughout|does\s+not\s+mouth|doesn't\s+mouth|never\s+mouths|no\s+mouthing|without\s+mouthing|"
+                            r"no\s+lip\s+movement|全程(?:闭嘴|闭口|不动嘴)|不动嘴|不对口型", re.I)
+H13_PROP_RE = re.compile(r"\b(?:holds?|holding|grips?|gripping|clutch(?:es|ing)?|cradl(?:es|ing)|picks?\s+up|lifts?|raises?|carr(?:ies|ying))\b"
+                         r"[^.\n]{0,60}?\b(cup|mug|teacup|glass(?!es)|wine\s*glass|bottle|can|phone|cigarette|chopsticks|bowl)\b", re.I)
+H13_PROP_POS_RE = re.compile(r"at\s+(?:his|her|their|the)?\s*(?:chest|waist|stomach|table|lap|hip)(?:\s+level|\s+height)?|"
+                             r"(?:on|against)\s+the\s+table|in\s+(?:his|her|their)\s+lap|at\s+(?:his|her|their)\s+side|"
+                             r"never\s+(?:goes|rises|comes|moves|is\s+raised|is\s+lifted|reaches|touches)\b[^.\n]{0,30}(?:mouth|lips|face)|"
+                             r"(?:raises?|lifts?|brings?)\s+(?:it|the\s+\w+)\s+to\s+(?:his|her|their)\s+(?:mouth|lips|ear)\s+(?:at|from)\s+\d|"
+                             r"胸前|腰间|桌面上|不(?:举|送|碰)到嘴边", re.I)
+H13_GLASSES_RE = re.compile(r"(?<!wine\s)(?<!water\s)(?<!champagne\s)(?<!drinking\s)\b(?:eye)?glasses\b(?!\s+of)|\bspectacles\b|戴(?:着)?眼镜", re.I)
+H13_GLASSES_NEG_RE = re.compile(r"\bno\s+(?:eye)?glasses|without\s+(?:eye)?glasses|not\s+wear(?:ing)?\s+(?:any\s+)?(?:eye)?glasses|不戴眼镜|无眼镜", re.I)
+H13_GLASSES_CTX_RE = re.compile(r"clink|raise[sd]?\s+(?:their|the)\s+glasses|glasses\s+of|wine|champagne|toast", re.I)
+# H13e 混合镜（有出口台词又有心声）：心声走后期（本地H3生产工作流 r58；剪辑与配乐基础规范 v3 §8 D19）
+H13_OS_D_CTX_RE = re.compile(r"off[- ]screen|voice[- ]?over|inner[- ](?:voice|monologue)|\bnarrates\b|画外音|心声|内心独白|[（(]OS[）)]", re.I)
+H13_OS_VOREF_RE = re.compile(r"used\s+only\s+as\s+an\s+off[- ]screen\s+inner\s+voice[- ]?over", re.I)
+
+
+def _h13_dialogue_kinds(text):
+    """数 <d>：前文同一句里有画外/心声标记的算心声，其余算出口台词。"""
+    spoken = os_n = 0
+    for m in re.finditer(r"<d>", text or ""):
+        b = max(text.rfind(". ", 0, m.start()), text.rfind("\n", 0, m.start()), text.rfind("。", 0, m.start()),
+                text.rfind("</d>", 0, m.start()), m.start() - 240)
+        if H13_OS_D_CTX_RE.search(text[b + 1:m.start()]):
+            os_n += 1
+        else:
+            spoken += 1
+    return spoken, os_n
+
+
+H13_PHONE_CTX_RE = re.compile(r"\bphone\b|\btelephone\b|\breceiver\b|\bcaller\b|on\s+the\s+other\s+end|on\s+the\s+line|"
+                              r"through\s+the\s+(?:speaker|line)|电话|听筒", re.I)
+H13_PHONE_VOREF_RE = re.compile(r"(?:phone|telephone|caller)[- ]voice|voice\s+(?:from|through|over)\s+the\s+(?:phone|line|speaker|receiver)|"
+                                r"电话(?:里|那头|那端)的?声音", re.I)
+H13_FAR_IN_FRAME_RE = re.compile(r"split[- ]screen|picture[- ]in[- ]picture|\binset\b|intercut|cut(?:s)?\s+(?:away\s+)?to\s+the\s+caller|"
+                                 r"(?:caller|person\s+on\s+the\s+other\s+end)\b[^.\n]{0,40}\b(?:in\s+frame|appears|is\s+shown|on\s+screen)|"
+                                 r"分屏|画中画|切到(?:电话)?对方", re.I)
+
+
+def _h13_phone_far_lines(text):
+    """电话那头的声音：<d> 同句前文里有 phone/caller/other end/line 一类标记。"""
+    n = 0
+    for m in re.finditer(r"<d>", text or ""):
+        b = max(text.rfind(". ", 0, m.start()), text.rfind("\n", 0, m.start()), text.rfind("。", 0, m.start()),
+                text.rfind("</d>", 0, m.start()), m.start() - 240)
+        ctx = text[b + 1:m.start()]
+        if re.search(r"other\s+end|on\s+the\s+line|through\s+the\s+(?:phone|speaker|line|receiver)|(?:from|over)\s+the\s+phone|"
+                     r"phone[- ]voice|\bcaller\b|电话(?:里|那头|那端)", ctx, re.I):
+            n += 1
+    return n
+
+
+def _h13_mixed(text):
+    spoken, os_n = _h13_dialogue_kinds(text)
+    return spoken > 0 and (os_n > 0 or bool(H13_OS_VOREF_RE.search(text or "")))
+
+
+def _h13_mode():
+    m = str(os.environ.get("H3_SHOT_RULES", "warn") or "warn").strip().lower()
+    return m if m in ("block", "off") else "warn"
+
+
+def _first_sentence(s):
+    s = (s or "").strip()
+    m = re.search(r"[.!?。！？](?:\s|$)", s)
+    return s[:m.end()] if m else s[:240]
+
+
+def _h13_checks(text, sec, is_ref):
+    """H13a–H13d：返回告警文本列表（不含模式处理）。"""
+    out = []
+    body = sec.get("detailed_description", "") if is_ref else text
+    first_size = H13_SIZE_RE.search(body)
+    close = bool(first_size and H13_CLOSE_RE.search(first_size.group(0)))
+    has_loc = bool(H13_LOC_RE.search(text))
+    if close and has_loc:
+        heads = ([sec.get("summary", ""), sec.get("detailed_description", "")] if is_ref else [text])
+        if not all(H13_SIZE_RE.search(_first_sentence(h)) for h in heads if h is not None):
+            out.append("H13a 中景/中近景/特写配场景参考图：景别句没放在最前面——" +
+                       ("summary 与 detailed_description 的第一句" if is_ref else "提示词第一句") +
+                       "就写景别（例：Medium shot, framed from the waist up; each face is about one quarter of the frame height.）")
+        if not H13_CROP_RE.search(text):
+            out.append("H13a 景别没写死：缺身体取景/脸占画面高度（例：from the waist up / the face is about one quarter of the frame height / 腰部以上 / 脸约占画面高度 1/4）")
+        ra = sec.get("retention_analysis", "") if is_ref else ""
+        if not H13_BG_ONLY_RE.search(ra if is_ref else text):
+            out.append("H13a 场景参考图保留度没改成「background only / partially」——全景场景图配近景时 H3 会照搬整张布局、把人缩小"
+                       "（Ref2VA：partially_preserved - background only: …；自由文本：use __MINIMAX_H3_REF_n__ for the background only, partially）")
+        for m in H13_LAYOUT_SENT_RE.finditer(text):
+            items = [x for x in re.split(r"[,;，；]", m.group(0)) if x.strip()]
+            if len(items) > 5:
+                out.append(f"H13a 布局清单 {len(items)} 项——中景/近景只留这一镜画得进来的部分（人物身后、身旁），远处的门/别桌/吊灯删掉")
+                break
+    if H13_OS_RE.search(text) and not H13_OS_EVID_RE.search(text):
+        out.append("H13b 心声/画外声镜没写「全程闭嘴、不对口型」——每句心声后写 his lips stay closed throughout the shot; he does not mouth the words")
+    if H13_PROP_RE.search(text) and not H13_PROP_POS_RE.search(text):
+        mm = H13_PROP_RE.search(text)
+        out.append(f"H13c 手持道具「{mm.group(1)}」没写位置——写死放在哪、绝不去哪（例：holds the cup at chest level the whole time; it never goes to her mouth）")
+    g = H13_GLASSES_RE.search(text)
+    if g and not H13_GLASSES_NEG_RE.search(text) and not H13_GLASSES_CTX_RE.search(text[max(0, g.start() - 40):g.end() + 20]):
+        out.append("H13d 提示词里人物戴眼镜——剧情没有理由就去掉，并在人物锁定句写 no glasses；设定就戴的，每镜同一副、镜中不出现/消失")
+    if _h13_mixed(text):
+        out.append("H13e 混合镜（有出口台词又有心声）：心声一律走后期——video_prompt 删去心声的 <d>、off-screen voiceover / inner-monologue 句和心声声线参考行；"
+                   "该段写闭嘴表演（眼、眉、头、手、道具 + 一句自然闭嘴句）；心声时间窗记入 windows（voiceover）和台账，"
+                   "音频按 本地H3生产工作流.md r58 单独出、后期铺配音轨（剪辑与配乐基础规范.md v3 §8 D19）")
+    if _h13_phone_far_lines(text) or H13_PHONE_VOREF_RE.search(text):
+        out.append("H13f 电话那头的声音进了生成段——电话声一律走后期：删去对方的 <d> 和电话声/声线参考句；接电话的人照常演（听筒贴耳、听的反应、自己的回话照常 <d>），"
+                   "对方说话时接听人闭嘴；时间窗记入 windows（voiceover）和台账，声源片按说话人本人声线样本一人一条，存 画外音声源/ 并登记 index.json")
+    if H13_PHONE_CTX_RE.search(text) and H13_FAR_IN_FRAME_RE.search(text):
+        out.append("H13g 电话镜里出现了对方（分屏/画中画/插切/对方入画）——不出声的一方绝不入画；要拍对方就另起一镜、在对方所在地点、对方的话写成普通出口台词")
+    return out
 
 
 def _h3_order(text):
@@ -637,6 +759,14 @@ def _h3_order(text):
         if m and m.group(1) not in out:
             out.append(m.group(1))
     return out
+
+
+# H10b「无配乐」写法只认这四个（不分大小写，后面可带一个句号）：silence / 没有配乐 / N/A / none。
+# 必须与 lib/core/music-check.js 的 EMPTY_MUSIC_VALUES 一字不差（test_ndm_warn.py 与 tests/music-check.test.mjs 两边互读比对）。
+# 空串、单个「.」「。」、只有空白或标点都不算「无配乐」：段在但没写值按 ndm_missing 告警。
+H10B_EMPTY_MUSIC_VALUES = ["silence", "没有配乐", "N/A", "none"]
+H10B_EMPTY_MUSIC_RE = re.compile(r"(?:" + "|".join(re.escape(v) for v in H10B_EMPTY_MUSIC_VALUES) + r")\s*[.。]?", re.I)
+H10B_BLANK_RE = re.compile(r"[\s.。,，;；:：!！?？…\-—–]*")
 
 
 def _h3_sections(text):
@@ -796,7 +926,7 @@ def validate_h3(text, mode="new"):
         if not H3_VO_EVID.search(text):
             issues.append("H9 画外声缺闭口证据——官方要求紧跟「lips remain completely closed」"
                           "（等同 vo-os-weaving 声画分离红线）")
-        if not H3_VO_PHRASE.search(text):
+        if not H3_VO_PHRASE.search(text) and not (_h13_mode() != "off" and _h13_mixed(text)):
             warns.append("H9 画外声未用官方固定短语「says in an off-screen voiceover」——官方 base-en §4.4 固定公式："
                          "`<Subject N> (Sx) says in an off-screen voiceover: <d>[Language] …</d> "
                          "while his/her lips remain completely closed.`；中文自创措辞压不住口型（2026-10-02 实测）")
@@ -814,6 +944,22 @@ def validate_h3(text, mode="new"):
         body_d = m.group(1).split("]", 1)[-1].strip()
         if body_d and body_d in nd:
             issues.append("H10 non_diegetic_music 复述了台词内容——BGM 段只写配器/速度/节奏/动态，不重复对白")
+            break
+    # H10b 镜内配乐（WARN · 2026-11-18）：本项目配乐统一在合成时按章节 BGM cue 表垫入，
+    # non_diegetic_music 必须是 N/A；镜内生成的配乐会和章节 BGM 打架、破坏主曲断点续放。只告警不拦。
+    if "non_diegetic_music" in sec and H10B_BLANK_RE.fullmatch(nd):
+        warns.append("H10b non_diegetic_music 段在但没写值（空或只有标点）——按 ndm_missing 处理：H3 会自己配乐，写 non_diegetic_music: N/A")
+    elif nd and not H10B_EMPTY_MUSIC_RE.fullmatch(nd.strip()):
+        warns.append("H10b non_diegetic_music 不是 N/A——本项目镜内不生成配乐，配乐在合成时按章节 BGM cue 表垫入；"
+                     "镜内配乐会和章节 BGM 打架、破坏断点续放，写 non_diegetic_music: N/A")
+    # H10b 自由文本（IC 实际多为「Sound: …. Background music: ….」）：配乐句有内容同样告警
+    for _fm in re.finditer(r"(?:^|[.。!?！？]\s+|\n\s*)(background music|music|bgm|score|soundtrack|背景音乐|配乐)\s*[:：]\s*([^\n]*)", text, re.I):
+        _fv = re.split(r"(?<=[.。])\s", _fm.group(2).strip())[0]
+        if H10B_BLANK_RE.fullmatch(_fv):
+            warns.append("H10b 提示词的「" + _fm.group(1) + ":」配乐句没写值（ndm_missing）——删掉这句或写 Background music: none.")
+            break
+        if not H10B_EMPTY_MUSIC_RE.fullmatch(_fv.strip()):
+            warns.append("H10b 提示词写了「" + _fm.group(1) + ": …」配乐句——本项目镜内不生成配乐，删掉这句（或写 Background music: none.）")
             break
 
     # H11 语气位继承（WARN · 对应法则 19 / 官方"发言人首次出现须给发声特征"）
@@ -845,6 +991,11 @@ def validate_h3(text, mode="new"):
     if dei:
         warns.append(f"H12c 悬空指示代词「{dei.group(0)}」——指代词没有先行词，模型自行补一个主体（C20b）："
                      "改写为「她的/其+部位」")
+
+    # H13 镜头通用规则（2026-11-18 · 第30章）：默认只告警；H3_SHOT_RULES=block 升为 issue，=off 关闭
+    _m13 = _h13_mode()
+    if _m13 != "off":
+        (issues if _m13 == "block" else warns).extend(_h13_checks(text, sec, is_ref))
 
     stats = {"duration_s": decl or (max((t for _, t in cuts), default=0)),
              "shots": len(nums), "chars": len(text)}

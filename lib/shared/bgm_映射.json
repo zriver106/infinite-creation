@@ -1,0 +1,885 @@
+{
+ "name": "bgm_映射",
+ "version": "v4.4 · 2026-11-16",
+ "purpose": "IC 章节配乐：按《康康合集-BGM情绪与使用指南》从曲库选曲。set_chapter_music / apply_chapter_music 的 music_id 可直接填曲目编号（如 \"17\"）、文件名或素材库资产 id；后端按本表解析，素材库里没有该曲时自动从 library_dir 登记（只读原曲，不改动原文件）。",
+ "guide": {
+  "file": "C:\\Users\\usazr\\Documents\\moviePro\\kim-bgm\\康康合集-BGM情绪与使用指南.md",
+  "sha256": "50a9c46c36fb6fb835913f39bd7ebb0ae67d4db380dfddb3d8856359fcf689a8",
+  "skill_reference": "skill_reference(name=\"ai-music-studio\", ref=\"康康合集-BGM情绪与使用指南.md\")"
+ },
+ "library_dir": "C:\\Users\\usazr\\Documents\\moviePro\\kim-bgm\\完整版",
+ "rules": [
+  "曲子只能从 library_dir（kim-bgm\\完整版）里选，禁止选曲库外的文件；选库内曲时不调用 MiniMax 现场生成。",
+  "先判断本章人物情绪变化（承受→决定→行动→结果），再查「情绪→曲目」落到类别，最后对照逐曲的情绪 / 适合场景 / 不宜套用定 1 首；不按曲名、不按节奏强弱选。",
+  "「不宜套用」写明的情境一律不选该曲。",
+  "音乐不能替剧情提前宣布胜利：受辱、受困用 01、12；真正做出决定并行动才用 03、02、31；优势已经兑现才用 05、07、20、22。",
+  "每章 1 首（IC 按章垫一整首循环，固定音量 0.25，不随镜头换曲）；前后情绪反差大时选覆盖后半兑现或主线情绪的那首，并在 caption 写明理由。",
+  "对白优先：带人声歌词的曲子只用于对白少的章节；对白密集的章节优先纯音乐或器乐为主的曲子。是否带人声以试听为准，拿不准时按带人声处理。",
+  "同一编号有多个文件时，不指定文件就用默认（★）的那个；要换版本就把 music_id 写成完整文件名。",
+  "受众 85–95 年男性：都市修仙爽剧的日常、反击、兑现段优先在 03、04、05、07、08、17、19、21、28、30、31 里找；情歌类（29、33、35—38）只在剧情确有感情线落点时用，不硬塞。",
+  "不要每章换一轮曲库，也不要连续多章用同一首；相邻章节情绪相同时可以沿用，情绪变了再换。"
+ ],
+ "moods": [
+  {
+   "mood": "压抑、受困",
+   "when": "困境已成立，主角仍在承受",
+   "guide_text": "01 囚笼、10 我不该执念太深",
+   "tracks": [
+    "01",
+    "10"
+   ]
+  },
+  {
+   "mood": "从低谷到反击",
+   "when": "做出决定并开始行动",
+   "guide_text": "03 Life Struggle、02 try、31 Higher",
+   "tracks": [
+    "03",
+    "02",
+    "31"
+   ]
+  },
+  {
+   "mood": "强者与反派压迫",
+   "when": "角色出现、危险逼近",
+   "guide_text": "04 伏黑甚尔进行曲、06 反派烧气救场、08 Death Is No More",
+   "tracks": [
+    "04",
+    "06",
+    "08"
+   ]
+  },
+  {
+   "mood": "爽点与力量爆发",
+   "when": "反转、出手、击败对手真正发生",
+   "guide_text": "05 Overturn、07 Amazon、20 毁灭Destroy、22 撕咬进行曲",
+   "tracks": [
+    "05",
+    "07",
+    "20",
+    "22"
+   ]
+  },
+  {
+   "mood": "轻松、机灵、日常",
+   "when": "忙碌动作组、小聪明或风格化展示",
+   "guide_text": "17 Groovy Hammond、23 Vlog进行曲、30 FUNK CARAVAN",
+   "tracks": [
+    "17",
+    "23",
+    "30"
+   ]
+  },
+  {
+   "mood": "古风、宿命、远行",
+   "when": "按古风情感、身法、空间分别选，不一概当战斗曲",
+   "guide_text": "11 卜卦DJ、13 广寒宫、16 命运的时间、18 青衣、32 咏春、34 空山野马",
+   "tracks": [
+    "11",
+    "13",
+    "16",
+    "18",
+    "32",
+    "34"
+   ]
+  },
+  {
+   "mood": "暧昧、回忆与告别",
+   "when": "分清热恋、试探、失落、放手、终章",
+   "guide_text": "09 Sub Title、14 我的心下起了雪、29 爱的主打歌、33 Just Frends、35—38",
+   "tracks": [
+    "09",
+    "14",
+    "29",
+    "33",
+    "35",
+    "36",
+    "37",
+    "38"
+   ]
+  }
+ ],
+ "tracks": [
+  {
+   "no": "01",
+   "title": "囚笼",
+   "emotion": "压抑、受困、隐忍。",
+   "scenes": "被冤枉、被羞辱、被逼到墙角；主角暂时无力回击。",
+   "entry": "从对手施压或主角沉默的反应镜头进入，反击前收低或停顿。",
+   "avoid": "胜利庆祝、轻松日常。",
+   "files": [
+    {
+     "file": "01-囚笼-北千川-完整候选.mp3",
+     "asset_name": "01-囚笼-北千川-完整候选",
+     "duration": "2:44",
+     "status": "候选版本，待试听确认",
+     "bytes": 2625391,
+     "sha256": "65533b78b389b8e8946bdc7556919faf7c8fda06c59d008b2e5474b526b444f6",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "02",
+   "title": "try",
+   "emotion": "受挫后坚持、重新站起。",
+   "scenes": "失败后的训练、伙伴鼓励、重新出发。",
+   "entry": "先给对白留白，在决定继续的动作后推起；有歌词时避免压在关键台词上。",
+   "avoid": "冷酷反派登场、古风氛围严格的对白。",
+   "files": [
+    {
+     "file": "02-Try-P!NK-完整候选.mp3",
+     "asset_name": "02-Try-P!NK-完整候选",
+     "duration": "4:08",
+     "status": "候选版本，待试听确认",
+     "bytes": 3967902,
+     "sha256": "9df4c90393238f415003699adfa4232e7af1c15cd1bd3490e12b73c81b1d73f8",
+     "default": true
+    }
+   ],
+   "note": "当前为 P!NK 版，识曲另指向 Andre Juss，尚未确认；有人声歌词，避开关键台词。"
+  },
+  {
+   "no": "03",
+   "title": "Life Struggle",
+   "emotion": "挣扎、积蓄力量、绝境反击。",
+   "scenes": "忍耐到极限后的回击、突破瓶颈、逆境成长。",
+   "entry": "让力量变化或第一次有效反击落在重拍；不要从受辱到胜利一直保持同一音量。",
+   "avoid": "毫无代价的碾压、纯甜宠。",
+   "files": [
+    {
+     "file": "03-Life Struggle-K1RO-完整候选.mp3",
+     "asset_name": "03-Life Struggle-K1RO-完整候选",
+     "duration": "2:34",
+     "status": "片段波形高度匹配",
+     "bytes": 2457426,
+     "sha256": "609faaa8e4c69c4aa0cdab43a42d7f6e3742af76bfa48ed3e20dfd741225d86d",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "04",
+   "title": "伏黑甚尔进行曲",
+   "emotion": "危险、自信、强者压迫。",
+   "scenes": "高手出场、猎手接近、实力差距揭晓。",
+   "entry": "从脚步或背影建立人物气场，到露脸或拔刀时提升；保留动作音效。",
+   "avoid": "悲痛告别、温馨家庭。",
+   "files": [
+    {
+     "file": "04-伏黑甚尔进行曲-热歌研究站-完整候选.mp3",
+     "asset_name": "04-伏黑甚尔进行曲-热歌研究站-完整候选",
+     "duration": "3:22",
+     "status": "候选版本，待试听确认",
+     "bytes": 3226862,
+     "sha256": "c40def81f1fb3434f5e61314880fa788dc7ae09e0bb44decb82c7d95b94ff565",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "05",
+   "title": "Overturn",
+   "emotion": "翻盘、反转、局势改变。",
+   "scenes": "证据亮出、身份揭晓、攻守逆转。",
+   "entry": "真相说完再进入强段，重点落在众人反应与局面改变。",
+   "avoid": "尚未发生反转的铺垫、平静解释。",
+   "files": [
+    {
+     "file": "05-Overturn-Pao7oO-完整候选.mp3",
+     "asset_name": "05-Overturn-Pao7oO-完整候选",
+     "duration": "2:21",
+     "status": "候选版本，待试听确认",
+     "bytes": 2260131,
+     "sha256": "2502b7f6725cc807f74c9e39a592d7feb725154d059c613f24326dd55fe93bd5",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "06",
+   "title": "反派烧气救场",
+   "emotion": "邪气、戏谑、嚣张。",
+   "scenes": "危险人物带玩味的救场、反派插手、黑色幽默式出场。",
+   "entry": "用出现的一瞬间建立态度，给一句标志性台词留空；标题照录，非正式曲名鉴定。",
+   "avoid": "严肃牺牲、纯正义宣言。",
+   "files": [
+    {
+     "file": "06-反派烧气救场-Warot-完整候选.mp3",
+     "asset_name": "06-反派烧气救场-Warot-完整候选",
+     "duration": "1:37",
+     "status": "候选版本，待试听确认",
+     "bytes": 1557947,
+     "sha256": "5b637a4459ec1d94be929cd51566157623e61d5f31cb15f003e5dcd96a2d5153",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "07",
+   "title": "Amazon",
+   "emotion": "强势、爆发、碾压爽感。",
+   "scenes": "反杀、开大、战力觉醒、连续击败对手。",
+   "entry": "先落地一个真实爽点再推强拍，短促集中使用；打击声高于音乐瞬态。",
+   "avoid": "委屈铺垫、细腻悲伤、兑现前的空喊口号。",
+   "files": [
+    {
+     "file": "07-Amazon-DJ李太白及晚安布布-完整候选.mp3",
+     "asset_name": "07-Amazon-DJ李太白及晚安布布-完整候选",
+     "duration": "2:25",
+     "status": "片段波形高度匹配",
+     "bytes": 2320737,
+     "sha256": "8d4783bd05322b0a7080fb33900cabcae4a50f9eb6290f1aec7ed183435e04b5",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "08",
+   "title": "Death Is No More",
+   "emotion": "冷峻、威胁、危险升级。",
+   "scenes": "追猎、对峙、黑化亮相、压迫性推进。",
+   "entry": "用接近或抬眼作为入点，降低对白段密度；冲突升级后才扩大音量。",
+   "avoid": "轻喜剧、温暖团圆。",
+   "files": [
+    {
+     "file": "08-Death Is No More-BLESSED MANE-完整候选.mp3",
+     "asset_name": "08-Death Is No More-BLESSED MANE-完整候选",
+     "duration": "2:18",
+     "status": "片段波形高度匹配",
+     "bytes": 2217119,
+     "sha256": "2e8faf0b71ff97dd659fac011b92006dc8055f326ca71095ee379b344f294d71",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "09",
+   "title": "Sub Title",
+   "emotion": "克制、心事、关系中的遗憾。",
+   "scenes": "没说出口的话、隔空相望、回忆一段关系。",
+   "entry": "放在台词结束后的目光和停顿中，避免强行逐拍切画面。",
+   "avoid": "高密度打斗、得意炫耀；同名曲较多需试听核对。",
+   "files": [
+    {
+     "file": "09-SUB TITLE-韩国群星-完整候选.mp3",
+     "asset_name": "09-SUB TITLE-韩国群星-完整候选",
+     "duration": "1:58",
+     "status": "候选版本，待试听确认",
+     "bytes": 1882706,
+     "sha256": "16a6fb9135089e0101634d29f1e7c73bce4b056c3ddc33bae769a6bb99442bf7",
+     "default": true
+    },
+    {
+     "file": "09-Sub Title-Politics Stories-AXS Music-完整候选.mp3",
+     "asset_name": "09-Sub Title-Politics Stories-AXS Music-完整候选",
+     "duration": "2:30",
+     "status": "候选版本，待试听确认",
+     "bytes": 6002982,
+     "sha256": "4f1d0210d0119cafda0317e541562bc338b9611f4bb383ff6b268b8ff52fe52c",
+     "default": false
+    }
+   ],
+   "default_pick_reason": "两版均待试听；默认取清单首个（韩国群星版）。"
+  },
+  {
+   "no": "10",
+   "title": "我不该执念太深",
+   "emotion": "执念、悔意、放不下。",
+   "scenes": "错过、单向等待、明知无果仍回头。",
+   "entry": "从看到旧物或收到消息后进入，优先留给无对白的情绪段。",
+   "avoid": "轻松相恋、毫无牵挂地出发。",
+   "files": [
+    {
+     "file": "10-我不该执念太深-Distant World-Reeson-完整候选.mp3",
+     "asset_name": "10-我不该执念太深-Distant World-Reeson-完整候选",
+     "duration": "6:38",
+     "status": "候选版本，待试听确认",
+     "bytes": 15904436,
+     "sha256": "dfe3646495f6fe0971daa8919a233f60eb92efe2962c82b679121109cd3fb444",
+     "default": true
+    }
+   ],
+   "note": "完整候选为 Reeson《Distant World》（识曲线索），待试听确认。"
+  },
+  {
+   "no": "11",
+   "title": "卜卦（DJ版）",
+   "emotion": "宿命牵引、迷恋、带节奏的情绪。",
+   "scenes": "古风人物混剪、关系纠缠、回眸与转身。",
+   "entry": "按DJ节奏设计短镜组；歌词与角色对白分开安排。",
+   "avoid": "安静倾诉、严肃推理长对白。",
+   "files": [
+    {
+     "file": "11-卜卦 (DJ版)-崔子格-完整候选.aac",
+     "asset_name": "11-卜卦 (DJ版)-崔子格-完整候选",
+     "duration": "5:28",
+     "status": "候选版本，待试听确认",
+     "bytes": 4000064,
+     "sha256": "defa9029c6e3aee78f9fb622339b52555fe10715e2e4a2410a85ba6c8dc71595",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "12",
+   "title": "苦恼的旋律",
+   "emotion": "压抑、忧惧、哀伤和悬念。",
+   "scenes": "发现坏消息、危险尚未揭晓、人物陷入痛苦回忆。",
+   "entry": "以低音量铺在反应镜头下，揭示真相处增强；对白段避开情绪高点。",
+   "avoid": "轻松搞笑、庆祝胜利。",
+   "files": [
+    {
+     "file": "12-苦悩の旋律-上田益-完整候选.mp3",
+     "asset_name": "12-苦悩の旋律-上田益-完整候选",
+     "duration": "2:55",
+     "status": "片段波形高度匹配",
+     "bytes": 2798892,
+     "sha256": "4572bfb5a6c3335eb365688abd9a9ffcc1850016ac1cf3d035cbe05e64c5a742",
+     "default": true
+    }
+   ],
+   "note": "实为上田益《苦悩の旋律》。"
+  },
+  {
+   "no": "13",
+   "title": "广寒宫",
+   "emotion": "古风、疏离、华丽或俏皮的姿态。",
+   "scenes": "古装人物亮相、舞蹈、换装、风格化走位。",
+   "entry": "让动作与节奏呼应，优先用于形象展示而非解释世界观。",
+   "avoid": "写实悲剧、需要肃穆感的丧事。",
+   "files": [
+    {
+     "file": "13-广寒宫-丸子呦-完整候选.mp3",
+     "asset_name": "13-广寒宫-丸子呦-完整候选",
+     "duration": "3:33",
+     "status": "片段波形高度匹配",
+     "bytes": 3406979,
+     "sha256": "ce9103cd78e1f876722fe5c56da4a434f8ef5a215187721110fde1532b052ea4",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "14",
+   "title": "我的心下起了雪",
+   "emotion": "失落、心冷、关系降温。",
+   "scenes": "被拒绝、信任破裂、看着对方离开。",
+   "entry": "从结果确认后的空镜或背影进入，淡出保留环境声。",
+   "avoid": "胜利、热闹聚会。",
+   "files": [
+    {
+     "file": "14-我的心下起了雪 (降调纯享版)-徐靖雯&王忻辰-完整候选.mp3",
+     "asset_name": "14-我的心下起了雪 (降调纯享版)-徐靖雯&王忻辰-完整候选",
+     "duration": "4:01",
+     "status": "候选版本，待试听确认",
+     "bytes": 3856309,
+     "sha256": "00e658bb0d4cc7a55ac1516d9b769df3648bcb087c224417f83d5c2b9af47202",
+     "default": false
+    },
+    {
+     "file": "14-我的心下起了雪-徐靖雯&王忻辰-完整候选.mp3",
+     "asset_name": "14-我的心下起了雪-徐靖雯&王忻辰-完整候选",
+     "duration": "3:15",
+     "status": "候选版本，待试听确认",
+     "bytes": 3126552,
+     "sha256": "76114242698131f28821b9ea35af68fdcdfb37f8fb5ae2b4c34ab2574a21b972",
+     "default": true
+    }
+   ],
+   "default_pick_reason": "两版均待试听；默认取原版（非降调纯享版）。"
+  },
+  {
+   "no": "15",
+   "title": "My Sunset",
+   "emotion": "明亮、推进、释怀中带振奋。",
+   "scenes": "重新出发、奔跑远行、经过努力后看见希望。",
+   "entry": "整首不同段落能量不同，先试听再选；鼓点密集处用于动作组，尾段适合收束。",
+   "avoid": "需要极静空间的细腻独白。",
+   "files": [
+    {
+     "file": "15-My Sunset-Feint-完整候选.mp3",
+     "asset_name": "15-My Sunset-Feint-完整候选",
+     "duration": "5:26",
+     "status": "片段波形高度匹配",
+     "bytes": 5219338,
+     "sha256": "9c9c419c56453726e6d1346dfda95e61259988bf5e182118450d168e79577dc1",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "16",
+   "title": "命运的时间",
+   "emotion": "宿命、转折、时间流逝。",
+   "scenes": "命运交汇、往事与当下交叉、重大选择。",
+   "entry": "从选择发生之前轻入，在后果显现时抬起；可连接今昔镜头。",
+   "avoid": "普通交易或每次角色出门。",
+   "files": [
+    {
+     "file": "16-운명의시간-Chang Yeob-完整候选.mp3",
+     "asset_name": "16-운명의시간-Chang Yeob-完整候选",
+     "duration": "3:22",
+     "status": "片段波形高度匹配",
+     "bytes": 3225225,
+     "sha256": "8a38cd5b4986439c9d6d2b3c42f403b76d7c5d46f272a77e614866e755ae9bd8",
+     "default": true
+    }
+   ],
+   "note": "实为 Chang Yeob《운명의시간》。"
+  },
+  {
+   "no": "17",
+   "title": "Groovy Hammond",
+   "emotion": "轻松、机灵、诙谐。",
+   "scenes": "小算盘、生活小聪明、轻喜剧行动、忙碌蒙太奇。",
+   "entry": "与手部动作和反应镜头配合，用短停顿制造包袱。",
+   "avoid": "创伤倾诉、庄严誓言。",
+   "files": [
+    {
+     "file": "17-Groovy Hammond-Aiert Erkoreka-完整候选.mp3",
+     "asset_name": "17-Groovy Hammond-Aiert Erkoreka-完整候选",
+     "duration": "1:42",
+     "status": "片段波形高度匹配",
+     "bytes": 1632408,
+     "sha256": "efc56b6dfe6bc21cc578367ccbc960c0c3c70e883a875900a44a4f1f28037aaf",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "18",
+   "title": "青衣",
+   "emotion": "古风、婉转、牵挂。",
+   "scenes": "古装相思、戏曲意象、人物身世、旧梦。",
+   "entry": "用于眼神、背影、衣袖等细节；歌词出现时减少对白。",
+   "avoid": "现代硬核战斗、滑稽闹剧。",
+   "files": [
+    {
+     "file": "18-青衣(DJ阿泽版)-草帽酱&DJ阿泽-完整候选.mp3",
+     "asset_name": "18-青衣(DJ阿泽版)-草帽酱&DJ阿泽-完整候选",
+     "duration": "5:44",
+     "status": "片段波形高度匹配",
+     "bytes": 5506410,
+     "sha256": "820dd20546860baf3402020263d72756d4abdacd67d7a71b6a63e3e09a0332c8",
+     "default": true
+    },
+    {
+     "file": "18-青衣-草帽酱-完整候选.mp3",
+     "asset_name": "18-青衣-草帽酱-完整候选",
+     "duration": "4:23",
+     "status": "候选版本，待试听确认",
+     "bytes": 4208623,
+     "sha256": "a2dfa6b23c4cba22f7de6e01523c0567af4349b51acca190f3550eb76287c474",
+     "default": false
+    }
+   ],
+   "default_pick_reason": "DJ阿泽版与视频片段波形高度匹配，故为默认，但 DJ 版节奏强；需要婉转古风时把 music_id 写成原版文件名。"
+  },
+  {
+   "no": "19",
+   "title": "Drive Forever",
+   "emotion": "冷感、孤独、持续前行。",
+   "scenes": "夜行、独自离开、冷面人物走近、城市蒙太奇。",
+   "entry": "保持方向一致的运动镜头，关键转身或上车可落拍。",
+   "avoid": "家庭团圆、严肃哭诉。",
+   "files": [
+    {
+     "file": "19-Drive Forever (Polozhenie)-T3nzu-完整候选.aac",
+     "asset_name": "19-Drive Forever (Polozhenie)-T3nzu-完整候选",
+     "duration": "2:26",
+     "status": "候选版本，待试听确认",
+     "bytes": 1780100,
+     "sha256": "9e830a7807137cdd622f22a47a7dd82b027cdd7416a4e530b2a8fa391b767cd3",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "20",
+   "title": "毁灭Destroy",
+   "emotion": "破坏、危机、力量爆发。",
+   "scenes": "失控、终结对手、决战冲击、灾变。",
+   "entry": "短集中使用，冲击点优先给动作音效；爆发后及时降温。",
+   "avoid": "细腻关系戏、长篇台词。",
+   "files": [
+    {
+     "file": "20-毁灭 destroy (恶魔之眼)-BOY-完整候选.mp3",
+     "asset_name": "20-毁灭 destroy (恶魔之眼)-BOY-完整候选",
+     "duration": "1:58",
+     "status": "候选版本，待试听确认",
+     "bytes": 1888157,
+     "sha256": "965aa38c6a14416ebbc1946982850fb3023fbb3086f8684da492a6568515ea79",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "21",
+   "title": "Sea of Tranquility",
+   "emotion": "电子律动、紧迫推进、动感与力量。",
+   "scenes": "行动蒙太奇、追赶、训练、风格化角色展示。",
+   "entry": "跟随鼓点切动作，以段落变化承接升级，不按曲名误当静谧环境乐。",
+   "avoid": "长篇抒情独白、纯安静夜景。",
+   "files": [
+    {
+     "file": "21-Sea of Tranquility-Bemax-完整候选.aac",
+     "asset_name": "21-Sea of Tranquility-Bemax-完整候选",
+     "duration": "2:05",
+     "status": "片段波形高度匹配",
+     "bytes": 1514627,
+     "sha256": "c29cb21cd77605792c2c4fd0b962ecd5591ae2300928def03ff180932a3e984c",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "22",
+   "title": "撕咬进行曲",
+   "emotion": "凶猛、追击、危险逼近。",
+   "scenes": "近身搏斗、敌人穷追不舍、野性人物出场。",
+   "entry": "让攻击与闪避形成节奏，短段推进，不遮挡身体接触的音效。",
+   "avoid": "温柔告白、克制悲伤。",
+   "files": [
+    {
+     "file": "22-i'll Do It (PHONK完整版)-大嫂子-完整候选.mp3",
+     "asset_name": "22-i'll Do It (PHONK完整版)-大嫂子-完整候选",
+     "duration": "2:38",
+     "status": "候选版本，待试听确认",
+     "bytes": 2523013,
+     "sha256": "32acba12e3a66afb1f21cf218132d096093a1eaf9615802863bcb5305627c0ab",
+     "default": true
+    }
+   ],
+   "note": "「撕咬进行曲」暂存关联线索《I’ll Do It》PHONK 版，准确对应关系未确认。"
+  },
+  {
+   "no": "23",
+   "title": "Vlog进行曲",
+   "emotion": "日常、轻快、行动推进。",
+   "scenes": "整理行装、做饭、开店准备、出行过程。",
+   "entry": "多用于省略时间的动作组，完整对白到来前收低。",
+   "avoid": "死亡、背叛或重大危机；名称不是风格鉴定。",
+   "files": [
+    {
+     "file": "23-Say It Right-Nelly Furtado-完整候选.mp3",
+     "asset_name": "23-Say It Right-Nelly Furtado-完整候选",
+     "duration": "3:43",
+     "status": "候选版本，待试听确认",
+     "bytes": 3570311,
+     "sha256": "d8d35b502d429107459a34d0dffa2334c83474e8c44571678b18e6fdb9a96218",
+     "default": true
+    }
+   ],
+   "note": "「Vlog进行曲」识曲指向 Nelly Furtado《Say It Right》，可能涉及改编；有人声。"
+  },
+  {
+   "no": "24",
+   "title": "UNAMASFUNK2",
+   "emotion": "张扬、炫酷、强节奏。",
+   "scenes": "技能展示、变装、运动高光、挑衅式出场。",
+   "entry": "选择清晰鼓点承接姿势或动作完成；不要机械加速剧情来配拍。",
+   "avoid": "长对白、温柔抒情；标题按画面照录。",
+   "files": [
+    {
+     "file": "24-UNA MAS FUNK 2-MGD-ULTRA SLOWED-完整候选.mp3",
+     "asset_name": "24-UNA MAS FUNK 2-MGD-ULTRA SLOWED-完整候选",
+     "duration": "2:35",
+     "status": "候选版本，待试听确认",
+     "bytes": 3724059,
+     "sha256": "78aa07511a9fcdca7713a4001b48a9144000dc073211e8d412fa297386200e2d",
+     "default": true
+    }
+   ],
+   "note": "完整候选为 ULTRA SLOWED 版。"
+  },
+  {
+   "no": "25",
+   "title": "MONTAGEM-FELL DOWN",
+   "emotion": "冲击、张力、情绪爆发。",
+   "scenes": "反转混剪、战斗高光、情绪与动作并进。",
+   "entry": "转折动作承接节奏重点，避免在人声密集处放关键对白。",
+   "avoid": "平静叙述；混音版本未确认。",
+   "files": [
+    {
+     "file": "25-Fell Down-KVKS x 7ovey REMIX-完整候选.mp3",
+     "asset_name": "25-Fell Down-KVKS x 7ovey REMIX-完整候选",
+     "duration": "1:48",
+     "status": "候选版本，待试听确认",
+     "bytes": 2603719,
+     "sha256": "0fac396806df3494608889eecc036ab0d1f3f3724f16505d822f60428616ae1a",
+     "default": false
+    },
+    {
+     "file": "25-MONTAGEM-FELL DOWN-Lucas Hits-完整候选.mp3",
+     "asset_name": "25-MONTAGEM-FELL DOWN-Lucas Hits-完整候选",
+     "duration": "1:33",
+     "status": "候选版本，待试听确认",
+     "bytes": 3716746,
+     "sha256": "3df8b835d3c46ce22ed2de78aa329366217f08bd358ad5c710d5dda3ca68f5d3",
+     "default": true
+    }
+   ],
+   "default_pick_reason": "两版均待试听；默认取 MONTAGEM-FELL DOWN（与视频标题一致）。"
+  },
+  {
+   "no": "26",
+   "title": "Insomnia",
+   "emotion": "不安、失眠、夜间思绪。",
+   "scenes": "独处、疑虑、被记忆纠缠、夜晚心理戏。",
+   "entry": "从停不下来的思考或反复动作进入；如实际试听为强舞曲版，应改用于不安的快切蒙太奇。",
+   "avoid": "仅凭标题就铺温柔睡眠戏；同名作品很多。",
+   "files": [
+    {
+     "file": "26-Insomnia-Craig David-完整候选.aac",
+     "asset_name": "26-Insomnia-Craig David-完整候选",
+     "duration": "3:34",
+     "status": "候选版本，待试听确认",
+     "bytes": 2606003,
+     "sha256": "e989edf9b185e4af56566d00f48701e98d5905d44e920d1b7c0224a28b73afa6",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "27",
+   "title": "My wayt",
+   "emotion": "独行、自我选择、态度表达。",
+   "scenes": "决定走自己的路、离开旧关系、人物态度混剪。",
+   "entry": "以行动选择而非口号为入点；保留原视频拼写，确认版本后再定具体情绪。",
+   "avoid": "未核对音频就当作某首My Way原曲。",
+   "files": [
+    {
+     "file": "27-My Way-Veysigz-完整候选.mp3",
+     "asset_name": "27-My Way-Veysigz-完整候选",
+     "duration": "3:03",
+     "status": "候选版本，待试听确认",
+     "bytes": 2931361,
+     "sha256": "12b6a0787c8fd12efbc752f0615d1d96ea67642f2dacd29245ca935194ca6e3c",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "28",
+   "title": "Life Struggle（二次出现）",
+   "emotion": "俏皮、古怪、机灵和轻喜剧。",
+   "scenes": "小计谋、手忙脚乱、喜剧动作组、反差人物登场。",
+   "entry": "把小动作与节奏呼应，笑点前留出短暂停顿。",
+   "avoid": "严肃牺牲、悲情告别。",
+   "files": [
+    {
+     "file": "28-Monkeybiz-D1ofaquavibe-完整候选.mp3",
+     "asset_name": "28-Monkeybiz-D1ofaquavibe-完整候选",
+     "duration": "4:04",
+     "status": "片段波形高度匹配",
+     "bytes": 3907736,
+     "sha256": "0eb856eb0d7359326486e0fe10b264f7dacf94d34828ff1589ef61dec613b1cd",
+     "default": true
+    }
+   ],
+   "note": "视频标题写 Life Struggle，音频实为 D1ofaquavibe《Monkeybiz》；情绪按指南第 28 段（俏皮、古怪、轻喜剧），不要当成第 03 段的 Life Struggle。"
+  },
+  {
+   "no": "29",
+   "title": "爱的主打歌",
+   "emotion": "外放、自信、恋爱热度。",
+   "scenes": "主动示爱、女主高光、热闹人物群像、轻快换装。",
+   "entry": "适合歌段带画面的蒙太奇，人声与人物对白错开。",
+   "avoid": "压抑困境、重大损失。",
+   "files": [
+    {
+     "file": "29-爱的主打歌-萧亚轩-完整候选.aac",
+     "asset_name": "29-爱的主打歌-萧亚轩-完整候选",
+     "duration": "4:46",
+     "status": "候选版本，待试听确认",
+     "bytes": 3458285,
+     "sha256": "2c730f1855c26192f586daf3be7c2f13eb21c1575b04ecb7a9f69b9121b4814d",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "30",
+   "title": "FUNK CARAVAN",
+   "emotion": "俏皮、律动、炫技。",
+   "scenes": "有态度的走位、动作亮相、短促风格化混剪。",
+   "entry": "用节奏组织2—4个动作，不让音乐替代情节因果。",
+   "avoid": "长段沉静叙事；具体混音未确认。",
+   "files": [
+    {
+     "file": "30-Funk Caravan-Mango Audio-完整候选.mp3",
+     "asset_name": "30-Funk Caravan-Mango Audio-完整候选",
+     "duration": "2:12",
+     "status": "片段波形高度匹配",
+     "bytes": 2117209,
+     "sha256": "ec794a0614e8d68e40ffe04e3cb7b909c2c34e1c27d47db69eace394bfcb66dc",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "31",
+   "title": "Higher",
+   "emotion": "向上、振奋、突破。",
+   "scenes": "重整旗鼓、团队集合、冲刺目标、成长高光。",
+   "entry": "从决定行动到行动兑现逐步推起，结尾落在成果或下一目标。",
+   "avoid": "把同名慢歌误当热血版；需先试听。",
+   "files": [
+    {
+     "file": "31-Higher-Tobu-完整候选.aac",
+     "asset_name": "31-Higher-Tobu-完整候选",
+     "duration": "3:33",
+     "status": "片段波形高度匹配",
+     "bytes": 2595134,
+     "sha256": "e794990cc201c7300e70c47db6ca100d130abfbc8ce4ca74b2068605a2032d81",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "32",
+   "title": "咏春",
+   "emotion": "东方气质、柔中带韧、武术意象。",
+   "scenes": "身法展示、古风人物、以柔克刚、练功蒙太奇。",
+   "entry": "配合步法、出手与收势，避免每一拳都机械卡点；是否适合实战以试听为准。",
+   "avoid": "只凭曲名就套用所有武打。",
+   "files": [
+    {
+     "file": "32-咏春-七朵组合-完整候选.aac",
+     "asset_name": "32-咏春-七朵组合-完整候选",
+     "duration": "4:31",
+     "status": "候选版本，待试听确认",
+     "bytes": 3322306,
+     "sha256": "38043d388f3b6e71c12fa3fe4f6262102655b4935b95a3196f64084a42e674d5",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "33",
+   "title": "Just Frends",
+   "emotion": "暧昧、轻松、关系未明。",
+   "scenes": "朋友以上的互动、试探、假装不在意、轻松日常。",
+   "entry": "放在互动后的眼神与反应，给笑点或关键问句留白。",
+   "avoid": "严肃背叛、高潮决战；画面拼写照录。",
+   "files": [
+    {
+     "file": "33-Just Friends (Explicit)-Hayden James&Boy Matthews-完整候选.mp3",
+     "asset_name": "33-Just Friends (Explicit)-Hayden James&Boy Matthews-完整候选",
+     "duration": "3:59",
+     "status": "候选版本，待试听确认",
+     "bytes": 3825040,
+     "sha256": "fc22a98c2c5b9d6b46ab61fde1340c71e00f02adf351103370311250213609f4",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "34",
+   "title": "空山野马（降调）",
+   "emotion": "辽阔、孤独、自由与苍凉。",
+   "scenes": "远行、山野、离开旧生活、孤身面对世界。",
+   "entry": "适合空间打开或远景转场；保留下载片段的降调，不再次叠加降调。",
+   "avoid": "密集办公室对白、轻佻喜剧。",
+   "files": [
+    {
+     "file": "34-空山野马 (纯音乐)-AEC-完整候选.mp3",
+     "asset_name": "34-空山野马 (纯音乐)-AEC-完整候选",
+     "duration": "3:33",
+     "status": "候选版本，待试听确认",
+     "bytes": 3414934,
+     "sha256": "ad86787967c2081a3bba97a1d4bcaa4b36eca4d82988d45840dbe3d3846d1106",
+     "default": true
+    }
+   ],
+   "note": "完整候选为纯音乐版，不是视频的降调版；不要再叠加降调。"
+  },
+  {
+   "no": "35",
+   "title": "我的歌声里",
+   "emotion": "回忆、眷恋、温柔遗憾。",
+   "scenes": "旧物触发回忆、久别重逢、未完成的感情。",
+   "entry": "让回忆镜头承接旋律，歌词强段尽量留给无对白画面。",
+   "avoid": "追击战、反派威慑。",
+   "files": [
+    {
+     "file": "35-我的歌声里-曲婉婷-完整候选.mp3",
+     "asset_name": "35-我的歌声里-曲婉婷-完整候选",
+     "duration": "3:37",
+     "status": "候选版本，待试听确认",
+     "bytes": 3467253,
+     "sha256": "5c63a181b4a11af5e483452fe067199b707a5206779377310742e13c1209a87e",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "36",
+   "title": "letting go",
+   "emotion": "放手、告别、痛过后的释然。",
+   "scenes": "主动结束关系、接受无法挽回、离开与重新生活。",
+   "entry": "在决定已经说出口后进入，离开镜头延续情绪而非反复煽情。",
+   "avoid": "刚刚热恋、毫无损失的轻松离场。",
+   "files": [
+    {
+     "file": "36-Letting Go-蔡健雅-完整候选.mp3",
+     "asset_name": "36-Letting Go-蔡健雅-完整候选",
+     "duration": "4:23",
+     "status": "片段波形高度匹配",
+     "bytes": 4216580,
+     "sha256": "b84750538ef66ec36e7bb8ee39bbd7b00c8eaba6de7b40ca367fbf60122e6769",
+     "default": true
+    }
+   ]
+  },
+  {
+   "no": "37",
+   "title": "海市蜃楼",
+   "emotion": "虚幻、落差、希望破灭。",
+   "scenes": "曾经相信的东西坍塌、梦与现实对照、错爱。",
+   "entry": "先建立美好再揭示落差，真相处留白后接情绪段。",
+   "avoid": "没有铺垫的硬反转、普通轻喜剧。",
+   "files": [
+    {
+     "file": "37-海市蜃楼 (离别的馈赠版)-三叔说-完整候选.mp3",
+     "asset_name": "37-海市蜃楼 (离别的馈赠版)-三叔说-完整候选",
+     "duration": "2:15",
+     "status": "候选版本，待试听确认",
+     "bytes": 2168184,
+     "sha256": "ecfa41b3c3a7690bb18c293ed80fc2cafb46cc5f60be7f620c2526f9a3cd374d",
+     "default": false
+    },
+    {
+     "file": "37-海市蜃楼-三叔说-完整候选.mp3",
+     "asset_name": "37-海市蜃楼-三叔说-完整候选",
+     "duration": "3:52",
+     "status": "候选版本，待试听确认",
+     "bytes": 3713347,
+     "sha256": "b856a5dc9b0e4a850aa33779210787db71f1b228f2ee3001f103fe850664771b",
+     "default": true
+    }
+   ],
+   "default_pick_reason": "两版均待试听；默认取原版。"
+  },
+  {
+   "no": "38",
+   "title": "最后一页",
+   "emotion": "终章、遗憾、难以挽留。",
+   "scenes": "故事收束、最终告别、回顾错过、人物离开。",
+   "entry": "结尾留完整情绪余韵；不在歌词或旋律未落时突然切走。",
+   "avoid": "胜利狂欢、需要昂扬悬念的下一集钩子。",
+   "files": [
+    {
+     "file": "38-最后一页-江语晨-完整候选.aac",
+     "asset_name": "38-最后一页-江语晨-完整候选",
+     "duration": "4:06",
+     "status": "片段波形高度匹配",
+     "bytes": 2984073,
+     "sha256": "9b62d29fee97439044437f13dad873da184bfd88c48695aff450953fd2c5a929",
+     "default": true
+    }
+   ]
+  }
+ ]
+}

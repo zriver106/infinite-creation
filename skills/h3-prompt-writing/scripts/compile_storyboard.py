@@ -433,7 +433,8 @@ class H3PromptRenderer:
         return " ".join(s[0].upper() + s[1:] + ("" if s.endswith(".") else ".") for s in sounds)
 
     def _ndm(self, shot):
-        return (shot.get("non_diegetic_music") or "N/A").strip()
+        # 2026-11-18：本项目镜内不生成配乐，配乐在合成时按章节 BGM cue 表垫入；分镜里写了内容也一律输出 N/A。
+        return "N/A"
 
     def _preserve_avoid(self, shot):
         return (shot.get("preserve_avoid") or PRESERVE_AVOID).strip()

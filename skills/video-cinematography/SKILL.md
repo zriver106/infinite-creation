@@ -144,3 +144,7 @@ description: 电影感拍摄与镜头运动技能。当用户提到镜头运动�
 - `references/movements.md` - 各运镜类型的详细参数与案例
 - `references/storyboard.md` - 分镜脚本模板与填写说明
 - `assets/storyboard_template.pdf` - 可打印的分镜纸
+
+## MiniMax H3 / IC 落地口径（2026-11-16 新增）
+
+本技能是运镜词汇表。给 IC 写 `video_prompt` 时：一条分镜里只有一种摄影机运动；本文「组合运镜」「多机位组合」「多种组合变化」只能理解成同一条连续路径里的加速、减速和方向延续，或者分成几条分镜来做，不在一条分镜里叠好几种运镜指令（H3 会把每一句新运镜当成一次切镜）。固定 / 简单运镜 MOVE / 一镜到底 / 镜内剪切四种形态和打戏写法见 h3-prompt-writing「Camera, one-take and fight shots」与 sd-storyboard-engine「机位运镜与一镜到底」。

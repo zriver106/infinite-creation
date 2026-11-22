@@ -1,7 +1,8 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
-import { Jobs, Assets, loadConfig, interruptTask } from '@/lib/core/index.js';
-import { stopJob, holdsRenderSlot } from '@/lib/agent/index.js';
+import { Jobs, loadConfig, interruptTask } from '@/lib/core/index.js';
+import { dispatchCancel } from '@/lib/agent/index.js';
+import { releaseAdoptedJob } from '@/lib/agent/recovery-adopt.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,34 +13,29 @@ export async function POST(_req, { params }) {
   const { id, jobId } = await params;
   const job = Jobs.get(jobId);
   if (!job || job.projectId !== id) return NextResponse.json({ error: '任务不存在' }, { status: 404 });
-  if (job.status !== 'running' && job.status !== 'queued') return NextResponse.json({ error: '任务已结束' }, { status: 409 });
-  // 「无限・秩影」走本地 node/ffmpeg 渲染，不占 ComfyUI 渲染槽位，也不该去打断 ComfyUI：
-  // 它只靠 Agent 循环读停止标记收尾，因此单独放行、跳过下方的 holdsRenderSlot 校验与 interruptTask。
-  // 「无限・卷轴」同理：纯 LLM 生成小说，不占渲染槽位，停止标记由 novel Agent 的 abortTimer/工具层读取。
-  const isOpuscar = job.type === 'opuscar';
-  const isNovel = job.type === 'novel';
-  const selfManaged = isOpuscar || isNovel;
-  // 「状态是 running」≠「占着渲染槽位」：行内任务（llm 参考图分析 / export 按章导出）在请求内
-  // 同步执行、不进闸门，也没有任何代码读它的停止标记——取消对它是空操作，却会走到下面的
-  // /interrupt，把**当时真正在跑的渲染任务**（全局槽位串行，可能是另一个项目的整片生成）打断，
-  // 让它以 failed 收场。这种任务没有取消入口（界面也不给按钮），这里如实拒绝而不是假成功。
-  if (job.status === 'running' && !selfManaged && !holdsRenderSlot(jobId)) {
-    return NextResponse.json({ error: '该任务在请求内同步执行（不占渲染队列），不支持取消，请等它结束' }, { status: 409 });
+  // ic25：接管中（后端重启时外部 Agent 还活着）的任务没有本进程执行者：取消 = 放弃接管、落 cancelled。
+  // 不打停止标记、不打断 ComfyUI（那会误伤别的渲染）、不杀外部进程。
+  if (job.status === 'adopted') {
+    const r = releaseAdoptedJob(job, { reason: '取消：放弃接管', source: 'cancel' });
+    return NextResponse.json({ ok: true, id: jobId, adopted: true, settled: r.action === 'cancelled' ? 'cancelled' : null, note: '外部 Agent 进程没有被终止' });
   }
-  stopJob(jobId);
-  // 「无限・秩影」/「无限・卷轴」：立即落库为已取消，不等 Agent 循环下一拍，界面点完停止就能看到状态变化；
-  // 记录资产同步改为 cancelled（已有旧成片则保留 done，避免重新生成被停止后丢掉原成片）。
-  if (selfManaged) {
-    try {
-      const subject = job.checkpoint && job.checkpoint.subject;
-      const asset = isOpuscar && subject ? Assets.get(subject) : null;
-      if (asset && asset.status === 'generating') Assets.update(asset.id, { status: asset.video_path ? 'done' : 'cancelled' });
-      Jobs.update(jobId, { status: 'cancelled', phase: '已取消', error: '已取消', finishedAt: Date.now() });
-    } catch { /* 状态更新失败不影响停止标记 */ }
+  // 策略与副作用（软停止 / 409 / 出队 / 硬停止标记）都在 dispatchCancel 里。
+  // 只有真正的行内任务（type=llm / export）才 409。create 的取消 = 软停止（不 stopJob、不 /interrupt）。
+  // /stop（停止本章/全部）仍是硬停止，本路由不改变它。
+  const result = await dispatchCancel(job);
+  if (result.kind === 'reject-inline' || result.kind === 'finished' || result.kind === 'missing') {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-  // 执行中的任务：主动打断 ComfyUI 当前 prompt，让取消立即生效（否则要等 generate() 轮询到下一拍）。
-  // 只有「执行中」才打断——「排队中」的任务并未占用 ComfyUI，误打断会杀掉正在跑的前排任务。
-  if (job.status === 'running' && !selfManaged) {
+  if (result.kind === 'soft-stop') {
+    return NextResponse.json({ ok: true, id: jobId, mode: result.mode, note: result.note });
+  }
+  if (result.kind === 'orphan-queued') {
+    return NextResponse.json({ ok: true, id: jobId, orphan: true, settled: result.settled });
+  }
+  // 只有「硬停」分支能走到这里。下面这行与 v4 相同、未改：
+  // running create 软停、queued create 出队、running llm/export 409 都已在上面 return。
+  // dispatchCancel / stopJob 本身不调用 interruptTask，也不 fetch /interrupt。
+  if (result.shouldInterrupt) {
     try { const cfg = loadConfig(); await interruptTask(cfg); } catch {}
   }
   return NextResponse.json({ ok: true, id: jobId });

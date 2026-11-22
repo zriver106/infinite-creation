@@ -65,12 +65,13 @@ export const STATUS_TEXT = {
   queued: '排队中',
   cancelled: '已取消',
   interrupted: '已中断',
+  adopted: '接管中',
 };
 
 export function statusTone(status) {
   if (status === 'done' || status === 'success') return 'success';
   if (status === 'failed' || status === 'error') return 'danger';
-  if (status === 'running' || status === 'generating') return 'accent';
+  if (status === 'running' || status === 'generating' || status === 'adopted') return 'accent';
   if (status === 'queued') return 'info';
   return 'neutral';
 }
@@ -91,6 +92,7 @@ export const JOB_LABEL = {
   'voice-clone': '音色克隆',
   'digital-human-tts': '数字人语音驱动',
   opuscar: '无限・秩影生成',
+  'prompt-write': '提示词撰写',
 };
 
 export const CANCELLABLE = new Set([
@@ -107,6 +109,7 @@ export const CANCELLABLE = new Set([
   'voice-clone',
   'digital-human-tts',
   'opuscar',
+  'prompt-write',
 ]);
 
 export const JOB_STATUS_META = {
@@ -116,4 +119,6 @@ export const JOB_STATUS_META = {
   failed: { label: '失败', tone: 'danger' },
   cancelled: { label: '已取消', tone: 'neutral' },
   interrupted: { label: '已中断', tone: 'neutral' },
+  // ic25：后端重启时外部 Agent 还活着，重启恢复在等它退出（算进行中；取消 = 放弃接管，不杀外部进程）
+  adopted: { label: '接管中（等外部 Agent 退出）', tone: 'accent' },
 };

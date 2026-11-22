@@ -22,6 +22,8 @@ import TaskDrawer from '../components/TaskDrawer.jsx';
 import ProjectSettingsDialog from '../components/ProjectSettingsDialog.jsx';
 import { MetaItem, RatioMeta, ResolutionMeta } from '../components/visuals.jsx';
 import ProgressPanel from '../components/ProgressPanel.jsx';
+import AutoNextPanel from '../components/AutoNextPanel.jsx';
+import { defaultChapterId } from '../components/ChapterPicker.jsx';
 import { useToast } from '../components/toast.jsx';
 import { useProjectProgress } from '../lib/hooks.js';
 import ChaptersPage from './ChaptersPage.jsx';
@@ -60,6 +62,15 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
   const [queueOpen, setQueueOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const { progress, refreshProgress } = useProjectProgress(id, project?.status === 'running');
+
+  // 记住最近打开的项目：「系统设置 - 通用配置 - 交付目录」的项目选择默认选它
+  useEffect(() => {
+    try {
+      localStorage.setItem('ic:lastProjectId', id);
+    } catch {
+      /* 隐私模式等拿不到 localStorage 时忽略 */
+    }
+  }, [id]);
 
   // 渲染队列快照：面板打开时轮询「排在第几位 / 预计多久」，关闭时不请求。
   const [queue, setQueue] = useState(null);
@@ -113,14 +124,14 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
     setJobs((prev) => (JSON.stringify(prev) === JSON.stringify(j) ? prev : j));
     setChapters((prev) => (JSON.stringify(prev) === JSON.stringify(c) ? prev : c));
     // 默认定位到「已在生成」的最后一章：章节目录可能来自整本小说，末尾几章还没拆分镜，
-    // 直接取最后一章会落到没有分镜的空章节。优先正在生成的那章，其次最后一个有分镜的章节。
+    // 直接取最后一章会落到没有分镜的空章节。优先正在生成的那章，其次最后一个有分镜的章节。无生成状态时退回 defaultChapterId（最后一个有分镜的章节）。
     setCursorId((x) => {
       if (c.some((ch) => ch.id === x)) return x;
       if (!c.length) return '';
       const running = c.filter((ch) => ch.genStatus === 'running');
       if (running.length) return running[running.length - 1].id;
       const started = c.filter((ch) => ch.genStatus && ch.genStatus !== 'empty');
-      return (started.length ? started[started.length - 1] : c[c.length - 1]).id;
+      return started.length ? started[started.length - 1].id : defaultChapterId(c);
     });
     if (firstJobsLoadRef.current) firstJobsLoadRef.current = false;
     else if (j.some((x) => !seenJobIdsRef.current.has(x.id))) setQueueOpen(true);
@@ -134,6 +145,15 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
     let delay = 1000;
 
     const notify = (m) => {
+      // 交付目录复制失败：只报错不拦（成片照常算成功），这里弹一条常驻错误提示
+      if (m.phase === '交付失败') {
+        const k = (m.jobId || 'export') + ':delivery:' + String(m.detail || '');
+        if (!notifiedRef.current.has(k)) {
+          notifiedRef.current.add(k);
+          toast.error('交付失败：' + String(m.detail || '').slice(0, 200), { ttl: 0 });
+        }
+        return;
+      }
       const st = m.status;
       if (st !== 'done' && st !== 'failed' && st !== 'cancelled') return;
       if (m.type === 'llm') return;
@@ -303,7 +323,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
   }, [activeJobs.length]);
 
   const setTab = (t) => {
-    if (t === 'shots') setCursorId(chapters.length ? chapters[chapters.length - 1].id : '');
+    if (t === 'shots') setCursorId(defaultChapterId(chapters));
     setPview(t);
     if (onTabChange) onTabChange(t);
   };
@@ -463,6 +483,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
                 <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">生成按章节串行推进；在「章节管理」里选择一章开始。</p>
               </>
             )}
+            <AutoNextPanel projectId={id} project={project} readOnly={readOnly} onSaved={loadProject} refreshKey={jobsSig} />
           </div>
 
           <div className="panel flex flex-col gap-2 p-3.5 text-[11px] text-[var(--fg-3)]">

@@ -10,6 +10,7 @@ import { Badge, Button, EmptyState, Input, Select, Spinner, StatusPill, Textarea
 import { BusyOverlay, Modal } from '../components/overlays.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import MaterialPicker from '../components/MaterialPicker.jsx';
+import ChapterPicker from '../components/ChapterPicker.jsx';
 import { ImageLightbox } from '../components/media.jsx';
 import { useToast } from '../components/toast.jsx';
 
@@ -523,14 +524,7 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
 
       <div className="panel flex flex-wrap items-center gap-3 px-3 py-2.5">
         <span className="text-[11px] text-[var(--fg-3)]">章节</span>
-        <Select
-          value={cursorId}
-          onChange={(v) => onCursorChange(v)}
-          items={chapters.map((c) => ({ value: c.id, label: c.title }))}
-          placeholder="选择章节"
-          className="w-[220px]"
-          size="sm"
-        />
+        <ChapterPicker chapters={chapters} value={cursorId} onChange={(v) => onCursorChange(v)} />
         <span className="ml-auto flex items-center gap-2 text-[11px] text-[var(--fg-3)]">
           <Badge tone="neutral">共 {shown.length} 镜</Badge>
           <Badge tone={doneShots.length ? 'success' : 'neutral'}>完成 {doneShots.length}</Badge>

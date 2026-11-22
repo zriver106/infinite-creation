@@ -91,3 +91,32 @@ description: 把小说或故事全自动改编为带语音的短视频/漫剧成
 ## 输出
 - data/projects/<id>/assets/（分类）、storyboard/、shots/、exports/、context/。
 - 分镜审查 UI 可对任一镜头重新生成。
+
+
+## 本项目补丁：资产生成必须先复用素材库（2026-11-16）
+
+完整判定步骤见同目录草稿的精神，以下为强制规则。需要规范原文时再 `skill_reference`。
+
+1. 动手前先 `list_assets`。凡是 `source=uploaded` 且 `status=done`、已有图或音频的，必须按素材库原名引用。禁止为同一主体再 `create_asset` 近义名，禁止对这类资产 `update_asset` 写入或改写 `prompt`（否则旧逻辑会重画出图；代码已禁止自动覆盖，但仍不要去改提示词）。
+2. 分镜的 characters / scenes / props / costumes 必须用库里的中文原名。系统已用 nameMatches 做去重和绑定，但不要自行把「邻座男同事」改成「男同事」碰运气。
+3. 库里没有的人物、场景、道具才 `create_asset`。生成须符合我们的资产标准：全剧一种已定风格、一套角色一张脸；人物先出 B 基准（可用左特写+右三视图构图以适配工作流，外貌按基准描述）；服装只在真实换装事件时补，并挂 parent_id。特效/界面先复用已导入的 prop。非 final、仅候选的图不得当正式参考。
+4. 角色缺 Q 版设定、且本章按 Q 版规则确需使用时：以该角色已上传 B 基准做图生图（`edit_asset_image` 或 `generate_asset_from_reference`），名称用「角色名·Q版设定」，描述写明 CHIBI、不是换身份。两种呈现：旁边加小人，或换成 Q 版头。只在极端情绪使用。（v4）先看任务里的「本项目表现手段开关」：「Q版插入」关掉时不建 Q 版资产。素材库已有「角色名·Q版设定」就直接复用，不再新建、不重画。新建时只在分镜确实排了 Q 版镜头之后再做；画成单人、全身、纯浅色背景的一张 Q 版形象（偏酷冷面、不卖萌，发型发色与服装配色同 B 基准），不要做三视图或多格拼板（拼板会被视频模型拍进画面）。这张图只作 Q 版参考，绝不替换、覆盖或重画我方上传的写实 B 基准。**（v4.2 硬规则）登记方式：** `create_asset(category="prop", name="角色名·Q版设定")` 后立即 `edit_asset_image(asset_id=新资产, reference_asset_id=该角色人物资产)` 出图；不要登记成 costume / age（IC 渲染时 costume / age 会替换写实主图，`lib/core/refs.js` `assembleShotReferences`）。Q 版镜头在分镜 `props` 里绑定它，渲染时作为独立参考图进 REF。全剧只有这一张，各章复用，不每章重画，不建近义名。
+5. 已上传的 `category=voice` 必须先 `register_voice`（或素材库 PATCH voice_ref）登记到对应人物。已有 `voice_ref` 的人物禁止再 `design_voice`。
+
+
+## 本项目补丁：选用康康合集，不现场生成（2026-11-16）
+
+指南原文：`skill_reference(name="ai-music-studio", ref="康康合集-BGM情绪与使用指南.md")`。
+
+**不设默认曲。** 每章按 ai-music-studio「v4.4 新增」一节选曲：读《康康合集-BGM情绪与使用指南》，按本章人物情绪变化落到「快速选曲」的类别，再定 1 首，或选「静音」。深情对话、生离死别、情绪逼近高潮时撤掉全部 BGM，只留现场声和对白，离情绪顶点还差 1–2 秒时再切进新曲；没有对应情绪时也选静音（`music_id="silence"`），不拿 01 囚笼兜底。caption 必须写明情绪类别和选这首的理由。下面几条与本段或 ai-music-studio「v4.4 新增」不一致时，以后两者为准。
+
+**镜内不生成配乐。** 每镜视频提示词的 `non_diegetic_music` 一律写 `N/A`，music 资产不绑进分镜 `audios`；配乐只在合成时按本章主曲和 cue 表垫入（镜内配乐会和章节 BGM 打架、破坏主曲断点续放）。
+
+当项目 `enable_bgm=false` 且素材库已有 music 资产时：
+
+1. 读本章剧本和分镜，概括主情绪与场景，对照指南「快速选曲」和逐曲的情绪 / 适用场景 / 不宜直接套用。
+2. `list_assets(category="music")`，读各曲 description（导入时已写入指南标签），选定 1 首。
+3. 调用 `set_chapter_music(chapter, music_id=选定资产id, caption=选择理由)` 记下选曲。此时镜头可能还没出完，不要调用 `generate_music`，也不必再调 `apply_chapter_music`（本章没出完片时它只绑定曲子，提示「已绑定，出片合成时自动垫入」，出片合成时自动垫入；已全部出完片的章节它才重新合成）。
+4. 本章镜头全部完成后，视频阶段会在原来的 generate_music 步骤自动按已记下的 music_id 调用 `apply_chapter_music` 并合成。若 LLM 阶段没有写下 music_id，本阶段不会改用 MiniMax 生成新曲，成片将暂时没有垫乐。
+5. 同一编号若有两个候选文件，按指南说明选择，不要混用。
+

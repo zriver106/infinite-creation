@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Film, Image as ImageIcon, Layers, Mic2, Play, Square, Wand2 } from 'lucide-react';
+import { Check, Film, Image as ImageIcon, Layers, Mic2, Play, Square, Trash2, Wand2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { Badge, Button, Spinner } from './ui.jsx';
 import { BusyOverlay } from './overlays.jsx';
@@ -15,6 +15,8 @@ export default function ChapterOps({ projectId, chapter, running, runningChapter
   const [stageErr, setStageErr] = useState('');
   const [stageLoadErr, setStageLoadErr] = useState('');
   const [busy, setBusy] = useState(null);
+  // 清理预览：后端按更全的口径判断本章是否有任务（含单镜重生成、导出），用来把「清理」置灰
+  const [clearBlocked, setClearBlocked] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -38,6 +40,16 @@ export default function ChapterOps({ projectId, chapter, running, runningChapter
       clearInterval(t);
     };
   }, [projectId, running]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!chapter) return () => { alive = false; };
+    api
+      .get('/api/projects/' + projectId + '/chapters/' + chapter.id + '/clear')
+      .then((d) => { if (alive) setClearBlocked(!!d.blocked); })
+      .catch(() => { if (alive) setClearBlocked(false); });
+    return () => { alive = false; };
+  }, [projectId, chapter?.id, running]);
 
   function toggleStage(id) {
     setPicked((prev) => {
@@ -119,9 +131,61 @@ export default function ChapterOps({ projectId, chapter, running, runningChapter
     }
   }
 
+  // 清理本章：先读预览写进确认框，确认后后端先归档、核哈希，再删库和原件。不提交任何任务。
+  async function clearChapter() {
+    if (!chapter) return;
+    setBusy('正在读取本章可清理内容…');
+    let preview;
+    try {
+      preview = await api.get('/api/projects/' + projectId + '/chapters/' + chapter.id + '/clear');
+    } catch (e) {
+      setBusy(null);
+      toast.error(e.message);
+      return;
+    }
+    setBusy(null);
+    setClearBlocked(!!preview.blocked);
+    if (preview.blocked) {
+      toast.error(preview.blockReason || '本章有任务在跑，不能清理');
+      return;
+    }
+    if (preview.nothingToClear) {
+      toast.info('「' + chapter.title + '」没有分镜、视频或成片，无需清理');
+      return;
+    }
+    const lines = [
+      '将清空「' + chapter.title + '」的分镜、视频提示词和已出视频，章节回到还没生成过的状态。',
+      '',
+      '会清掉：',
+      '· 分镜 ' + preview.shots + ' 条（含视频提示词）',
+      '· 候选视频记录 ' + preview.shotVideos + ' 条',
+      '· 分镜视频文件 ' + preview.videosOnDisk + ' 个',
+      '· 成片 / 无字幕版 / 字幕文件 ' + preview.exportFiles + ' 个',
+      ...(preview.poster ? ['· 章节封面 1 张'] : []),
+      '',
+      '先整体归档并核对 sha256，再清理；归档或核对失败则什么都不动。',
+      '归档位置：' + (preview.archiveRoot || '（后端默认目录）'),
+      '',
+      '不会动：素材库（人物 / 场景 / 道具 / 音色 / 音乐文件）、剧本文本、章节配乐绑定、其他章节、交付目录。',
+      '确定继续？',
+    ];
+    if (!(await toast.confirm(lines.join('\n'), { danger: true, confirmLabel: '归档并清理' }))) return;
+    setBusy('正在归档并清理「' + chapter.title + '」…');
+    try {
+      const r = await api.post('/api/projects/' + projectId + '/chapters/' + chapter.id + '/clear');
+      const extra = r.deleteFailed && r.deleteFailed.length ? '；有 ' + r.deleteFailed.length + ' 个原文件删除失败（记录已清，文件仍在磁盘，归档完整）' : '';
+      toast.success('已清理「' + chapter.title + '」：归档 ' + (r.archivedFiles || 0) + ' 个文件，删除 ' + (r.shotsRemoved || 0) + ' 条分镜' + extra + '\n归档：' + r.archiveDir, { ttl: 0 });
+      onRefresh && onRefresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {runningChapter === chapter?.title ? (
           <Button variant="danger" size="md" onClick={stopRun}>
             <Square size={13} /> 停止本章
@@ -137,11 +201,20 @@ export default function ChapterOps({ projectId, chapter, running, runningChapter
         <Button variant="secondary" size="md" disabled={!chapter || running} onClick={() => regenChapter('videos')}>
           <Film size={13} /> 重新生成视频
         </Button>
+        <Button
+          variant="dangerSolid"
+          size="md"
+          disabled={!chapter || running || clearBlocked}
+          title={running || clearBlocked ? '本章有任务在跑或排队，不能清理' : '先归档再清空本章分镜、视频提示词和已出视频'}
+          onClick={clearChapter}
+        >
+          <Trash2 size={13} /> 清理
+        </Button>
       </div>
 
       <p className="m-0 text-[11.5px] leading-relaxed text-[var(--fg-3)]">
         点「生成 / 继续」会接着上次进度跑，已完成的内容自动跳过，中断或失败后可继续。
-        「重新生成分镜」只重跑 LLM 文本；「重新生成视频」保留分镜，仅重做本章视频。
+        「重新生成分镜」只重跑 LLM 文本；「重新生成视频」保留分镜，仅重做本章视频。「清理」先归档再清空本章分镜、视频提示词和已出视频，素材和剧本保留。
       </p>
 
       <div className="hairline" />

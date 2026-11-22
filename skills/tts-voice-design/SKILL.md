@@ -37,3 +37,9 @@ description: 为 Qwen3-TTS 音色设计工作流编写人物音色参数。使�
 - 音色与人物年龄/性别/性格一致；不同角色音色尽量区分。
 - voice_description 中文、具体，避免「好听」这类空词。
 - **voice_description 必须包含性别与年龄段**（如「青年男性」「老年女性」），缺失时 TTS 会自由发挥成年轻女声。
+
+
+## 本项目补丁：先登记已有音色，禁止覆盖（2026-11-16）
+
+素材库若已有对应人物的 `category=voice` 上传音频，先 `register_voice(asset_id=人物id, voice_ref=assets/voice/文件名)`，不要 `design_voice`。人物已有可用 `voice_ref` 时禁止再设计音色。
+

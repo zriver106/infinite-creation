@@ -24,6 +24,7 @@ const JOB_STATUS = {
   failed: { label: '失败', color: 'danger' },
   cancelled: { label: '已取消', color: 'default' },
   interrupted: { label: '已中断', color: 'default' },
+  adopted: { label: '接管中（等外部 Agent 退出）', color: 'primary' },
 };
 // 任务时间显示：相对时间 + 用时
 function fmtRelative(ts) {

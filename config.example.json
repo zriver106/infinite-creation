@@ -45,5 +45,8 @@
     "retryTimes": 3,
     "videoTimeoutMinutes": 30,
     "imageTimeoutMinutes": 10
+  },
+  "archive": {
+    "chapterClearDir": ""
   }
 }

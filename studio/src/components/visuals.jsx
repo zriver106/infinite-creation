@@ -114,6 +114,7 @@ const JOB_ICONS = {
   export: Download,
   music: Music4,
   'music-apply': Music4,
+  'prompt-write': Wand2,
 };
 
 export function JobTypeIcon({ type, size = 13, className }) {

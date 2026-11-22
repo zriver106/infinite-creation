@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { BookOpen, Clapperboard, FileText, GripVertical, Pencil, Play, Plus, SlidersHorizontal, Square, X } from 'lucide-react';
+import { BookOpen, Clapperboard, FileText, GripVertical, Layers, Pencil, Play, Plus, SlidersHorizontal, Square, Wand2, X } from 'lucide-react';
 import { api, uploadForm } from '../lib/api.js';
 import { fileUrl } from '../lib/format.js';
 import { Button, EmptyState, Field, Input, Progress, StatusPill, Textarea } from '../components/ui.jsx';
@@ -12,6 +12,15 @@ import ScriptDialog from '../components/ScriptDialog.jsx';
 import { useToast } from '../components/toast.jsx';
 
 const GEN_LABEL = { empty: '无分镜', pending: '待生成', running: '生成中', done: '完成', failed: '失败' };
+
+// 主按钮三种状态：全部完成（仍显示「生成」，提示去重新生成）/ 有进度或上次中断 → 「继续」/ 其余 → 从头「生成」
+function runButtonState(c) {
+  if (c.genStatus === 'done') return { label: '生成', title: '本章已全部完成；要重做请用『生成操作』里的重新生成' };
+  if (c.shotCount > 0 || c.hasScript || c.doneCount > 0 || c.lastJobStatus === 'failed' || c.lastJobStatus === 'cancelled') {
+    return { label: '继续', title: '从上次中断的地方接着做，已有的剧本、分镜和视频都会保留' };
+  }
+  return { label: '生成', title: '从头生成本章' };
+}
 
 export default function ChaptersPage({ projectId, chapters, onRefresh, running, runningChapter, runningChapters, readOnly = false, canEdit = true, canGenerate = true, features = {}, onRun, onStop, onGoLogs }) {
   const toast = useToast();
@@ -30,6 +39,9 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
   const [operating, setOperating] = useState(null);
   const [scripting, setScripting] = useState(null);
   const [submitting, setSubmitting] = useState(null);
+  const [sbSubmitting, setSbSubmitting] = useState(null);
+  const [pwSubmitting, setPwSubmitting] = useState(null);
+  const [acSubmitting, setAcSubmitting] = useState(null);
   const [stopping, setStopping] = useState(false);
   const isChapterRunning = (title) =>
     runningChapters
@@ -149,6 +161,85 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
     } catch (e) {
       toast.error(e.message);
       setSubmitting(null);
+    }
+  }
+
+  // 「生成分镜」：只跑到分镜（regenerate?mode=full，只跑 LLM 文本，不出视频）。
+  // 没有分镜直接拆；已有分镜先确认（确认后清空本章分镜再重拆）。本章有任务时按钮置灰，后端同章去重再挡一次（409）。
+  async function submitStoryboard(c) {
+    if (c.shotCount > 0) {
+      const ok = await toast.confirm(
+        '「' + c.title + '」已有 ' + c.shotCount + ' 条分镜' + (c.doneCount ? '（其中 ' + c.doneCount + ' 条已出视频）' : '') + '。\n'
+          + '重新拆分会先清空本章现有分镜，再按剧本重新拆分镜、写提示词（只跑 LLM 文本，不出图 / 视频；素材保留）。\n确定重拆？',
+        { danger: true, confirmLabel: '清空并重拆分镜' },
+      );
+      if (!ok) return;
+    }
+    setSbSubmitting(c.title);
+    try {
+      await api.post('/api/projects/' + projectId + '/chapters/' + c.id + '/regenerate?mode=full');
+      toast.info('已提交「' + c.title + '」生成分镜（只跑文本，不出视频）');
+      onRefresh && onRefresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSbSubmitting(null);
+    }
+  }
+
+  // 「提示词撰写」：只给本章补写缺失的分镜视频提示词（不清分镜、不改剧本、不出视频），进分镜（文本）队列。
+  // 按钮状态跟章节进度：本章有任务 → 置灰；没分镜 → 置灰；缺 N 镜 → 「提示词撰写（缺 N）」；已齐 → 置灰。
+  // 后端同章去重再挡一次（409）。
+  function promptWriteState(c, isRunningChapter) {
+    const n = Number(c.missingPromptCount) || 0;
+    const withVideo = Number(c.missingPromptWithVideo) || 0;
+    const extra = withVideo ? '；另有 ' + withVideo + ' 镜已出视频但没有提示词，不补写' : '';
+    if (isRunningChapter) return { label: n ? '提示词撰写（缺 ' + n + '）' : '提示词撰写', disabled: true, title: '本章有任务在跑，不能撰写提示词' };
+    if (!c.shotCount) return { label: '提示词撰写', disabled: true, title: '本章还没有分镜，先「生成分镜」' };
+    if (!n) return { label: '提示词已齐', disabled: true, title: '本章 ' + c.shotCount + ' 镜都已有视频提示词' + extra };
+    return { label: '提示词撰写（缺 ' + n + '）', disabled: false, title: '只给本章缺提示词的 ' + n + ' 镜补写视频提示词（复用已有素材；不清分镜、不改剧本、不出视频）' + extra };
+  }
+
+  async function submitPromptWrite(c) {
+    setPwSubmitting(c.title);
+    try {
+      const r = await api.post('/api/projects/' + projectId + '/chapters/' + c.id + '/write-prompts');
+      toast.info('已提交「' + c.title + '」提示词撰写（' + (r && r.missing != null ? '缺 ' + r.missing + ' 镜，' : '') + '只跑文本，不出视频）');
+      onRefresh && onRefresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPwSubmitting(null);
+    }
+  }
+
+  // 「检查资产」+ 徽标：只对缺件单模式（asset_mode=gap-list）的项目显示，其它项目界面不变。
+  // 检查只读本章需求、登记库里同名唯一的音色、写缺件单（草稿\IC缺件单），不提交任何任务、不出图。
+  function assetBadge(c) {
+    if (c.assetMode !== 'gap-list') return null;
+    const at = c.assetCheckedAt ? new Date(c.assetCheckedAt).toLocaleString() : '';
+    const file = c.assetGapFile ? '；缺件单：' + c.assetGapFile : '';
+    const rv = Number(c.assetReview) || 0;
+    if (c.assetState === 'missing') return { text: '缺件 ' + (Number(c.assetMissing) || 0), cls: 'text-[var(--danger,#e5484d)]', title: '最近检查 ' + at + file + (rv ? '；另有 ' + rv + ' 项 IC 自生成待资产管理复核' : '') };
+    if (c.assetState === 'complete' && rv) return { text: '待复核 ' + rv, cls: 'text-[var(--warning,#f5a524)]', title: '资产齐全（IC 自生成的先算齐），' + rv + ' 项待资产管理复核；最近检查 ' + at + file };
+    if (c.assetState === 'complete') return { text: '资产齐全', cls: 'text-[var(--success,#30a46c)]', title: '最近检查 ' + at };
+    if (c.assetState === 'reference') return { text: '资产参考', cls: 'text-[var(--fg-4)]', title: '剧本前清单，仅供参考、不拦；最近检查 ' + at + file };
+    return { text: '资产未检查', cls: 'text-[var(--fg-4)]', title: '点「检查资产」核对本章需要的人物/场景/道具/音色' };
+  }
+
+  async function submitAssetCheck(c) {
+    setAcSubmitting(c.title);
+    try {
+      const r = await api.post('/api/projects/' + projectId + '/chapters/' + c.id + '/asset-check');
+      const s = (r && r.summary) || {};
+      const reg = (r && r.registered && r.registered.filter((x) => !x.error).length) || 0;
+      const msg = '「' + c.title + '」资产检查：' + (s.missing ? '缺 ' + s.missing + ' 项' : '齐全') + (s.review ? '，待复核 ' + s.review : '') + (reg ? '，已登记音色 ' + reg : '') + (r && r.gapFile ? '；缺件单 ' + r.gapFile : '');
+      if (s.missing) toast.error(msg); else toast.info(msg);
+      onRefresh && onRefresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setAcSubmitting(null);
     }
   }
 
@@ -323,28 +414,81 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
                     <div className="flex items-center gap-1 text-[10.5px] text-[var(--fg-4)]">
                       <FileText size={10} className="opacity-70" />
                       {c.script ? c.script.length.toLocaleString() + ' 字剧本' : '无剧本'}
+                      {(() => {
+                        const b = assetBadge(c);
+                        return b ? (
+                          <span data-testid="asset-badge" className={clsx('ml-auto', b.cls)} title={b.title}>
+                            {b.text}
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
                   {canEdit || canGenerate ? (
-                    <div className="flex items-center gap-1.5 pt-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                       {canGenerate && features.buttons?.generate !== false ? (
-                        isRunningChapter ? (
-                          <Button variant="danger" size="sm" className="flex-1" loading={stopping} onClick={() => handleStop(c.title)}>
-                            <Square size={12} /> 停止
-                          </Button>
-                        ) : (
+                        <>
+                          {isRunningChapter ? (
+                            <Button variant="danger" size="xs" className="min-w-[4.5rem] flex-1" loading={stopping} onClick={() => handleStop(c.title)}>
+                              <Square size={11} /> 停止
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="xs"
+                              className="min-w-[4.5rem] flex-1"
+                              loading={loading}
+                              disabled={isRunningChapter || loading}
+                              title={runButtonState(c).title}
+                              onClick={() => submitRun(c.title)}
+                            >
+                              <Play size={11} /> {runButtonState(c).label}
+                            </Button>
+                          )}
                           <Button
-                            variant="primary"
-                            size="sm"
-                            className="flex-1"
-                            loading={loading}
-                            disabled={isRunningChapter || loading}
-                            onClick={() => submitRun(c.title)}
+                            variant="secondary"
+                            size="xs"
+                            className="min-w-[5.5rem] flex-1"
+                            title={isRunningChapter ? '本章有任务在跑，不能生成分镜' : c.shotCount ? '已有分镜：确认后清空并重拆（只跑文本，不出视频）' : '只拆分镜、写提示词，不出视频'}
+                            loading={sbSubmitting === c.title}
+                            disabled={isRunningChapter || loading || sbSubmitting === c.title}
+                            onClick={() => submitStoryboard(c)}
                           >
-                            <Play size={12} /> 生成
+                            <Layers size={11} /> 生成分镜
                           </Button>
-                        )
+                          {(() => {
+                            const pw = promptWriteState(c, isRunningChapter);
+                            return (
+                              <Button
+                                variant="secondary"
+                                size="xs"
+                                className="min-w-[5.5rem] flex-1"
+                                data-testid="prompt-write-btn"
+                                title={pw.title}
+                                loading={pwSubmitting === c.title}
+                                disabled={pw.disabled || loading || pwSubmitting === c.title}
+                                onClick={() => submitPromptWrite(c)}
+                              >
+                                <Wand2 size={11} /> {pw.label}
+                              </Button>
+                            );
+                          })()}
+                          {c.assetMode === 'gap-list' ? (
+                            <Button
+                              variant="secondary"
+                              size="xs"
+                              className="min-w-[5.5rem] flex-1"
+                              data-testid="asset-check-btn"
+                              title="核对本章需要的人物/场景/道具/音色是否已入库：缺的写进缺件单（草稿\IC缺件单），库里同名唯一的音色自动登记；不提交任务、不出图"
+                              loading={acSubmitting === c.title}
+                              disabled={acSubmitting === c.title}
+                              onClick={() => submitAssetCheck(c)}
+                            >
+                              <BookOpen size={11} /> 检查资产
+                            </Button>
+                          ) : null}
+                        </>
                       ) : null}
                       {canEdit ? (
                         <>

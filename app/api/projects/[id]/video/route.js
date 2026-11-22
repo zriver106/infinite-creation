@@ -3,7 +3,7 @@
 // references 为已通过 /media 上传的物料相对路径列表：[{ type:'image'|'audio'|'video', filename }]。
 // 传 asset_id 表示「重试/重新生成」已存在的视频资产，否则新建。
 import { NextResponse } from 'next/server';
-import { Projects, Assets, uid, withWriteContext } from '@/lib/core/index.js';
+import { Projects, Assets, uid, withWriteContext, logSubmitRequest } from '@/lib/core/index.js';
 import { startVideoJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 
@@ -41,5 +41,6 @@ export async function POST(req, { params }) {
     references,
     onProgress: (p) => broadcast(p),
   });
+  logSubmitRequest(req, { route: 'POST /api/projects/:id/video', projectId: id, jobId: job && job.id });
   return NextResponse.json(job);
 }

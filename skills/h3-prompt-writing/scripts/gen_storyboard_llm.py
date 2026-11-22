@@ -231,7 +231,7 @@ shots  (array, in story order; high-quality, faithful adaptation)
   first_frame_hard: English sentence of the opening state of this shot
   last_frame_hard: English sentence of the closing state handed to the next segment
   overall_soundscape: 1-4 English sentences summarising ambient/action/non-verbal sound (no dialogue)
-  non_diegetic_music: 1-3 English sentences, or exactly "N/A"
+  non_diegetic_music: exactly "N/A" (this project lays all scoring in post from the chapter BGM cue table; never describe music in a shot)
   shot_purpose: one English sentence, self-contained (it becomes the Ref2VA summary)
   cut_reason / continuity_risk: short Chinese notes; fidelity_lock: true
 
