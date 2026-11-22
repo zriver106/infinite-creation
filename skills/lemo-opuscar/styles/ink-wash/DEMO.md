@@ -21,7 +21,7 @@ Native moves spent: one stroke is everything (the opening drop), brush = gesture
 | Establishing | Slow right-to-left pan (scroll unrolling), ending on a **high wide** frame: the figure 150–180 px tall, the river a huge blank. |
 | Travel | Lateral tracking with the figure at ~60 % of the frame, lead room ahead; very slow parallax far mountains; occasional dark reeds passing at the very bottom. |
 | Threat | **Low angle**, horizon low, the wave towering, the figure tiny in a corner; slow push-in with growing shake. |
-| Silence | Hard cut to an extreme close-up (hat brim, no eyes); then an **over-the-shoulder** frame putting the figure, the written character and the wave on one axis. |
+| Silence | Hard cut to an extreme close-up (hat brim, no eyes); then a **side two-shot medium** frame putting the figure, the written character and the wave on one axis. |
 | Release | Back to the same high wide scale as the establishing shot. |
 | Ending | Continuous pull-back from the figure to the whole handscroll on its silk mount; seal; end card below the scroll. |
 
