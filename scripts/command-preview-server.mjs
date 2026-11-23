@@ -10,6 +10,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
 const HOST = process.env.CMD_PREVIEW_HOST || '0.0.0.0';
@@ -318,6 +319,149 @@ async function evidenceFile(root, name, maxLines) {
   return { root, name, path: full, size: st.size, mtime: st.mtime.toISOString(), tailLines: maxLines, content: redact((lines || []).join('\n')) };
 }
 
+
+// ---------- ⑨ 派工（只读） ----------
+const DISPATCH_DIR = path.join(PATHS.cmdDir, '派工');
+const MD5_LINE = /^([0-9A-Fa-f]{32})\s+(?:\d+\s+)?(.+)$/;
+async function md5Entries(dir, max = 8) {
+  try {
+    const raw = (await fsp.readFile(path.join(dir, 'md5.txt'), 'utf8')).replace(/^\uFEFF/, '');
+    const out = [];
+    for (const l of raw.split(/\r?\n/)) { const m = MD5_LINE.exec(l.trim()); if (m) out.push({ path: path.join(dir, m[2].trim()), md5: m[1].toUpperCase() }); }
+    return out.slice(0, max);
+  } catch { return null; }
+}
+async function latestSubdirs(root, n, filter = () => true) {
+  const ents = await fsp.readdir(root, { withFileTypes: true }).catch(() => null);
+  if (!ents) return null;
+  const st = await Promise.all(ents.filter((e) => e.isDirectory() && filter(e.name)).map(async (e) => {
+    const full = path.join(root, e.name); const s = await fsp.stat(full).catch(() => null);
+    return s ? { name: e.name, full, mtime: s.mtimeMs } : null;
+  }));
+  return st.filter(Boolean).sort((a, b) => b.mtime - a.mtime).slice(0, n);
+}
+async function dirDeliveries(dirs) {
+  const out = [];
+  for (const d of dirs || []) {
+    const md5 = await md5Entries(d.full, 6);
+    out.push({ title: d.name, at: new Date(d.mtime).toISOString(), path: d.full, items: md5 || [], note: md5 ? '' : '该目录没有 md5.txt' });
+  }
+  return out;
+}
+function mdEntries(raw, n) {
+  const lines = raw.replace(/^\uFEFF/, '').split(/\r?\n/);
+  const idx = []; lines.forEach((l, i) => { if (/^##\s/.test(l)) idx.push(i); });
+  return idx.slice(-n).map((s, k, arr) => {
+    const end = k + 1 < arr.length ? arr[k + 1] : lines.length;
+    const all = idx.indexOf(s); const realEnd = all + 1 < idx.length ? idx[all + 1] : lines.length;
+    return { title: lines[s].replace(/^##\s*/, ''), line: s + 1, body: lines.slice(s + 1, Math.min(realEnd, end)) };
+  });
+}
+async function readText(file) { try { return await fsp.readFile(file, 'utf8'); } catch { return null; } }
+const HEX32 = /\b[0-9A-Fa-f]{32}\b/;
+const WAIT_RE = /(等|待|未|STOP|暂停|拦|阻塞|需.{0,4}(批|点头|确认))/;
+
+async function partyGpu() {
+  const procs = await chainProcs();
+  const runs = (await latestSubdirs(PATHS.gpuRuns, 4)) || [];
+  const current = [];
+  for (const c of procs.chains || []) current.push(`链进程 PID ${c.pid} ${c.script} ${c.args}（启动 ${c.started}）`);
+  if (!current.length) current.push('进程表里没有正在运行的 gpu_*chain.py');
+  const deliveries = [];
+  for (const r of runs) {
+    const lines = (await tailLines(path.join(r.full, 'chain.log'), 400)) || [];
+    if (r === runs[0] && lines.length) current.push(`${r.name} 最后一行：${redact(lines.at(-1)).slice(0, 300)}`);
+    const done = lines.filter((l) => /\sdone\s/.test(l) && !/chapter done/.test(l)).slice(-4).reverse();
+    for (const l of done) {
+      const mp4 = (l.match(/([A-Za-z]:\\[^\s]+\.mp4)/) || [])[1] || null;
+      const sha = (l.match(/sha256\s+([0-9A-Fa-f]{64})/) || [])[1] || null;
+      deliveries.push({ title: r.name, at: l.slice(0, 19), path: mp4, md5: null, sha256: sha, raw: redact(l).slice(0, 300) });
+    }
+  }
+  const today = new Date(); const ymd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  const allRuns = (await fsp.readdir(PATHS.gpuRuns).catch(() => [])).filter((n) => n.includes(ymd));
+  const underscore = path.join(M, '_');
+  const waiting = [];
+  const ents = await fsp.readdir(underscore).catch(() => []);
+  for (const f of ents) {
+    if (/\.STOP$/i.test(f)) waiting.push(`STOP 标记：${path.join(underscore, f)}`);
+    const m = /^gpu_(.+)_chain\.py$/.exec(f);
+    if (!m) continue;
+    const st = await fsp.stat(path.join(underscore, f)).catch(() => null);
+    if (!st || new Date(st.mtimeMs).toDateString() !== today.toDateString()) continue;
+    const key = m[1];
+    const running = (procs.chains || []).some((c) => c.script === f);
+    const ran = allRuns.some((n) => n.startsWith(key + '_') || n.startsWith(key.replace(/_a1$/, '') + '_'));
+    if (!running && !ran) waiting.push(`今天改过、还没有运行记录的链脚本：${f}（${new Date(st.mtimeMs).toLocaleTimeString('zh-CN', { hour12: false })}）`);
+  }
+  return {
+    id: 'gpu', name: 'GPU生产', found: true,
+    sources: [PATHS.gpuRuns + '\\*\\chain.log', '进程表（python gpu_*chain.py）', path.join(underscore, 'gpu_*_chain.py / *.STOP')],
+    current, deliveries, deliveriesNote: 'chain.log 记录的是 sha256（不是 md5）；只列最近 4 个运行目录里的 done 行',
+    waiting: waiting.length ? waiting : ['没有发现 STOP 标记或今天未运行的新脚本'], waitingNote: '「在等什么」由文件推断：链序本身不在文件里，以 GPU生产/总导 的排链为准',
+  };
+}
+async function partyClaude() {
+  const shared = path.join(PATHS.linkDir, 'Claude会话共享记录.md');
+  const log = path.join(PATHS.cmdDir, '日志.md');
+  const [a, b] = await Promise.all([readText(shared), readText(log)]);
+  const ea = a ? mdEntries(a, 4) : [];
+  const eb = b ? mdEntries(b, 3).filter((e) => !/^指挥日志/.test(e.title)) : [];
+  const current = [...ea.slice(-3).reverse().map((e) => `共享记录 L${e.line}：${e.title}`), ...eb.reverse().map((e) => `指挥日志：${e.title}`)];
+  const deliveries = [];
+  for (const e of ea.slice().reverse()) {
+    for (const l of e.body) if (HEX32.test(l)) deliveries.push({ title: e.title.slice(0, 60), at: e.title.slice(0, 16), path: ((l.match(/([A-Za-z]:\\[^\s`）)]+|M\\[^\s`）)]+|P\\[^\s`）)]+)/) || [])[1]) || null, md5: (l.match(HEX32) || [])[0].toUpperCase(), raw: redact(l.trim()).slice(0, 300) });
+  }
+  const reviews = await latestSubdirs(path.join(M, '_'), 2, (n) => /^审片_/.test(n));
+  const waiting = [];
+  for (const e of ea.slice(-2).reverse()) for (const l of e.body) if (WAIT_RE.test(l) && l.trim()) waiting.push(redact(l.trim()).slice(0, 240));
+  return {
+    id: 'claude', name: 'Claude', found: !!(a || b),
+    sources: [shared, log, path.join(M, '_', '审片_*')],
+    current: current.length ? current : ['暂无条目'],
+    deliveries: deliveries.slice(0, 10), extraDeliveries: await dirDeliveries(reviews),
+    deliveriesNote: '从共享记录最近 4 条里带 32 位 md5 的行抽取；另列最近的审片目录',
+    waiting: waiting.slice(0, 8).length ? waiting.slice(0, 8) : ['最近条目里没有写「等/待」的行'], waitingNote: '从最近 2 条共享记录里含「等/待/未/STOP/需批」的行抽取',
+  };
+}
+async function partyDirs(id, name, root, guessNote) {
+  const dirs = await latestSubdirs(root, 4);
+  if (!dirs) return { id, name, found: false, sources: [], current: [], deliveries: [], waiting: [], missing: '暂无数据源' };
+  const top = dirs[0];
+  const inner = top ? await latestSubdirs(top.full, 6) : [];
+  const current = dirs.map((d) => `${d.name}（更新 ${new Date(d.mtime).toLocaleString('zh-CN', { hour12: false })}）`);
+  if (inner && inner.length) current.push(`${top.name} 里最近动过：` + inner.map((d) => d.name).join('、'));
+  return {
+    id, name, found: true, sources: [root], sourceNote: guessNote,
+    current, deliveries: [], extraDeliveries: await dirDeliveries(dirs), deliveriesNote: '列各目录的 md5.txt（没有就注明）',
+    waiting: ['暂无数据源（这个目录里没有待办或等待记录）'],
+  };
+}
+async function dispatchOrders() {
+  const ents = await fsp.readdir(DISPATCH_DIR).catch(() => null);
+  if (!ents) return { dir: DISPATCH_DIR, exists: false, orders: [] };
+  const orders = [];
+  for (const f of ents.filter((n) => n.toLowerCase().endsWith('.json')).sort()) {
+    const full = path.join(DISPATCH_DIR, f);
+    const buf = await fsp.readFile(full).catch(() => null);
+    if (!buf) continue;
+    const md5 = crypto.createHash('md5').update(buf).digest('hex').toUpperCase();
+    try { orders.push({ file: f, md5, data: JSON.parse(buf.toString('utf8').replace(/^\uFEFF/, '')) }); }
+    catch (e) { orders.push({ file: f, md5, error: 'JSON 解析失败：' + e.message }); }
+  }
+  return { dir: DISPATCH_DIR, exists: true, orders };
+}
+async function dispatchView() {
+  const [gpu, claude, wf, asset, orders] = await Promise.all([
+    partyGpu(), partyClaude(),
+    partyDirs('workflow', '工作流', path.join(M, '工作流工作区'), '推测：M\\工作流工作区 是工作流的工作目录（目前只有 T2_返修教训通用规则 一个包）'),
+    partyDirs('asset', '资产管理', path.join(P, '资产候选'), '推测：P\\资产候选 是资产管理出候选图的目录（Muse 产出在 Mac 上，agent1 只看得到落地的文件）'),
+    dispatchOrders(),
+  ]);
+  const qc = { id: 'qc', name: '成片质检', found: false, sources: [], current: [], deliveries: [], waiting: [], missing: '暂无数据源', missingNote: '在 agent1 上没找到成片质检专属的工作目录或记录。M\\_\\审片_* 是 Claude 做的审片，记在 Claude 栏。' };
+  return { at: new Date().toISOString(), readOnly: true, note: '只读，没有发单按钮。真正发单属于上线，要 Andy 批；在此之前各方照现在的分工干。', parties: [gpu, asset, wf, qc, claude], orders };
+}
+
 // ---------- 静态 & 代理 ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2', '.webp': 'image/webp' };
 async function serveStatic(req, res, pathname) {
@@ -360,6 +504,7 @@ const server = http.createServer(async (req, res) => {
         const r = await readSession(url.searchParams.get('provider'), url.searchParams.get('id'), Number(url.searchParams.get('page') ?? -1), size);
         return send(res, r.error ? 400 : 200, r);
       }
+      if (sub === 'dispatch') return send(res, 200, await dispatchView());
       if (sub === 'evidence') return send(res, 200, await evidence());
       if (sub === 'evidence/file') {
         const r = await evidenceFile(url.searchParams.get('root'), url.searchParams.get('name'), Math.min(3000, Number(url.searchParams.get('lines') || 400)));

@@ -11,10 +11,10 @@ const SUBS = [
   { id: 'rules', label: '规则与 lint', icon: BookCheck, phase: 1 },
   { id: 'sessions', label: 'AI 会话', icon: MessagesSquare, phase: 1 },
   { id: 'usage', label: '用量与计费', icon: Gauge, phase: 1 },
-  { id: 'dispatch', label: '派工', icon: Send, phase: 3 },
+  { id: 'dispatch', label: '派工', icon: Send, phase: 1 },
   { id: 'evidence', label: '证据与日志', icon: ScrollText, phase: 1 },
 ];
-const READY = new Set(['overview', 'episodes', 'sessions', 'evidence']);
+const READY = new Set(['overview', 'episodes', 'sessions', 'evidence', 'dispatch']);
 
 const PLACEHOLDER = {
   writes: { phase: '第二期', desc: '写库包 before/after_expected 逐字段 diff、非目标镜漂移检查、回读 md5 对比。第三期才加「确认写库」（人点）。' },
@@ -249,6 +249,88 @@ function Evidence() {
   );
 }
 
+
+function Hash({ md5, sha256 }) {
+  if (md5) return <span className="font-mono text-[10px]">md5 {md5}</span>;
+  if (sha256) return <span className="font-mono text-[10px]">sha256 {sha256.slice(0, 16)}…</span>;
+  return <span className="text-[10px] text-[var(--fg-4)]">无哈希</span>;
+}
+function PartyCol({ p }) {
+  return (
+    <section className="panel flex min-w-0 flex-col gap-2 p-3 text-[11px]">
+      <div className="flex items-center justify-between"><h3 className="text-sm font-semibold">{p.name}</h3>{p.found ? <Pill tone="green">有数据源</Pill> : <Pill tone="gray">暂无数据源</Pill>}</div>
+      {p.sources?.length ? <p className="break-all text-[10px] text-[var(--fg-4)]">来源：{p.sources.join('；')}</p> : null}
+      {p.sourceNote ? <p className="text-[10px] text-[var(--fg-3)]">{p.sourceNote}</p> : null}
+      {!p.found ? <p className="text-xs">{p.missing}{p.missingNote ? <span className="mt-1 block text-[10px] text-[var(--fg-3)]">{p.missingNote}</span> : null}</p> : (
+        <>
+          <div><p className="section-label mb-1">当前在做</p><ul className="flex flex-col gap-1">{p.current.map((c, i) => <li key={i} className="break-all">{c}</li>)}</ul></div>
+          <div>
+            <p className="section-label mb-1">最近的交付</p>
+            {p.deliveriesNote ? <p className="mb-1 text-[10px] text-[var(--fg-4)]">{p.deliveriesNote}</p> : null}
+            <ul className="flex flex-col gap-1.5">
+              {(p.deliveries || []).map((d, i) => (
+                <li key={i} className="rounded border border-[var(--line)] p-1.5">
+                  <div className="flex flex-wrap gap-2 text-[10px] text-[var(--fg-3)]"><span>{d.at}</span><span className="truncate">{d.title}</span></div>
+                  {d.path ? <div className="break-all font-mono text-[10px]">{d.path}</div> : <div className="break-all text-[10px]">{d.raw}</div>}
+                  <Hash md5={d.md5} sha256={d.sha256} />
+                </li>
+              ))}
+              {(p.extraDeliveries || []).map((d, i) => (
+                <li key={'x' + i} className="rounded border border-[var(--line)] p-1.5">
+                  <div className="text-[10px] text-[var(--fg-3)]">{fmtTime(d.at)} · <b>{d.title}</b></div>
+                  <div className="break-all font-mono text-[10px] text-[var(--fg-4)]">{d.path}</div>
+                  {d.items.length ? d.items.map((it, k) => <div key={k} className="break-all font-mono text-[10px]">{it.md5} {it.path.slice(d.path.length + 1)}</div>) : <div className="text-[10px] text-[var(--fg-4)]">{d.note}</div>}
+                </li>
+              ))}
+              {!(p.deliveries || []).length && !(p.extraDeliveries || []).length ? <li className="text-[var(--fg-4)]">暂无</li> : null}
+            </ul>
+          </div>
+          <div><p className="section-label mb-1">在等什么</p>{p.waitingNote ? <p className="mb-1 text-[10px] text-[var(--fg-4)]">{p.waitingNote}</p> : null}<ul className="flex flex-col gap-1">{p.waiting.map((w, i) => <li key={i} className="break-all">{w}</li>)}</ul></div>
+        </>
+      )}
+    </section>
+  );
+}
+const ORDER_FIELDS = ['编号', '来源', '接单方', '范围', '验收标准', '截止时间', '状态', '交付物', '需要Andy点头'];
+function showVal(v) {
+  if (v == null || v === '') return '—';
+  if (typeof v === 'boolean') return v ? '是' : '否';
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' ? `${x['路径'] || x.path || ''}${x.md5 ? '  md5 ' + x.md5 : '  md5 —'}` : String(x))).join('\n') || '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+function Dispatch() {
+  const { data, error, loading, reload } = useJson('/api/command/dispatch');
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="panel border-l-4 p-3 text-xs" style={{ borderLeftColor: '#d97706' }}>
+        <b>只读，没有发单按钮。</b>真正发单属于上线，要 Andy 批；在此之前各方照现在的分工干。手册和剧情改动、花钱、上线、导出、改 GPU 脚本仍要 Andy 本人点头。
+      </div>
+      <Card title="五方状态（只读解析 agent1 上的现有记录）" right={<Refresh onClick={reload} loading={loading} />}>
+        <Err e={error} />
+        {data ? <p className="mb-2 text-[11px] text-[var(--fg-3)]">读取时间 {fmtTime(data.at)}</p> : null}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(data?.parties || []).map((p) => <PartyCol key={p.id} p={p} />)}</div>
+      </Card>
+      <Card title="派工单草稿（只读）">
+        {data ? <p className="mb-2 break-all text-[11px] text-[var(--fg-3)]">目录：{data.orders.dir}{data.orders.exists ? '' : '（不存在）'} · 共 {data.orders.orders.length} 张</p> : null}
+        <div className="overflow-auto">
+          <table className="w-full text-[11px]">
+            <thead><tr className="text-left text-[var(--fg-3)]"><th className="pr-2">文件</th>{ORDER_FIELDS.map((f) => <th key={f} className="pr-2">{f}</th>)}</tr></thead>
+            <tbody>
+              {(data?.orders.orders || []).map((o) => (
+                <tr key={o.file} className="border-t border-[var(--line)] align-top">
+                  <td className="py-1.5 pr-2"><div className="font-mono">{o.file}</div><div className="font-mono text-[9px] text-[var(--fg-4)]">md5 {o.md5}</div>{o.data?.['示例'] ? <Pill tone="blue">示例</Pill> : null}</td>
+                  {o.error ? <td colSpan={ORDER_FIELDS.length} className="text-red-500">{o.error}</td> : ORDER_FIELDS.map((f) => <td key={f} className="whitespace-pre-wrap break-all pr-2">{showVal(o.data[f])}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Placeholder({ sub }) {
   const p = PLACEHOLDER[sub.id];
   return (
@@ -274,7 +356,7 @@ export default function CommandPage() {
         <FileSearch size={14} className="text-[var(--accent)]" />
         <b>指挥系统 · 第一期只读预览</b>
         <Pill tone="yellow">只读：本页没有任何写库 / 放行 / 导出 / 打钩按钮</Pill>
-        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用 · Muse 经资产管理 · Kimi 未启用</span>
+        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用 · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <nav className="panel p-2 lg:w-[180px] lg:shrink-0">
@@ -294,6 +376,7 @@ export default function CommandPage() {
           {sub === 'episodes' ? <Episodes /> : null}
           {sub === 'sessions' ? <Sessions /> : null}
           {sub === 'evidence' ? <Evidence /> : null}
+          {sub === 'dispatch' ? <Dispatch /> : null}
           {!READY.has(sub) ? <Placeholder sub={cur} /> : null}
         </div>
       </div>
