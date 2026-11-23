@@ -1,14 +1,13 @@
-"""剧本对齐：字以镜头 dialogue 字段为准，时间以声音为准。
+"""剧本对齐：字以剧本为准，时间以声音为准。
 
 transcribe.py 调用 align_to_script()：
-  1) 从 ic.db（只读）找到本次导出的章节，按 mergeVideos 同顺序取镜头；字幕文本只取 shots.dialogue
-     （去掉「人物：」/「人物（OS）：」前缀），不从 <d>、narration、sub_shots、ASR 或其他字段取。
-     用 ffprobe 量出每镜实际音轨时长，校验总长与待识别 WAV 一致；
-  2) dialogue 切成字幕单元（按标点断句，单条 ≤16 字）；
-  3) 剧本文字与 whisper 逐字时间做序列对齐（difflib），用 dialogue 文字替换识别文字（ASR 只提供时间）；
-  4) 对不齐的镜头：在该镜时间窗内带剧本提示二次识别；仍不齐就退回该镜窗口内的能量发声区间（时间仍按 dialogue 字走）；
-  5) 不在 dialogue 里的识别内容（幻觉、同音错字）自然被丢弃；超出片长的字幕去掉。
-某镜有 <d> 或 narration 却没有 dialogue，或对齐失败：抛异常，由 transcribe.py 报错退出，不得回退 ASR 原文。
+  1) 从 ic.db（只读）找到本次导出的章节，按 mergeVideos 同顺序取镜头台词（优先视频提示词里 <d>…</d> 的实际配音文本，
+     没有就退回 dialogue/narration），并用 ffprobe 量出每镜实际音轨时长，校验总长与待识别 WAV 一致；
+  2) 剧本切成字幕单元（按剧本标点断句，单条 ≤16 字）；
+  3) 剧本字串与 whisper 逐字时间做序列对齐（difflib），用剧本文字替换识别文字；
+  4) 对不齐的镜头：在该镜时间窗内带剧本提示二次识别；仍不齐就退回该镜窗口内的能量发声区间；
+  5) 不在剧本里的识别内容（幻觉、长串呵呵）自然被丢弃；超出片长的字幕去掉。
+任何环节失败都抛异常，由 transcribe.py 退回原始 whisper 分段，不影响导出。
 所有日志只写 stderr，stdout 协议不变。
 """
 
@@ -254,21 +253,22 @@ def _plain_len(s):
     return len(norm_chars(s))
 
 
-_SPEAKER_PREFIX = re.compile(r'^[^：:]{1,32}[：:]\s*')
-
-
-def _strip_speaker_prefix(line):
-    """去掉行首「不超过 32 字的说话人 + 冒号」，如 江澈：、江澈（OS）：、系统：。不改动句内冒号。"""
-    return _SPEAKER_PREFIX.sub('', (line or '').strip()).strip()
-
-
 def shot_lines(shot):
-    """镜头字幕文本只取 ic.db shots.dialogue（去说话人前缀）。不从 <d>、narration 或其他字段取。"""
+    """镜头内实际配音的句子：优先 <d>…</d>，否则 dialogue/narration（去「人物：」前缀）。"""
+    ds = re.findall(r'<d>(.*?)</d>', shot.get('prompt') or '', re.S)
     lines = []
-    for l in str(shot.get('dialogue') or '').splitlines():
-        l = _strip_speaker_prefix(l)
-        if l:
-            lines.append(l)
+    for d in ds:
+        d = re.sub(r'^\s*(\[[^\]]*\]\s*)+', '', d).strip()
+        if d:
+            lines.append(d)
+    if lines:
+        return lines
+    for src in (shot.get('dialogue'), shot.get('narration')):
+        for l in str(src or '').splitlines():
+            l = l.strip()
+            l = re.sub(r'^[^：:]{1,32}[：:]\s*', '', l).strip()
+            if l:
+                lines.append(l)
     return lines
 
 
@@ -532,8 +532,14 @@ class Energy:
 # ---------------- 对齐主体 ----------------
 
 def _dialogue_lines(shot):
-    """只取 dialogue（去说话人前缀）。narration 不再作为字幕来源。"""
-    return list(shot_lines(shot))
+    """剧本 dialogue/narration（去「人物：」前缀）——过审约定里它是屏幕显示的字。"""
+    out = []
+    for src in (shot.get('dialogue'), shot.get('narration')):
+        for l in str(src or '').splitlines():
+            l = re.sub(r'^[^：:]{1,32}[：:]\s*', '', l.strip()).strip()
+            if l:
+                out.append(l)
+    return out
 
 
 def _has_d(shot):
@@ -563,33 +569,23 @@ def _display_map(shot, spoken_sents):
     return out
 
 
-def _missing_dialogue_shots(shots):
-    """有 <d> 或 narration、却取不到 dialogue 的镜头号（不得回退到其他来源）。"""
-    missing = []
-    for s in shots:
-        raw = str(s.get('dialogue') or '').strip()
-        has_other = _has_d(s) or bool(str(s.get('narration') or '').strip())
-        if has_other and not raw:
-            missing.append(s.get('idx'))
-    return missing
-
-
 def _build_units(shots):
-    missing = _missing_dialogue_shots(shots)
-    if missing:
-        raise RuntimeError('下列镜头没有 dialogue，已拒绝回退 <d>/narration/ASR：#' + ', #'.join(str(x) for x in missing))
     cues = []
     for si, s in enumerate(shots):
         sents = []
         for line in shot_lines(s):
             sents.extend(_split_sentences(line))
-        for sent in sents:
-            for c in split_cues(sent):
-                cues.append({'shot': si, 'raw': c, 'text': display_text(c),
-                             'chars': [ch for ch, _ in norm_chars(c)],
-                             'shown_from_dialogue': True})
-    if not cues:
-        raise RuntimeError('本章没有可烧录的 dialogue 文本，已拒绝回退 ASR 或其他来源')
+        disp = _display_map(s, sents)
+        for sent, shown in zip(sents, disp):
+            sp_cues = split_cues(sent)
+            sh_cues = split_cues(shown) if shown else None
+            if sh_cues is not None and len(sh_cues) != len(sp_cues):
+                # 切成字幕条后条数对不上：配音只有一条就整句显示 dialogue（超长也不硬拆），否则维持现状
+                sh_cues = [shown] if len(sp_cues) == 1 else None
+            for k, c in enumerate(sp_cues):
+                text = display_text(sh_cues[k]) if sh_cues else display_text(c)
+                cues.append({'shot': si, 'raw': c, 'text': text, 'chars': [ch for ch, _ in norm_chars(c)],
+                             'shown_from_dialogue': bool(sh_cues)})
     return cues
 
 

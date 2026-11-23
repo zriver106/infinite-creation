@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { srtTime, buildSrt, segmentsToSrt, assertDialogueSource, pickProjectFields, resolveHardwareConfig, resolveSubtitleConfig, runtimeAssetName, normalizeApiBase } from '../lib/core/index.js';
+import { srtTime, buildSrt, segmentsToSrt, pickProjectFields, resolveHardwareConfig, resolveSubtitleConfig, runtimeAssetName, normalizeApiBase } from '../lib/core/index.js';
 
 test('srtTime: 时间戳格式与进位', () => {
   assert.equal(srtTime(0), '00:00:00,000');
@@ -18,28 +18,28 @@ test('buildSrt: 逐镜累计时间轴，跳过无文本镜头但照常推进（�
     { duration: 3, dialogue: '', narration: '' },
     { duration: 4, narration: '夜色渐深' },
   ]);
-  // narration 不再作为字幕来源：第三镜即使有旁白也不出 cue，时间轴仍按 duration 推进。
   assert.equal(
     srt,
-    '1\n00:00:00,000 --> 00:00:00,800\n你好\n',
+    '1\n00:00:00,000 --> 00:00:00,800\n你好\n\n'
+    + '2\n00:00:08,000 --> 00:00:08,800\n夜色渐深\n',
   );
-  assert.ok(!srt.includes('夜色渐深'));
 });
 
 test('buildSrt: 台词去掉说话人前缀，按语速估算显示时长且每句一条单行字幕', () => {
   const srt = buildSrt([{ duration: 5, dialogue: '林默：走吧\n苏晚：嗯', narration: '风吹过街口' }]);
-  // 只取 dialogue：每句 2 / 1 字，各 0.8s（最短），总长 1.6s < 5s。narration 不上字幕。
+  // 每句 2 / 1 / 5 字：0.8s（最短）/ 0.8s（最短）/ 1.0s，总长 2.6s < 5s
   assert.equal(
     srt,
     '1\n00:00:00,000 --> 00:00:00,800\n走吧\n\n'
-    + '2\n00:00:00,800 --> 00:00:01,600\n嗯\n',
+    + '2\n00:00:00,800 --> 00:00:01,600\n嗯\n\n'
+    + '3\n00:00:01,600 --> 00:00:02,600\n风吹过街口\n',
   );
-  assert.ok(!srt.includes('林默') && !srt.includes('苏晚') && !srt.includes('风吹过街口'));
+  assert.ok(!srt.includes('林默') && !srt.includes('苏晚'));
   // 最后一个 cue 在分镜结束前就收尾（没人说话的尾段不再挂字幕）
   assert.ok(!srt.includes('00:00:05,000'));
   // 每个 cue 只有「序号 / 时间戳 / 一行文本」三行
   const blocks = srt.trim().split('\n\n');
-  assert.equal(blocks.length, 2);
+  assert.equal(blocks.length, 3);
   for (const b of blocks) assert.equal(b.split('\n').length, 3);
 });
 
@@ -115,19 +115,4 @@ test('便携 Python：当前平台资产名符合 install_only 约定（不支�
   const asset = runtimeAssetName();
   if (!asset) return; // 未适配的平台：由调用方提示手动安装
   assert.match(asset, /^cpython-3\.\d+\.\d+\+\d+-.+-install_only\.tar\.gz$/);
-});
-
-test('assertDialogueSource: 有 narration 或 <d> 却没有 dialogue 时抛错，不得回退', () => {
-  assert.throws(
-    () => assertDialogueSource([{ idx: 3, dialogue: '', narration: '夜色渐深' }]),
-    /dialogue/,
-  );
-  assert.throws(
-    () => assertDialogueSource([{ idx: 8, dialogue: '  ', video_prompt: 'foo <d>别又用胶带缠半个月。</d> bar' }]),
-    /#8/,
-  );
-  assert.doesNotThrow(() => assertDialogueSource([
-    { idx: 1, dialogue: '江澈：够。' },
-    { idx: 2, dialogue: '', narration: '', video_prompt: 'no tags' },
-  ]));
 });

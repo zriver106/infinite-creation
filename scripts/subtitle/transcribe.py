@@ -9,9 +9,9 @@ stdout 只输出 JSON Lines，Node 侧逐行解析：
 
 tqdm 进度条与 torch 告警都走 stderr，不影响 stdout 协议。
 
-剧本对齐（script_align.py）：打开逐字时间戳，从 ic.db 只读取镜头 dialogue 字段，
-字以 dialogue 为准、时间以声音为准。对齐失败或取不到 dialogue 时报错退出，
-不得回退原始 whisper 分段，也不得改用 <d> / narration。禁止 IC_SUBTITLE_ALIGN=0。
+剧本对齐（script_align.py）：打开逐字时间戳，从 ic.db 只读取出本章剧本台词，
+字以剧本为准、时间以声音为准；对齐任何环节失败都退回原始 whisper 分段，不影响导出。
+设环境变量 IC_SUBTITLE_ALIGN=0 可关闭对齐，恢复原行为。
 """
 
 import argparse
@@ -53,10 +53,7 @@ def main():
     except Exception:
         pass
 
-    if os.environ.get("IC_SUBTITLE_ALIGN", "1") == "0":
-        emit({"type": "error", "message": "禁止关闭剧本对齐：字幕必须取 ic.db dialogue 字段，不得使用原始 ASR 文本"})
-        sys.exit(1)
-    align_on = True
+    align_on = os.environ.get("IC_SUBTITLE_ALIGN", "1") != "0"
 
     total = wav_duration(args.audio)
     emit({"type": "stage", "stage": "load"})
@@ -92,8 +89,11 @@ def main():
     try:
         result = model.transcribe(args.audio, **run_kwargs)
     except Exception as e:  # noqa: BLE001
-        emit({"type": "error", "message": "带逐字时间戳的识别失败，已拒绝回退无对齐 ASR 文本：%s" % e})
-        sys.exit(1)
+        if not align_on:
+            raise
+        sys.stderr.write("[align] 逐字时间戳识别失败，按原方式重跑：%s\n" % e)
+        align_on = False
+        result = model.transcribe(args.audio, **transcribe_kwargs)
     # verbose=None 时 whisper 返回生成器（可边解码边报进度），部分版本仍返回 dict。
     if isinstance(result, dict):
         for seg in result.get("segments") or []:
@@ -102,19 +102,18 @@ def main():
         for seg in result:
             push(seg)
 
-    try:
-        import script_align
+    if align_on:
+        try:
+            import script_align
 
-        aligned, _ = script_align.align_to_script(
-            model, args.audio, {"segments": raw_segments}, transcribe_kwargs,
-            project_id=args.project_id, chapter=args.chapter, emit=emit,
-        )
-        if not aligned:
-            raise RuntimeError("对齐结果为空，已拒绝回退 ASR 文本")
-        segments = aligned
-    except Exception as e:  # noqa: BLE001 —— 对齐失败必须停下，不得回退 ASR 原文
-        emit({"type": "error", "message": "剧本对齐失败，已拒绝回退 ASR 文本：%s" % e})
-        sys.exit(1)
+            aligned, _ = script_align.align_to_script(
+                model, args.audio, {"segments": raw_segments}, transcribe_kwargs,
+                project_id=args.project_id, chapter=args.chapter, emit=emit,
+            )
+            if aligned:
+                segments = aligned
+        except Exception as e:  # noqa: BLE001 —— 对齐失败一律回退原始识别结果
+            sys.stderr.write("[align] 剧本对齐失败，回退原始识别：%s\n" % e)
 
     emit({"type": "done", "segments": segments})
 
