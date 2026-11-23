@@ -28,8 +28,8 @@ export async function POST(req, { params }) {
       // 与 hAssembleVideo 同一个函数：没有 cue 表时只认 music_path；有 cue 表时按 cue 切曲 / 撤乐。
       if (ch) music = chapterMusicForMerge(ch, { getAsset: (aid) => Assets.get(aid), resolvePath: (rel) => resolveProjectPath(id, rel), exists: (p) => fs.existsSync(p) });
     }
-    // 字幕：项目开启「自动添加字幕」时，按设置页选的模式生成——
-    //   script（经典，默认）用分镜台词/旁白，零依赖；whisper 用成片音轨识别，失败自动回退台词。
+    // 字幕：项目开启「自动添加字幕」时生成。文本只取镜头 dialogue 字段；
+    // whisper 只用于对时，失败必须停下，不得回退 ASR / <d> / narration。
     // 字幕是烧进画面的，无法从成片里再去掉 → 同时单独合一份不带字幕的版本，供下载时二选一。
     const nosubRel = outRel.replace(/(\.[^.]+)$/, '_nosub$1');
     const srtRel = outRel.replace(/\.[^.]+$/, '.srt');
@@ -42,13 +42,14 @@ export async function POST(req, { params }) {
         if (p.enable_subtitles !== false) {
           const r = await resolveSubtitles({
             projectId: id,
+            chapter,
             inputs,
             shots: done,
             onProgress: (d) => emit({ phase: '字幕', detail: d }),
           });
           subtitles = r.srt;
-          if (!subtitles && r.mode === 'whisper') {
-            emit({ phase: '字幕', detail: r.fallback ? '剧本台词为空，成片不烧录字幕' : '未识别到语音，成片不烧录字幕' });
+          if (!subtitles) {
+            emit({ phase: '字幕', detail: 'dialogue 为空，成片不烧录字幕' });
           }
         }
         emit({ phase: '合并', detail: '合成成片' + (subtitles ? '（烧录字幕）' : '') });
