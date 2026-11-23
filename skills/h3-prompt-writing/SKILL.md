@@ -258,6 +258,19 @@ H3 places each `<d>` line by the time window it is written in and lip-syncs it t
 4. **Inner monologue (OS), phone voices from the other end and the system voice are always off-screen voices** and follow the OS and faceless-speaker sections above; they need no visible speaking mouth, and every visible face keeps its lips closed during them.
 5. **Check before you hand over:** for each `<d>` line list window -> speaker -> in frame and at least three-quarter to the camera (not pure profile, not back view)? -> mouth visible? -> speaking action? Any "no" must be fixed, not just noted.
 
+## Speaking block = at least a medium shot, face toward the camera — 说话段不用远景、不只给侧脸（临时规则，总导 2026-11-22 18:14）
+
+Temporary rule, 总导 2026-11-22 18:14, in force now; it becomes permanent only after renders pass and Andy approves. Trigger: EP6 #4 test render (job 13db8498). During the girl's 0–8 s line the shot was a wide two-shot: she was small, in profile, and her mouth never moved. Both people froze like a photo. In the same wide shot the boy's right hand melted into his chopsticks, and his face shape changed between the wide shot and the close-up.
+
+For every time block that carries a spoken `<d>` line (inner monologue, phone voices from the far end and the system voice are off-screen voices and are not covered):
+1. **The speaker is never in a wide, long, full or establishing shot.** The framing for that block is at least a medium shot (waist up). Prefer a medium close-up or a close-up, and write the face size (e.g. `the face fills about one third of the frame height`).
+2. **The speaker's face is frontal or three-quarter toward the camera, never only in profile or from behind**, with the mouth clearly visible and moving with the words.
+3. **Two people talking: use shot / reverse shot with single medium close-ups.** Cut to each speaker for his or her own line (at most 2 cuts per shot, every cut at least 1 s). The listener is off-frame or soft at the frame edge. Never use a wide two-shot to carry a line. Over-the-shoulder framing stays banned.
+4. **Hands and props in a closer framing:** write which hand holds what and that the fingers and the prop stay separate (`he holds his chopsticks normally in his right hand, each finger and both chopsticks clearly separate`). Do not add actions the script does not have.
+5. Wide or establishing views, if the story needs one, go in a block with no spoken line.
+
+Self-check: for every `<d>` spoken line, write down its window, the framing in that window (medium or closer?) and the face angle (frontal or three-quarter?). Fix any "no" before handing the shot in. The workflow adds the lint WARN; this section does not change the lint.
+
 ## Close framing on a wide scene reference — 场景图是全景、本镜是中景/近景/特写（2026-11-18, ch30）
 
 When the bound scene reference image is a wide or establishing shot and this shot is a medium shot, a medium close-up or a close-up, H3 copies the whole wide layout from the image and shrinks the characters to fit it. For every such shot:
