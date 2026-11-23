@@ -11,6 +11,7 @@ import readline from 'node:readline';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import { handleIssues } from './command-issues.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
 const HOST = process.env.CMD_PREVIEW_HOST || '0.0.0.0';
@@ -358,7 +359,7 @@ function mdEntries(raw, n) {
   });
 }
 async function readText(file) { try { return await fsp.readFile(file, 'utf8'); } catch { return null; } }
-const HEX32 = /\b[0-9A-Fa-f]{32}\b/;
+const HEX32 = /md5[^0-9A-Fa-f\n]{0,4}([0-9A-Fa-f]{8,32})\b|\b([0-9A-Fa-f]{32})\b/i;
 const WAIT_RE = /(等|待|未|STOP|暂停|拦|阻塞|需.{0,4}(批|点头|确认))/;
 
 async function partyGpu() {
@@ -410,7 +411,7 @@ async function partyClaude() {
   const current = [...ea.slice(-3).reverse().map((e) => `共享记录 L${e.line}：${e.title}`), ...eb.reverse().map((e) => `指挥日志：${e.title}`)];
   const deliveries = [];
   for (const e of ea.slice().reverse()) {
-    for (const l of e.body) if (HEX32.test(l)) deliveries.push({ title: e.title.slice(0, 60), at: e.title.slice(0, 16), path: ((l.match(/([A-Za-z]:\\[^\s`）)]+|M\\[^\s`）)]+|P\\[^\s`）)]+)/) || [])[1]) || null, md5: (l.match(HEX32) || [])[0].toUpperCase(), raw: redact(l.trim()).slice(0, 300) });
+    for (const l of e.body) if (HEX32.test(l)) deliveries.push({ title: e.title.slice(0, 60), at: e.title.slice(0, 16), path: ((l.match(/([A-Za-z]:\\[^\s`）)]+|M\\[^\s`）)]+|P\\[^\s`）)]+)/) || [])[1]) || null, md5: (() => { const mm = l.match(HEX32); return (mm[1] || mm[2]).toUpperCase(); })(), raw: redact(l.trim()).slice(0, 300) });
   }
   const reviews = await latestSubdirs(path.join(M, '_'), 2, (n) => /^审片_/.test(n));
   const waiting = [];
@@ -487,6 +488,8 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     const p = url.pathname;
+    // 问题描述编辑走自己独立的接口（只写配置的目标文件=测试副本、备份、记录、建议队列）；其余写请求照旧一律 403
+    if (p === '/api/issues' || p.startsWith('/api/issues/')) return handleIssues(req, res, url);
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return send(res, 403, { error: '指挥系统预览为只读：拒绝 ' + req.method + ' ' + p + '（不提交任何任务、不写任何数据）' });
     }

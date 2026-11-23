@@ -1,10 +1,11 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Pencil, Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film } from 'lucide-react';
 
 // 指挥系统 第一期：只读预览。本页没有任何写操作按钮。
 const SUBS = [
   { id: 'overview', label: '总览巡视', icon: Activity, phase: 1 },
-  { id: 'episodes', label: '按集返修看板', icon: ClipboardList, phase: 1 },
+  { id: 'issues', label: '问题描述（可编辑）', icon: Pencil, phase: 1 },
+  { id: 'episodes', label: '按集返修看板', icon: ClipboardList, phase: 1, jump: 'issues' },
   { id: 'writes', label: '写库与回读核对', icon: Database, phase: 2 },
   { id: 'gpu', label: 'GPU 排链', icon: Cpu, phase: 2 },
   { id: 'delivery', label: '审片与导出', icon: Film, phase: 2 },
@@ -14,7 +15,7 @@ const SUBS = [
   { id: 'dispatch', label: '派工', icon: Send, phase: 1 },
   { id: 'evidence', label: '证据与日志', icon: ScrollText, phase: 1 },
 ];
-const READY = new Set(['overview', 'episodes', 'sessions', 'evidence', 'dispatch']);
+const READY = new Set(['overview', 'issues', 'episodes', 'sessions', 'evidence', 'dispatch']);
 
 const PLACEHOLDER = {
   writes: { phase: '第二期', desc: '写库包 before/after_expected 逐字段 diff、非目标镜漂移检查、回读 md5 对比。第三期才加「确认写库」（人点）。' },
@@ -331,6 +332,147 @@ function Dispatch() {
   );
 }
 
+// ======================= 问题描述（可编辑）+ 返修环节 + GPU 状态栏 =======================
+const STAGE_TONE = { 已完成: 'green', '待 Andy 点头': 'blue', 待导出: 'blue', 审片: 'blue', 出片中: 'yellow', 排队出片: 'yellow', 写库: 'yellow', 复审: 'yellow', 改稿中: 'yellow', 待改稿: 'red', 未知: 'gray' };
+const fmtEta = (s) => (s ? new Date(s).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '—');
+const CH_STATE = { running: ['在跑', 'yellow'], waiting: ['已挂起等上游', 'blue'], ready: ['脚本就绪未启动', 'gray'], done: ['已跑完', 'green'], stopped: ['有日志但进程不在', 'red'], missing: ['待建', 'gray'] };
+function GpuBar({ g }) {
+  if (!g) return null;
+  const r = g.running;
+  return (
+    <section className="panel p-3 text-xs" data-gpu-bar>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <b className="text-sm">GPU 状态</b>
+        {g.idle ? <Pill tone="red">进程表里没有在跑的链（GPU 可能空闲）</Pill> : null}
+        <span className="text-[10px] text-[var(--fg-4)]">单镜耗时（估算）：{g.perShotSec ? `${Math.round(g.perShotSec)} 秒，取今天最近 ${g.sampleCount} 个 done 的中位数` : '没有样本'} · {g.note}</span>
+      </div>
+      <div className="mb-2 grid gap-2 sm:grid-cols-2">
+        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">当前</p>{r ? <><b className="font-mono">{r.key}</b> PID {r.pid} · 进度 {r.done}/{r.total}{r.current ? ` · 正在出 ${r.current.ch || ''}#${r.current.num}（${r.current.id.slice(0, 8)}，提交于 ${r.current.at.slice(11)}）` : ''} · 预计跑完 {fmtEta(r.eta)}（估算）</> : '没有在跑的链'}</div>
+        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">下一条</p>{g.next ? <><b className="font-mono">{g.next.key}</b> · {CH_STATE[g.next.state]?.[0]}{g.next.after ? ` · --after=${g.next.after}` : ''} · {g.next.total} 镜</> : '队列里没有下一条'}</div>
+      </div>
+      <table className="w-full text-[11px]"><thead><tr className="text-left text-[var(--fg-3)]"><th>顺序</th><th>链</th><th>状态</th><th>进度</th><th>镜单</th><th>上游</th><th>预计跑完（估算）</th></tr></thead>
+        <tbody>{g.chains.map((c, i) => (
+          <tr key={c.key} className="border-t border-[var(--line)] align-top">
+            <td>{i + 1}</td><td className="font-mono">{c.key}{c.unlisted && <span className="ml-1 text-[10px] text-amber-400">（今天新出现，不在参考顺序里，位置待定）</span>}</td><td><Pill tone={CH_STATE[c.state]?.[1]}>{CH_STATE[c.state]?.[0]}</Pill></td>
+            <td>{c.placeholder ? '—' : `${c.done}/${c.total}`}</td>
+            <td className="max-w-[320px] break-all">{(c.shots || []).map((s) => `${s.ch.replace('第', '').replace('章', '')}#${s.num}${s.done ? '✓' : ''}`).join(' ') || '—'}</td>
+            <td>{c.pid ? `PID ${c.pid} --after=${c.after}` : '—'}</td><td>{c.state === 'done' ? `完成于 ${String(c.doneAt).slice(11)}` : fmtEta(c.eta)}</td>
+          </tr>))}</tbody></table>
+    </section>
+  );
+}
+function Issues() {
+  const [operator, setOperator] = useState('Andy');
+  const { data, error, loading, reload } = useJson('/api/issues');
+  const log = useJson('/api/issues/log');
+  const [open, setOpen] = useState({});
+  const [edit, setEdit] = useState(null);
+  const [add, setAdd] = useState({ episode: '', text: '', status: 'todo' });
+  const [msg, setMsg] = useState(null);
+  const human = operator === 'Andy' || operator === '总导';
+  const post = async (url, body) => {
+    setMsg(null);
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ operator, baseMd5: data?.file.md5, ...body }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 409) setMsg({ tone: 'red', text: '拒写：' + j.error });
+    else if (!r.ok && r.status !== 202) setMsg({ tone: 'red', text: j.error || 'HTTP ' + r.status });
+    else setMsg({ tone: 'green', text: j.suggested ? 'AI 不能直接改：已进待确认队列，等 Andy 或总导确认' : j.made != null ? `生成了 ${j.made} 条建议，已进待确认队列` : `已写入（备份 ${j.backup || '—'}，新 md5 ${j.afterMd5 || '—'}）` });
+    reload(); log.reload();
+  };
+  const op = (o, extra = {}) => post('/api/issues/op', { op: o, ...extra });
+  return (
+    <div className="flex flex-col gap-3" data-issues>
+      <GpuBar g={data?.gpu} />
+      <div className="panel flex flex-wrap items-center gap-2 p-3 text-xs">
+        <b>问题描述（可编辑）</b>
+        {data ? (data.config.isTestCopy ? <Pill tone="yellow">测试副本</Pill> : <Pill tone="red">真文件</Pill>) : null}
+        <span className="break-all font-mono text-[10px]">{data?.config.target}</span>
+        <span className="text-[10px] text-[var(--fg-4)]">md5 {data?.file.md5} · {data?.file.bom ? 'UTF-8 BOM' : 'UTF-8'} · {data?.file.eol}</span>
+        <span className="flex-1" />
+        <span>操作人：</span>
+        <select value={operator} onChange={(e) => setOperator(e.target.value)} className="rounded border border-[var(--line)] bg-transparent" data-operator>
+          {['Andy', '总导', 'AI-Claude', 'AI-Codex'].map((o) => <option key={o}>{o}</option>)}
+        </select>
+        <Refresh onClick={() => { reload(); log.reload(); }} loading={loading} />
+        <p className="w-full text-[10px] text-[var(--fg-4)]">「操作人」只是预览里的演示切换，不是真正的身份认证。只有 Andy、总导能直接改；AI 只能提交建议，进待确认队列。每次写之前自动备份到 {data?.config.backupDir}，并写只追加的修改记录。文件在你打开后被外部改过就拒写。桌面真文件 {data?.config.realFile} 在 Andy 点头前不写。</p>
+      </div>
+      {msg ? <div className="panel p-2 text-xs" style={{ color: msg.tone === 'red' ? '#dc2626' : '#16a34a' }} data-msg>{msg.text}</div> : null}
+      <Err e={error} />
+      {data?.suggestions?.length ? (
+        <Card title={`待确认建议（${data.suggestions.length}）`}>
+          {data.suggestions.map((s) => (
+            <div key={s.id} className="mb-1 flex flex-wrap items-center gap-2 border-b border-[var(--line)] pb-1 text-[11px]" data-suggestion={s.id}>
+              <b>{s.by}</b><span>第{s.episode}集</span><span className="flex-1">{s.op?.op === 'status' ? `「${s.itemText}」 ${s.from || ''} → ${s.to}` : s.op?.op === 'add' ? `新增：${s.op.text}` : `改正文：${s.op?.text}`}<span className="block text-[10px] text-[var(--fg-4)]">{s.reason}</span></span>
+              <button type="button" disabled={!human} className="rounded border border-[var(--line)] px-2 disabled:opacity-40" onClick={() => post(`/api/issues/suggestions/${s.id}/confirm`, {})}>确认写入</button>
+              <button type="button" disabled={!human} className="rounded border border-[var(--line)] px-2 disabled:opacity-40" onClick={() => post(`/api/issues/suggestions/${s.id}/reject`, {})}>驳回</button>
+            </div>
+          ))}
+        </Card>
+      ) : null}
+      <Card title="按集返修（Andy 的正式状态 + 系统推算的环节）" right={<button type="button" className="rounded border border-[var(--line)] px-2 text-xs" onClick={() => post('/api/issues/suggest-auto', {})}>根据出片/导出生成状态建议</button>}>
+        <p className="mb-2 text-[10px] text-[var(--fg-4)]">环节是系统推算的建议值（{(data?.stages || []).join(' → ')}），按「第N章 = 第N集」对应，依据链脚本镜单、chain.log 提交/done 行（按 shot_id 对回）、IC 镜头 updated_at 与视频时间（GET 只读，读取于 {fmtTime(data?.icReadAt)}）、审片目录、交付目录。条目还没对应到镜头，单条环节一律显示「未知」，只给本集环节。预计时间=剩余镜数×单镜耗时中位数，是估算。</p>
+        <table className="w-full text-xs"><thead><tr className="text-left text-[var(--fg-3)]"><th className="py-1">集</th><th>Andy 状态（完成/修改中/待修改）</th><th>推算环节</th><th>链 / 镜号</th><th>预计完成（估算）</th></tr></thead>
+          <tbody>{(data?.episodes || []).map((e) => {
+            const c = { done: 0, doing: 0, todo: 0 }; e.items.forEach((i) => c[i.status]++);
+            return (
+              <Fragment key={e.no}>
+                <tr className="cursor-pointer border-t border-[var(--line)]" onClick={() => setOpen((o) => ({ ...o, [e.no]: !o[e.no] }))} data-ep={e.no}>
+                  <td className="py-1.5 font-semibold">第{e.no}集</td><td>{c.done} / {c.doing} / {c.todo}</td>
+                  <td><Pill tone={STAGE_TONE[e.stage.stage] || 'gray'}>{e.stage.stage}</Pill></td>
+                  <td className="font-mono text-[10px]">{e.stage.chain || '—'} {e.stage.shots?.length ? '#' + e.stage.shots.join(' #') : ''}</td>
+                  <td>{e.stage.stage === '已完成' ? '—' : e.stage.eta ? fmtEta(e.stage.eta) + '（估算）' : '未知'}</td>
+                </tr>
+                {open[e.no] ? (
+                  <tr><td colSpan={5} className="pb-3">
+                    <p className="mb-1 text-[10px] text-[var(--fg-4)]">推算依据：{e.stage.evidence.join('；')}</p>
+                    {e.items.map((it) => (
+                      <div key={it.key} className="mb-1 flex flex-wrap items-center gap-2 text-[11px]" data-item={it.key}>
+                        <select value={it.status} onChange={(ev) => op({ op: 'status', start: it.start, orig: it.orig, status: ev.target.value }, { episode: e.no, itemText: it.text, from: STATUS_TXT[it.status] })} className="rounded border border-[var(--line)] bg-transparent">
+                          <option value="todo">待修改</option><option value="doing">修改中</option><option value="done">完成</option>
+                        </select>
+                        {edit?.key === it.key ? (
+                          <>
+                            <input className="min-w-[300px] flex-1 rounded border border-[var(--line)] bg-transparent px-1" value={edit.text} onChange={(ev) => setEdit({ ...edit, text: ev.target.value })} />
+                            <button type="button" className="rounded border border-[var(--line)] px-2" onClick={() => { op({ op: 'edit', start: it.start, orig: it.orig, text: edit.text }, { episode: e.no, itemText: it.text }); setEdit(null); }}>保存</button>
+                            <button type="button" className="rounded border border-[var(--line)] px-2" onClick={() => setEdit(null)}>取消</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1">{it.text}</span>
+                            <span className="text-[10px] text-[var(--fg-4)]">环节：{it.status === 'done' ? '已完成' : '未知（条目未对应到镜头）'} · 预计：{it.status === 'done' ? '—' : e.stage.eta ? '按本集 ' + fmtEta(e.stage.eta) + '（估算）' : '未知'} · L{it.start + 1}</span>
+                            <button type="button" className="rounded border border-[var(--line)] px-1.5 text-[10px]" onClick={() => setEdit({ key: it.key, text: it.text })}>改</button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </td></tr>
+                ) : null}
+              </Fragment>
+            );
+          })}</tbody></table>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-2 text-xs" data-add>
+          <b>新增问题</b>
+          第<input className="w-12 rounded border border-[var(--line)] bg-transparent px-1" value={add.episode} onChange={(e) => setAdd({ ...add, episode: e.target.value })} />集
+          <input className="min-w-[320px] flex-1 rounded border border-[var(--line)] bg-transparent px-1" placeholder="例如：1分05秒 主角衣服颜色不对" value={add.text} onChange={(e) => setAdd({ ...add, text: e.target.value })} />
+          <select value={add.status} onChange={(e) => setAdd({ ...add, status: e.target.value })} className="rounded border border-[var(--line)] bg-transparent"><option value="todo">待修改</option><option value="doing">修改中</option><option value="done">完成</option></select>
+          <button type="button" className="rounded border border-[var(--accent)] px-2 text-[var(--accent)]" onClick={() => { op({ op: 'add', episode: Number(add.episode), text: add.text, status: add.status }, { episode: Number(add.episode) }); setAdd({ episode: '', text: '', status: 'todo' }); }}>{human ? '写入' : '提交建议'}</button>
+        </div>
+      </Card>
+      <Card title={`修改记录（只追加，最近 50 条 / 共 ${log.data?.total ?? 0} 条）`}>
+        <p className="mb-1 break-all text-[10px] text-[var(--fg-4)]">{log.data?.file}</p>
+        <div className="max-h-[320px] overflow-auto">{(log.data?.entries || []).map((r, i) => (
+          <div key={i} className="mb-1 border-b border-[var(--line)] pb-1 text-[11px]" data-log>
+            <b>{fmtTime(r.at)}</b> · {r.operator} · <Pill tone={r.result === 'written' ? 'green' : r.result === 'suggested' ? 'blue' : r.result?.startsWith('rejected') || r.result === 'refused' ? 'red' : 'gray'}>{r.result}</Pill> {r.via ? <span className="text-[10px]">{r.via}</span> : null}
+            {r.reason ? <span className="text-[10px] text-[var(--fg-3)]"> {r.reason}</span> : null}
+            {r.diff ? <Pre max={120}>{r.diff.join('\n')}</Pre> : null}
+            {r.backup ? <div className="break-all text-[10px] text-[var(--fg-4)]">备份 {r.backup} · {r.beforeMd5} → {r.afterMd5}</div> : null}
+          </div>))}</div>
+      </Card>
+    </div>
+  );
+}
+const STATUS_TXT = { done: '完成', doing: '修改中', todo: '待修改' };
+
 function Placeholder({ sub }) {
   const p = PLACEHOLDER[sub.id];
   return (
@@ -343,7 +485,7 @@ function Placeholder({ sub }) {
 
 export default function CommandPage() {
   const init = new URLSearchParams(window.location.search).get('sub');
-  const [sub, setSub] = useState(SUBS.some((s) => s.id === init) ? init : 'overview');
+  const [sub, setSub] = useState(init === 'episodes' ? 'issues' : SUBS.some((s) => s.id === init) ? init : 'overview');
   const go = (id) => {
     setSub(id);
     const q = new URLSearchParams(window.location.search); q.set('mode', 'command'); q.set('sub', id);
@@ -354,8 +496,8 @@ export default function CommandPage() {
     <div className="flex flex-col gap-4">
       <div className="panel flex flex-wrap items-center gap-2 p-3 text-xs">
         <FileSearch size={14} className="text-[var(--accent)]" />
-        <b>指挥系统 · 第一期只读预览</b>
-        <Pill tone="yellow">只读：本页没有任何写库 / 放行 / 导出 / 打钩按钮</Pill>
+        <b>指挥系统 · 预览</b>
+        <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本</Pill>
         <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用 · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -363,17 +505,17 @@ export default function CommandPage() {
           {SUBS.map((s) => {
             const Icon = s.icon;
             return (
-              <button key={s.id} type="button" data-active={sub === s.id} className="nav-item w-full" onClick={() => go(s.id)}>
+              <button key={s.id} type="button" data-active={sub === s.id} className="nav-item w-full" onClick={() => go(s.jump || s.id)}>
                 <Icon size={14} className={sub === s.id ? 'text-[var(--accent)]' : 'text-[var(--fg-3)]'} />
                 <span className="flex-1 text-left">{s.label}</span>
-                {READY.has(s.id) ? null : <span className="text-[9px] text-[var(--fg-4)]">占位</span>}
+                {s.jump ? <span className="text-[9px] text-[var(--fg-4)]">跳转</span> : READY.has(s.id) ? null : <span className="text-[9px] text-[var(--fg-4)]">占位</span>}
               </button>
             );
           })}
         </nav>
         <div className="min-w-0 flex-1">
           {sub === 'overview' ? <Overview /> : null}
-          {sub === 'episodes' ? <Episodes /> : null}
+          {sub === 'issues' ? <Issues /> : null}
           {sub === 'sessions' ? <Sessions /> : null}
           {sub === 'evidence' ? <Evidence /> : null}
           {sub === 'dispatch' ? <Dispatch /> : null}
