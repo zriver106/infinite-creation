@@ -1,4 +1,5 @@
-// 画外台词不进段文件（2026-11-18）：心声/OS、电话那头、广播、系统音不进 <d>、不拿段内音色参考，改进画外音声源清单。
+// 画外台词识别 + 画外音声源清单。2026-11-22 起全部台词由 H3 直出（画外台词也写 <d>、心声/电话声拿本人音色，
+// 音色部分见 offscreen-voice-refs.test.mjs）；2026-11-18 旧口径「画外台词不进 <d>」的断言已改。
 // 临时数据目录 + 临时配置（8188/8189/4610 守卫），不提交渲染。
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,33 +51,41 @@ describe('画外台词识别', () => {
     assert.equal(off.isOffscreenPersonLine('系统：叮。'), false);
     assert.equal(off.isOffscreenLine('系统：叮。'), true);
   });
-  test('dialogueSpeakerNames 不再把（OS）剥成入画说话人：画外说话人拿不到段内音色参考', () => {
+  test('dialogueSpeakerNames 只列入画说话人（单镜说话人上限用）；音色说话人另走 dialogueVoiceSpeakers', () => {
     // 「广播」「系统」本身不是角色、不配角色音色（说话人闸门 v2 有豁免名单），照旧列为说话人名；角色的画外台词整行跳过
     assert.deepEqual(prompts.dialogueSpeakerNames(DIALOGUE), ['江澈', '广播', '林默', '系统']);
     assert.deepEqual(prompts.dialogueSpeakerNames('江澈（OS）：这菜单也太贵了。\n苏晴（电话）：你到哪了？'), []);
     assert.deepEqual(prompts.dialogueSpeakerNames('林默（站在路口，望着远处）：我知道你一直在这里。'), ['林默']);
+    // 2026-11-22：心声/电话那头的说话人要拿本人音色（江澈已入画，去重）
+    assert.deepEqual(prompts.dialogueVoiceSpeakers(DIALOGUE).map((s) => s.name + ':' + (s.kind || 'on')),
+      ['江澈:on', '广播:on', '林默:on', '系统:on', '苏晴:phone', '王总:phone']);
+    assert.deepEqual(off.offscreenVoiceLines(DIALOGUE).map((l) => l.speaker), ['江澈', '苏晴', '江澈', '王总']);
   });
-  test('兜底提示词只说入画台词', () => {
+  test('兜底提示词：入画台词 + 画外台词都写进去（全部台词由 H3 直出）', () => {
     const p = prompts.fallbackVideoPrompt({ dialogue: DIALOGUE, characterName: '江澈' });
     assert.match(p, /你点好了吗/);
     assert.match(p, /我马上到/);
-    for (const s of ['这菜单也太贵了', '你到哪了', '检票', '交易完成', '稳住', '明天来公司']) assert.ok(!p.includes(s), s);
+    for (const s of ['这菜单也太贵了', '你到哪了', '检票', '交易完成', '稳住', '明天来公司']) assert.ok(p.includes(s), s);
+    assert.match(p, /江澈的心声/);
+    assert.match(p, /电话那头苏晴的声音/);
   });
-  test('save 校验：画外台词进了 <d> → 拒；只有入画台词 → 过', () => {
-    const bad = pwm.checkVideoPrompt('Jiang Che (S1) says: <d>[Chinese] 你点好了吗？</d> An off-screen voice narrates <d>[Chinese] 这菜单也太贵了。</d>', 0, DIALOGUE);
-    assert.equal(bad.ok, false);
-    assert.ok(bad.errors.some((e) => e.includes('画外台词') && e.includes('这菜单也太贵了')), bad.errors.join(' | '));
+  test('save 校验：画外台词进了 <d> 不再拒存（现行口径就该进 <d>）', () => {
+    const os1 = pwm.checkVideoPrompt('Jiang Che (S1) says: <d>[Chinese] 你点好了吗？</d> An off-screen voice narrates <d>[Chinese] 这菜单也太贵了。</d>', 0, DIALOGUE);
+    assert.equal(os1.ok, true, os1.errors.join(' | '));
     const phone = pwm.checkVideoPrompt('The voice on the phone says <d>[Chinese] 你到哪了？</d>', 0, DIALOGUE);
-    assert.equal(phone.ok, false);
-    const good = pwm.checkVideoPrompt('Jiang Che (S1) says: <d>[Chinese] 你点好了吗？</d> 3-6s: his eyes narrow, lips resting closed.', 0, DIALOGUE);
-    assert.equal(good.ok, true, good.errors.join(' | '));
+    assert.equal(phone.ok, true, phone.errors.join(' | '));
     assert.equal(pwm.checkVideoPrompt('He says <d>[Chinese] 我的心声</d>', 0).ok, true, '不传台词时行为不变');
   });
-  test('offscreenCheckMode：默认 warn，block/off 显式配置', () => {
-    assert.equal(off.offscreenCheckMode(null), 'warn');
-    assert.equal(off.offscreenCheckMode({ generation: { offscreenCheck: 'block' } }), 'block');
-    assert.equal(off.offscreenCheckMode({ generation: { offscreenCheck: 'off' } }), 'off');
-    assert.equal(off.offscreenCheckMode({ generation: { offscreenCheck: 'x' } }), 'warn');
+  test('写提示词说明：画外台词也写 <d>、引用本人音色', () => {
+    const note = off.offscreenPromptNote(DIALOGUE);
+    assert.match(note, /也写进 <d>/);
+    assert.match(note, /本人的音色参考/);
+    assert.ok(!note.includes('不进本段'));
+    assert.equal(off.offscreenPromptNote('江澈：好。'), '');
+  });
+  test('offscreenCheckMode：旧开关默认 off（出片前不再检查）', () => {
+    assert.equal(off.offscreenCheckMode(null), 'off');
+    assert.equal(off.offscreenCheckMode({ generation: { offscreenCheck: 'x' } }), 'off');
   });
 });
 
