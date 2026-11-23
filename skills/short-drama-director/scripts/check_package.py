@@ -37,7 +37,7 @@
 [G] 素材形态       M0/M1/M2 权威完整性 / 门禁改判表 / 接线单 / 文字锁 / 三不一要 / 闸门 6B 机检
 [F] 外部版本保全 V3.9.0 / V2.6.0 / V5.0.2 / v13.0 未被版本统一误伤
 [E*9] 字数口径域：㊲ C4 篇级 4500「单文件」口径 ↔ 闸门3 段级 1900/2000 粒度声明（防单值漂移）
-[E*10] 外部增量与病句修复域：㊳ 版本清洗残句清零 / 照明两节 / 高光 8 套 / OTS 拓扑 / C17b
+[E*10] 外部增量与病句修复域：㊳ 版本清洗残句清零 / 照明两节 / 高光 8 套 / 双人在场拓扑（过肩禁用） / C17b
 [E*13] 融合规则补载体域（2026-10-10）：㊷ 六个新子码五处互锁
        （规则源文件 ↔ validate_prompt.py ↔ 机检手册 ↔ 子码计数 ↔ 自检用例）
 [E*16] 图形化产物与段缝景别承接域（2026-10-11 用户实测反馈）：
@@ -1176,7 +1176,7 @@ _e10_madapt = read(os.path.join(PKG, "short-drama-director", "references", "mode
 check("㊳ 版本清洗残句已清零（「已于进」/「已于 按此法」类不存在）", not ("已于进" in _e10_seglink or "已于进" in _e10_segcont or "已于 按此法" in _e10_track))
 check("㊳ 照明体系含「双色温冷暖对冲」与「空间物理介质」两节（外部增量已吸收）", "双色温冷暖对冲" in _e10_light and "空间物理介质" in _e10_light)
 check("㊳ 高光运镜含 8 套单技法镜行参考写法", "单技法镜行参考写法" in _e10_camsys and "Dolly Zoom" in _e10_camsys and "Speed Ramping" in _e10_camsys)
-check("㊳ 长对白 OTS 拓扑已并入 model-adapters §5.0.1（与 C17b 同缺口的两面）", "长对白过肩（OTS）双人在场拓扑" in _e10_madapt)
+check("㊳ 长对白双人在场拓扑已并入 model-adapters §5.0.1（过肩/OTS 已禁用，与 C17b 同缺口的两面）", "长对白双人在场拓扑（过肩/OTS 已禁用）" in _e10_madapt)
 check("㊳ 机检 C17b 已实现（长对白段关系镜缺失告警）", "C17b" in _vp_txt)
 
 # ------------------------------------------------- [E*11] 表演指导层域（C25 三处互锁）
@@ -1261,8 +1261,8 @@ check("㊷ 互锁③：子码计数与手册登记一致（防登记表与计数
 check("㊷ 互锁④：自检含六个新子码的回归用例",
       all(c in _vp_txt for c in ('startswith("C11b")', 'startswith("C12b")', 'startswith("C17c")',
                                  'startswith("C18f")', 'startswith("C20e")', 'startswith("C25c")')))
-check("㊷ 互锁⑤：规则源文件在案（景别幅度/过肩几何/假表演/背景锚点/跨项目污染）",
-      "景别与表演幅度绑定" in _cam_sys and "过肩镜头几何" in _cam_sys
+check("㊷ 互锁⑤：规则源文件在案（景别幅度/过肩禁用/假表演/背景锚点/跨项目污染）",
+      "景别与表演幅度绑定" in _cam_sys and "过肩/越肩镜头禁用" in _cam_sys
       and "假表演规避" in _shot_act
       and "背景锚点锁" in _seg_spl
       and "跨项目污染" in _qgr)

@@ -79,8 +79,8 @@
   C17 摆位必入画（model-adapters §5.0.1 人物账连续）：
       WARN  站位声明摆位 ≥2 人时，某人名在全段镜行中一次都未出现、且无 离画/退场/未入镜
             标记 → 人物凭空消失，跨段衔接必穿帮；单人站位段不触发（无跨段风险）
-      WARN  C17b 长对白段关系镜缺失：含台词镜 ≥6 且 摆位 ≥2 人时，全段既无过肩反打、
-            也无同框关系镜 → 两人各自念稿（豁免：对镜独白 / 电话·远程对话 / 一方已离场）
+      WARN  C17b 长对白段关系镜缺失：含台词镜 ≥6 且 摆位 ≥2 人时，全段没有
+            侧面双人同框关系镜（过肩反打 2026-11-22 起禁用，不再算数） → 两人各自念稿（豁免：对镜独白 / 电话·远程对话 / 一方已离场）
       WARN  C17c 站位声明缺背景锚点：站位括号内未绑「身后/背后/侧后 + 背景物」→ 站位连续性
             失去锚（跨段靠「人物相对背景不动」对齐，非画面坐标）
       WARN  C17d 跨段站位漂移（2026-10-10 新增）：相邻段同名人物的**画面位置**或**背景锚**
@@ -462,7 +462,7 @@ DIALOGUE_RE = re.compile(r"台词：\s*(?!无(?![\u4e00-\u9fffA-Za-z0-9]))")
 #   使其从"文档里的建议"变成"会响的检查"。无法机检的（听戏反应/标点表演/四步流程/反向重设计）
 #   走生成前清单 prompt-feeding-checklist.md §〇 铁律 15~18。
 # 落点：C11b 段缝末镜定格缺失 · C17c 站位无背景锚点 · C18f 景别幅度越界 ·
-#       C20e 过肩左右前景写反/缺前景 · C25c AIGC 假表演词 · C12b 跨项目污染
+#       C20e 过肩/越肩镜头禁用 · C25c AIGC 假表演词 · C12b 跨项目污染
 # C11b 末镜定格：段末镜行内须含定格类词（产出可截帧的定格尾帧）
 TAIL_FREEZE_WORDS = ("定格", "定住", "静止", "顿住", "凝住", "定镜收束")
 # ★2026-10-18 修（粉丝实测）：D锁②换机位硬切**法定不写末 1 秒定格**，末镜写「接口余量」保留运动
@@ -482,10 +482,9 @@ LOWER_BODY_RE = re.compile(r"胸|腰|腹|臀|腿|膝|脚|鞋|下半身|下身|�
 LOWER_BODY_ACTION = re.compile(r"[拧蹬转挺沉坐送折弓弹震扭摆收蓄绷顶撑挫旋翻仰含塌拔]")
 FULL_BODY_RE = re.compile(r"全身|完整站位|整个人|从头顶")
 # C20e 过肩镜头几何：后肩过左肩→画面右前景；后肩过右肩→画面左前景（镜像）；前肩同名侧
-OTS_RE = re.compile(r"(后肩|前肩)\s*过[^，。；、]{0,10}?(左|右)(?:前)?肩")
-OTS_SIDE_MAP = {("后肩", "左"): "右", ("后肩", "右"): "左",
-                ("前肩", "左"): "左", ("前肩", "右"): "右"}
-OTS_FG_RE = re.compile(r"画面(左|右)前景")
+# ★2026-11-22 改：过肩/越肩一律禁用（含看手机越肩），原左右前景几何检查作废。
+OTS_BAN_RE = re.compile(r"过肩|越肩|over[- ]the[- ]shoulder|\bOTS\b", re.I)
+OTS_NEG_RE = re.compile(r"(不用|不要|不得|禁用|禁止|严禁|禁|无|非|别|\bno\b|\bnever\b|\bnot\b|\bwithout\b)[^，。；,.;]{0,8}$", re.I)
 # C25c AIGC 假表演词（shot-economy-and-acting.md §六·补 假表演规避清单）
 C25_FAKE_ACTING = ("突然瞪眼", "机械微笑", "大幅点头", "频繁摇头", "五官同时用力", "假哭",
                    "眼神乱飘", "傻笑", "无意义甩头", "舞台剧式", "张嘴瞪眼", "默认爆哭", "默认吼")
@@ -650,7 +649,7 @@ H13_PROP_POS_RE = re.compile(r"at\s+(?:his|her|their|the)?\s*(?:chest|waist|stom
 H13_GLASSES_RE = re.compile(r"(?<!wine\s)(?<!water\s)(?<!champagne\s)(?<!drinking\s)\b(?:eye)?glasses\b(?!\s+of)|\bspectacles\b|戴(?:着)?眼镜", re.I)
 H13_GLASSES_NEG_RE = re.compile(r"\bno\s+(?:eye)?glasses|without\s+(?:eye)?glasses|not\s+wear(?:ing)?\s+(?:any\s+)?(?:eye)?glasses|不戴眼镜|无眼镜", re.I)
 H13_GLASSES_CTX_RE = re.compile(r"clink|raise[sd]?\s+(?:their|the)\s+glasses|glasses\s+of|wine|champagne|toast", re.I)
-# H13e 混合镜（有出口台词又有心声）：心声走后期（本地H3生产工作流 r58；剪辑与配乐基础规范 v3 §8 D19）
+# H13e 混合镜判定（规则已于 2026-11-22 停用，判定函数保留）
 H13_OS_D_CTX_RE = re.compile(r"off[- ]screen|voice[- ]?over|inner[- ](?:voice|monologue)|\bnarrates\b|画外音|心声|内心独白|[（(]OS[）)]", re.I)
 H13_OS_VOREF_RE = re.compile(r"used\s+only\s+as\s+an\s+off[- ]screen\s+inner\s+voice[- ]?over", re.I)
 
@@ -738,13 +737,7 @@ def _h13_checks(text, sec, is_ref):
     g = H13_GLASSES_RE.search(text)
     if g and not H13_GLASSES_NEG_RE.search(text) and not H13_GLASSES_CTX_RE.search(text[max(0, g.start() - 40):g.end() + 20]):
         out.append("H13d 提示词里人物戴眼镜——剧情没有理由就去掉，并在人物锁定句写 no glasses；设定就戴的，每镜同一副、镜中不出现/消失")
-    if _h13_mixed(text):
-        out.append("H13e 混合镜（有出口台词又有心声）：心声一律走后期——video_prompt 删去心声的 <d>、off-screen voiceover / inner-monologue 句和心声声线参考行；"
-                   "该段写闭嘴表演（眼、眉、头、手、道具 + 一句自然闭嘴句）；心声时间窗记入 windows（voiceover）和台账，"
-                   "音频按 本地H3生产工作流.md r58 单独出、后期铺配音轨（剪辑与配乐基础规范.md v3 §8 D19）")
-    if _h13_phone_far_lines(text) or H13_PHONE_VOREF_RE.search(text):
-        out.append("H13f 电话那头的声音进了生成段——电话声一律走后期：删去对方的 <d> 和电话声/声线参考句；接电话的人照常演（听筒贴耳、听的反应、自己的回话照常 <d>），"
-                   "对方说话时接听人闭嘴；时间窗记入 windows（voiceover）和台账，声源片按说话人本人声线样本一人一条，存 画外音声源/ 并登记 index.json")
+    # H13e / H13f 停用（2026-11-22，Andy 作废「心声 / 电话声走后期」口径）：心声和电话那头的声音都写 <d> 由 H3 直出，不再报警。
     if H13_PHONE_CTX_RE.search(text) and H13_FAR_IN_FRAME_RE.search(text):
         out.append("H13g 电话镜里出现了对方（分屏/画中画/插切/对方入画）——不出声的一方绝不入画；要拍对方就另起一镜、在对方所在地点、对方的话写成普通出口台词")
     return out
@@ -2049,21 +2042,13 @@ def validate(text, model="2.5", mode="new", track="1", combat="auto", c23="auto"
                 warns.append(f"C18f 第{ln_i}行 近景/中近景承载「{_fb.group(0)}」——"
                              "近景不装完整站位与全身；需展示手脚或多人完整站位时改中景/全景或拆镜"
                              "（short-drama-camera-system.md §一 景别与表演幅度绑定）")
-        # ---- C20e 过肩镜头几何·左右前景判定（short-drama-camera-system.md §三）----
-        # 左右前景写反 → 模型把肩膀挡在错的位置、前后景人物颠倒。
-        _ots = OTS_RE.search(_pic)
-        if _ots:
-            _kind, _side = _ots.group(1), _ots.group(2)
-            _expect = OTS_SIDE_MAP[(_kind, _side)]
-            _fg = OTS_FG_RE.search(_pic)
-            if not _fg:
-                warns.append(f"C20e 第{ln_i}行 过肩未写左右前景——过肩必须同时写清摄影机在被越角色"
-                             "背后还是前侧、越过哪一侧肩，并落到画面左右前景"
-                             "（short-drama-camera-system.md §三 过肩镜头几何）")
-            elif _fg.group(1) != _expect:
-                warns.append(f"C20e 第{ln_i}行 过肩左右前景写反：「{_kind}过{_side}肩」应落画面"
-                             f"{_expect}前景，稿内写「画面{_fg.group(1)}前景」——左右前景写反会让"
-                             "模型把肩膀挡在错的位置、前后景人物颠倒（short-drama-camera-system.md §三）")
+        # ---- C20e 过肩/越肩禁用（2026-11-22；原「左右前景几何」检查作废）----
+        for _ots in OTS_BAN_RE.finditer(_pic):
+            if OTS_NEG_RE.search(_pic[max(0, _ots.start() - 12):_ots.start()]):
+                continue  # 「不用过肩 / no over-the-shoulder」这类否定写法不报
+            issues.append(f"C20e 第{ln_i}行 用了过肩/越肩镜头「{_ots.group(0)}」——2026-11-22 起一律禁用"
+                          "（含看手机的越肩）：看手机改成手机屏幕特写插入镜；对话改成单人正反打加侧面双人中景")
+            break
 
     # C8 2.0 首尾帧禁用
     fl = re.findall(r"首帧\s*[:：]|尾帧\s*[:：]|参考图绑定|Start\s*Frame|End\s*Frame", text, re.I)
@@ -2990,19 +2975,18 @@ def validate(text, model="2.5", mode="new", track="1", combat="auto", c23="auto"
     for _seg_name, _seg_base, _lines, _zw_block, _zw_people, _shots, _dlgs in seg_zw:
         _seg_blob = "".join(l for _n, l in _shots)
         # C17b 长对白段关系镜（逐段判 · 治「两人各自念稿」）：
-        # 含台词镜 ≥6 的长对白段、摆位 ≥2 人，却全程单人正拍轮切——既无过肩反打、也无同框关系镜。
-        # 观众读不出「在对谁说话」，关系戏塌成两段独白。关系镜＝过肩反打 或 两人同框，满足其一即过。
-        # 豁免三类（此类场景本就不该有过肩）：单人对镜独白 / 电话·远程对话 / 一方已离场。
+        # 含台词镜 ≥6 的长对白段、摆位 ≥2 人，却全程单人正拍轮切——没有两人同框的关系镜。
+        # 观众读不出「在对谁说话」，关系戏塌成两段独白。关系镜＝侧面双人同框（2026-11-22 起过肩禁用，不再算数）。
+        # 豁免三类：单人对镜独白 / 电话·远程对话 / 一方已离场。
         if len(_zw_people) >= 2 and len(_dlgs) >= 6 and not re.search(
                 r"电话|通话|听筒|视频通话|对讲机", _seg_blob):
-            _has_ots = "过肩" in _seg_blob
             _two_shot = any(sum(1 for p in _zw_people if p in l) >= 2 for _n, l in _shots)
-            if not _has_ots and not _two_shot:
+            if not _two_shot:
                 warns.append(
                     f"C17b [{_seg_name}] 长对白段关系镜缺失（含台词镜 {len(_dlgs)} 个 / "
-                    f"摆位 {len(_zw_people)} 人）：全段既无过肩反打、也无同框关系镜——"
+                    f"摆位 {len(_zw_people)} 人）：全段没有两人同框的关系镜——"
                     "长对白全程单人正拍轮切，观众读不出『在对谁说话』，关系戏会塌成两段独白。"
-                    "段内至少安排 1 个过肩双人反打；双侧摆位 ≥2 人时至少 1 镜两人同框（满足其一即可）。"
+                    "段内至少安排 1 个侧面双人中景（两人同框、侧脸都入画），其余用单人正反打；过肩/越肩已禁用。"
                     "豁免：对镜独白 / 电话·远程对话 / 一方已离场")
         # C18a 段首镜人物锚（逐段）：首镜无站位人名且未声明「空镜」→ 模型渲染出空场景
         if _shots and _zw_people:
@@ -4668,7 +4652,7 @@ def _self_test():
     if not any(x.startswith("C25b") for x in w25b):
         print("FAIL self-test: 群演同步反应应报 C25b", w25b); ok = 0
 
-    # 56) C17b 长对白段关系镜（新增）：6 台词镜 + 双人摆位、全程单人正拍 → WARN；补过肩 → 不报
+    # 56) C17b 长对白段关系镜：6 台词镜 + 双人摆位、全程单人正拍 → WARN；补侧面双人同框 → 不报；补过肩 → 仍报且 C20e FAIL
     def _c17b_body(extra=""):
         _h = ("【画幅风格】16:9 横屏, 电影级质感 (aspect_ratio=16:9)\n"
               "【场景资产】@SCN-茶室（外观以场景参考图锁定）\n"
@@ -4687,9 +4671,12 @@ def _self_test():
     _, _w17b, _ = validate(_c17b_body(), "2.5", "new")
     if not any(x.startswith("C17b") for x in _w17b):
         print("FAIL self-test: 长对白段双人无过肩/无同框应报 C17b", _w17b); ok = 0
-    _, _w17b2, _ = validate(_c17b_body("+过肩"), "2.5", "new")
+    _, _w17b2, _ = validate(_c17b_body(" · 侧面双人中景（甲乙同框）"), "2.5", "new")
     if any(x.startswith("C17b") for x in _w17b2):
-        print("FAIL self-test: 已有过肩反打不应报 C17b", _w17b2); ok = 0
+        print("FAIL self-test: 已有侧面双人同框不应报 C17b", _w17b2); ok = 0
+    _i17b3, _w17b3, _ = validate(_c17b_body("+过肩"), "2.5", "new")
+    if not any(x.startswith("C17b") for x in _w17b3) or not any(x.startswith("C20e") for x in _i17b3):
+        print("FAIL self-test: 过肩不再算关系镜，应报 C17b 且 C20e FAIL", _w17b3, _i17b3); ok = 0
 
     # 56c) C17f 单一方位权威（2026-10-15 用户实测裁定）：镜行重复段首已摆位角色的绝对画面左右 → WARN；只锚依托物 → 不报
     def _c17f_body(restate=False):
@@ -4798,7 +4785,7 @@ def _self_test():
     _, _w_c18f, _ = validate(_t_c18f, "2.5", "new")
     if not any(x.startswith("C18f") for x in _w_c18f):
         print("FAIL self-test: 特写承载胸以下应报 C18f", _w_c18f); ok = 0
-    # 65) 违规：过肩左右前景写反 → C20e
+    # 65) 违规：用了过肩 → C20e FAIL（2026-11-22 禁用）；否定写法「不用过肩」不报
     _t_c20e = ("【画幅风格】16:9 横屏, 电影级 (aspect_ratio=16:9)\n"
                "【场景资产】@SCN-厢房（外观以场景参考图锁定）\n"
                "【核心人物】@CHR-女主、@CHR-男主（外观以人物参考图锁定）\n"
@@ -4811,9 +4798,12 @@ def _self_test():
                "末 1s 保持姿态与站位、动作完全静止、画面定格。\n"
                "【音效】环境音\n"
                "【强制禁止项】画面：角色变形、穿模；文字：无字幕水印\n")
-    _, _w_c20e, _ = validate(_t_c20e, "2.5", "new")
-    if not any(x.startswith("C20e") for x in _w_c20e):
-        print("FAIL self-test: 过肩左右前景写反应报 C20e", _w_c20e); ok = 0
+    _i_c20e, _, _ = validate(_t_c20e, "2.5", "new")
+    if not any(x.startswith("C20e") for x in _i_c20e):
+        print("FAIL self-test: 用了过肩应报 C20e", _i_c20e); ok = 0
+    _i_c20e2, _, _ = validate(_t_c20e.replace("过肩（后肩过女主的左肩，女主左肩入画面左前景）", "侧面双人（不用过肩）"), "2.5", "new")
+    if any(x.startswith("C20e") for x in _i_c20e2):
+        print("FAIL self-test: 「不用过肩」否定写法不应报 C20e", _i_c20e2); ok = 0
     # 66) 违规：跨项目污染占位语 → C12b
     _, _w_c12b, _ = validate(t_ok + "（本段角色为某角色，参数待补充）\n", "2.5", "new")
     if not any(x.startswith("C12b") for x in _w_c12b):
