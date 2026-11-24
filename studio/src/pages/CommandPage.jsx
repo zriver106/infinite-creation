@@ -943,8 +943,8 @@ async function postJson(url, body) {
   return j;
 }
 const fmtN = (n) => Number(n || 0).toLocaleString('en-US');
-function ApiKeyCard() {
-  const { data, error, load } = useJson('/api/command/settings/claude-api');
+export function ApiKeyCard() {
+  const { data, error, reload: load } = useJson('/api/command/settings/claude-api'); // useJson 返回的是 reload（原先解构 load 拿到 undefined，存/清除后卡片报错且不刷新）
   const sess = useJson('/api/chat/sessions');
   const [val, setVal] = useState(''); const [editing, setEditing] = useState(false); const [msg, setMsg] = useState(null); const [busy, setBusy] = useState(false); const [test, setTest] = useState(null);
   const act = async (fn) => { setBusy(true); setMsg(null); try { await fn(); load(); } catch (e) { setMsg('✖ ' + e.message); } finally { setBusy(false); } };

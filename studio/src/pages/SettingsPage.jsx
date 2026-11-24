@@ -8,6 +8,7 @@ import {
   Cpu,
   Film,
   FolderOutput,
+  KeyRound,
   Lock,
   Save,
   Server,
@@ -38,6 +39,8 @@ import SkillPipelinePanel from '../components/SkillPipelinePanel.jsx';
 import SubtitlePanel from '../components/SubtitlePanel.jsx';
 import DeliverySettings from '../components/DeliverySettings.jsx';
 import { useToast } from '../components/toast.jsx';
+// Claude API 密钥卡片与指挥中心「设置」页是同一个组件：读写 4620 的 /api/command/settings/claude-api，不进 config.json
+import { ApiKeyCard } from './CommandPage.jsx';
 
 const PROVIDER_OPTIONS = COMFY_PROVIDERS.map((p) => ({ value: p.id, label: p.label }));
 const TIER_OPTIONS = RUNNINGHUB_TIERS.map((t) => ({ value: t.id, label: t.label }));
@@ -54,6 +57,7 @@ const CATEGORIES = [
   { id: 'llm', label: 'LLM 模型', desc: 'Agent 大脑 · 提示词改写', icon: Sparkles },
   { id: 'subtitle', label: '字幕与语音识别', desc: 'Whisper 模型 · 本地环境', icon: Captions },
   { id: 'agent', label: 'Agent 运行时', desc: '内置 / 外部 CLI · MCP 桥', icon: Bot },
+  { id: 'claudeapi', label: 'Claude API 密钥', desc: '指挥系统会话 · 只存本机', icon: KeyRound },
   { id: 'hardware', label: '硬件适配', desc: '工作流 · 显存策略', icon: Cpu },
   { id: 'skills', label: '技能库', desc: '全局技能包管理', icon: Wand2 },
   { id: 'pipeline', label: '流水线编排', desc: '技能节点 · 导入导出', icon: Workflow, beta: true },
@@ -915,6 +919,12 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                   当前使用内置 openclaude（进程内 SDK），无需额外安装；切换到外部 Agent 后由本机 CLI 接管流水线。
                 </p>
               )}
+            </Section>
+          ) : null}
+
+          {active === 'claudeapi' ? (
+            <Section icon={KeyRound} title="Claude API 密钥" description="给指挥系统里的 Claude 会话用；只存在本机 local_secrets，不写 config.json；保存后只显示末 4 位，页面和日志都不回显密钥。与「指挥 → 设置」是同一份。">
+              <ApiKeyCard />
             </Section>
           ) : null}
 
