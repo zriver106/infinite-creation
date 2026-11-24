@@ -84,33 +84,50 @@ const none = (why) => ({ value: null, missing: '暂无数据：缺' + why });
 
 const EARLY = 10;
 const chN = (c) => Number(String(c || '').replace(/\D/g, '')) || null;
-function priorityCheck(gpu, iss, lead, missingEps, partial) {
+let editsCache = { at: 0, v: null };
+async function shotEdits() {
+  if (Date.now() - editsCache.at < 120000 && editsCache.v) return editsCache.v;
+  const r = await runDb('edits', 20000); if (r.error) throw new Error(r.error);
+  editsCache = { at: Date.now(), v: r }; return r;
+}
+const ptMin = (ms) => (ms ? new Date(ms).toLocaleString('sv-SE', { timeZone: TZ }).slice(5, 16) : '—');
+// GPU 优先级：第1–10集最先。只看「在跑」和「已挂好」（进程在等上游 / 等待器已挂）的链；停掉或没挂的旧链不拿来判顺序。
+function priorityCheck(gpu, iss, edits, missingEps, partial) {
   const unfinished = new Map();
   for (const e of iss?.eps || []) if (e.no <= EARLY && e.items - e.done > 0) unfinished.set(e.no, `问题描述还有 ${e.items - e.done} 条未完成`);
   for (const n of missingEps || []) if (n <= EARLY) unfinished.set(n, (unfinished.get(n) ? unfinished.get(n) + '；' : '') + '还没导出');
   for (const x of partial || []) if (x.ch <= EARLY) unfinished.set(x.ch, (unfinished.get(x.ch) ? unfinished.get(x.ch) + '；' : '') + `镜头出好 ${x.done}/${x.total}`);
   const eps = [...unfinished.entries()].sort((a, b) => a[0] - b[0]).map(([no, why]) => ({ no, why }));
+  const andyDone = new Set((iss?.eps || []).filter((e) => e.items > 0 && e.done === e.items).map((e) => e.no));
   const violations = [];
-  const chapsOf = (c) => [...new Set((c?.shots || []).filter((s) => !s.done).map((s) => chN(s.ch)).filter(Boolean))].sort((a, b) => a - b);
-  const byKey = new Map((gpu.chains || []).map((c) => [c.key, c]));
-  const leadEarly = Object.entries(lead?.byChapter || {}).filter(([k]) => chN(k) <= EARLY).map(([k, v]) => `${k} ${v} 镜`);
-  const qs = (gpu.queue || []).filter((c) => c.state !== 'missing');
-  const laterHasEarly = (i) => qs.slice(i + 1).some((c) => chapsOf(byKey.get(c.key) || c).some((n) => n <= EARLY));
-  let qn = 0;
-  qs.forEach((c, i) => {
-    const ch = chapsOf(byKey.get(c.key) || c); if (!ch.length) return;
-    const isRun = c.state === 'running' || (gpu.running && gpu.running.key === c.key);
-    const pos = isRun ? '正在跑的' : `队列第 ${++qn} 条`;
-    const early = ch.filter((n) => n <= EARLY), late = ch.filter((n) => n > EARLY);
-    const tail = isRun ? '（这条按指令跑完，系统不改链）' : '';
-    if (!early.length && (laterHasEarly(i) || leadEarly.length)) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」只有第 ${late.join('、')} 章，却排在第1–10集的镜头前面${laterHasEarly(i) ? '（后面的链里还有第1–10集的镜头）' : ''}${leadEarly.length ? `（第1–10集已写库待排链：${leadEarly.join('、')}）` : ''}${tail}` });
-    else if (!early.length && eps.length) violations.push({ rule: 'ep1-10-before-new', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」是第 ${late.join('、')} 章，第1–10集还没做完${tail}` });
-    else if (early.length && late.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'amber', text: `${pos}「${c.label}」混排：第 ${early.join('、')} 章和第 ${late.join('、')} 章，第1–10集的镜头最好单独先跑` });
+  const qOrder = new Map((gpu.queue || []).map((c, i) => [c.key, i]));
+  const isActive = (c) => c.state !== 'done' && (c.pid || c.waiterArmed);
+  const active = (gpu.chains || []).filter(isActive).sort((a, b) => (a.state === 'running' ? -1 : b.state === 'running' ? 1 : (qOrder.get(a.key) ?? 99) - (qOrder.get(b.key) ?? 99)));
+  const ignored = (gpu.chains || []).filter((c) => !isActive(c) && c.state !== 'done' && c.state !== 'missing').map((c) => `${c.label}（${c.state === 'stopped' ? '已停' : '没挂'}）`);
+  const remOf = (c) => (c.shots || []).filter((s) => !s.done).map((s) => ({ n: chN(s.ch), num: s.num })).filter((x) => x.n);
+  active.forEach((c, i) => {
+    const rem = remOf(c); if (!rem.length) return;
+    const pos = c.state === 'running' ? '正在跑的' : '已挂好的';
+    const firstLate = rem.findIndex((x) => x.n > EARLY);
+    const earlyAfter = firstLate >= 0 ? rem.slice(firstLate).filter((x) => x.n <= EARLY) : [];
+    if (earlyAfter.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」链内顺序：第1–10集的 ${earlyAfter.map((x) => `${x.n}#${x.num}`).join('、')} 排在第 ${rem[firstLate].n} 章后面` });
+    const later = active.slice(i + 1).filter((x) => remOf(x).some((y) => y.n <= EARLY));
+    if (rem.every((x) => x.n > EARLY) && later.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」只有第11集以后的镜头，却排在含第1–10集镜头的「${later.map((x) => x.label).join('」「')}」前面` });
   });
-  if (leadEarly.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'write', level: 'red', text: `第1–10集已写库但还没进任何链：${leadEarly.join('、')}，应排到链序最前` });
-  const leadLate = Object.entries(lead?.byChapter || {}).filter(([k]) => chN(k) > EARLY).sort((a, b) => chN(a[0]) - chN(b[0]));
-  if (eps.length && leadLate.length) violations.push({ rule: 'ep1-10-before-new', kind: 'write', level: 'red', text: `已写库待排链的稿里有第11集以后的：${leadLate.map(([k, v]) => `${k} ${v} 镜`).join('、')}（第1–10集没做完前，排链先排第1–10集）` });
-  return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, violations, ok: !violations.some((v) => v.level === 'red'), note: '违反只做红字提醒，系统不改链、不改稿；「正在写还没写库的稿」系统看不到，不在检查范围' + (eps.length ? '' : '；第1–10集已按问题描述、导出、镜头出好判断为做完') };
+  const activeIds = []; for (const c of active) for (const s of c.shots || []) if (s.id) activeIds.push(s.id);
+  const inActive = (id) => activeIds.some((p) => id.startsWith(p) || p.startsWith(id));
+  let editNote = null;
+  if (edits?.edits) {
+    const lead = edits.edits.filter((e) => chN(e.ch) <= EARLY && !inActive(e.id));
+    const byCh = new Map(); for (const e of lead) { const n = chN(e.ch); if (!byCh.has(n)) byCh.set(n, []); byCh.get(n).push(e); }
+    for (const [n, arr] of [...byCh.entries()].sort((a, b) => a[0] - b[0])) {
+      arr.sort((a, b) => a.idx - b.idx);
+      const lastE = Math.max(...arr.map((e) => e.lastEdit)), lastV = Math.max(...arr.map((e) => e.newestVideo || 0));
+      violations.push({ rule: 'gpu-ep1-10-first', kind: 'write', ep: n, level: 'red', shots: arr.map((e) => ({ idx: e.idx, id: e.id, lastEdit: e.lastEdit, fields: e.fields, newestVideo: e.newestVideo })), text: `第${n}集 ${arr.length} 镜改过字段、晚于最新视频，但不在任何在跑或已挂的链里：#${arr.map((e) => e.idx).join('、#')}（最后改字段 ${ptMin(lastE)}，这些镜最新视频最晚 ${ptMin(lastV)}）${andyDone.has(n) ? `；第${n}集 Andy 已标问题全修好，这几镜要不要重出待定` : ''}` });
+    }
+    editNote = `改字段时间取 ic.db change_logs 里内容字段（提示词、画面、分镜、台词、绑定等）真有变化的最后一次；${edits.logRows} 条记录、${edits.shotsTotal} 个镜头，2 分钟缓存`;
+  }
+  return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, activeChains: active.map((c) => ({ key: c.key, label: c.label, state: c.state, pid: c.pid || null, remaining: remOf(c).length })), ignoredChains: ignored, violations, ok: !violations.some((v) => v.level === 'red'), note: '只提醒，系统不改链、不改稿、不提交。判顺序只看在跑和已挂好的链' + (active.length ? `（${active.map((c) => c.label).join('、')}）` : '（现在没有）') + (ignored.length ? `；不参与判断：${ignored.join('、')}` : '') + (editNote ? `；${editNote}` : '') };
 }
 
 async function computeTop() {
@@ -201,7 +218,7 @@ async function computeTop() {
     },
     sessionsCount: ses?.data ? { active: ses.data.active.length, registered: ses.data.registered, working: ses.data.working, unregistered: ses.data.unregistered } : null,
     writeLead: lead && !lead.error ? { value: lead.count, byChapter: lead.byChapter, note: 'IC 里 video_prompt 已改、晚于最新视频、且不在任何未跑完链的镜单里' } : none('IC 镜头读数' + (lead?.error ? `（${lead.error}）` : '')),
-    priority: (() => { try { return priorityCheck(gpu, iss, lead && !lead.error ? lead : null, missingEps, db.partial); } catch (e) { errs.push('排序规则检查：' + e.message); return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, violations: [], error: e.message }; } })(),
+    priority: await (async () => { try { let ed = null; try { ed = await shotEdits(); } catch (e) { errs.push('改字段时间（change_logs）：' + e.message); } return priorityCheck(gpu, iss, ed, missingEps, db.partial); } catch (e) { errs.push('排序规则检查：' + e.message); return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, violations: [], error: e.message }; } })(),
     andy,
     errors: errs,
     sources: { db: { path: DB, readOnly: true, elapsedMs: db.elapsedMs, timings: db.timings }, delivery: dl.dir, probedNow: dl.probedNow, chainLogs: logCacheStats().length },

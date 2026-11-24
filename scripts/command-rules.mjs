@@ -2,8 +2,7 @@
 // 排序规则：越靠前越优先。派工规则：每张派工单必须写明模型和理由。
 
 export const PRIORITY_RULES = [
-  { id: 'gpu-ep1-10-first', top: true, text: 'GPU 优先级：第1–10集最先。链序里第1–10集的镜头一律排在最前。', check: '违反就标红', source: 'Andy 2026-11-23 16:58（经总导转达）' },
-  { id: 'ep1-10-before-new', top: true, text: '第1–10集没做完之前不开新章。链序、写稿、审片都先排第1–10集。', check: '违反就标红', source: 'Andy 2026-11-23 16:57（经总导转达）；16:58 补充：第25章写稿和指挥系统照做，GPU 先做第1–10集' },
+  { id: 'gpu-ep1-10-first', top: true, text: 'GPU 优先级：第1–10集最先。链序里第1–10集的镜头一律排在最前。', check: '违反就标红', source: 'Andy 2026-11-23 16:58（经总导转达）：第25章以后的写稿和指挥系统开发照常做，只有 GPU 链序把第1–10集排最前' },
 ];
 
 export const MODEL_TABLE = [

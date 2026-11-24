@@ -67,6 +67,20 @@ try {
     out.exportsToday = { done: ex.filter((j) => j.status === 'done').length, failed: ex.filter((j) => j.status === 'failed').length, times: ex.filter((j) => j.status === 'done').map((j) => Number(j.finished_at || j.started_at)) };
     const ctx = q(db, 'project', 'select name,context from projects where id=?', project)[0];
     out.projectName = ctx?.name; try { out.deliveryDir = JSON.parse(ctx?.context || '{}').delivery_dir || null; } catch { out.deliveryDir = null; }
+  } else if (mode === 'edits') {
+    // 每个镜头「最后一次改内容字段」的时间（change_logs 里 before/after 真有变化的那次），和最新视频生成时间比
+    const CONTENT = ['scene_name', 'camera', 'visual', 'dialogue', 'narration', 'sub_shots', 'duration', 'character_ids', 'scene_ids', 'prop_ids', 'costume_ids', 'age_ids', 'audio_ids', 'refs', 'video_prompt', 'mode', 'resolution', 'aspect_ratio'];
+    const shots = q(db, 'shots', 'select id,chapter,idx from shots where project_id=?', project);
+    const vmax = new Map(q(db, 'shot_videos max', 'select shot_id, max(created_at) m from shot_videos where project_id=? group by shot_id', project).map((r) => [r.shot_id, Number(r.m)]));
+    const t0 = Date.now(); const last = new Map(); let n = 0;
+    for (const r of db.prepare("select entity_id, ts, before, after, action from change_logs where project_id=? and entity='shot' order by ts").iterate(project)) {
+      n++; let b = {}, a = {}; try { b = JSON.parse(r.before || '{}') || {}; a = JSON.parse(r.after || '{}') || {}; } catch {}
+      const ch = r.action === 'create' ? ['create'] : CONTENT.filter((k) => k in a && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+      if (ch.length) last.set(r.entity_id, { ts: Number(r.ts), fields: ch });
+    }
+    timings.push({ label: 'change_logs', ms: Date.now() - t0, rows: n });
+    out.edits = shots.map((s) => { const e = last.get(s.id); const v = vmax.get(s.id) || 0; return e && e.ts > v + 1000 ? { id: s.id, ch: s.chapter, idx: s.idx, lastEdit: e.ts, fields: e.fields, newestVideo: v || null } : null; }).filter(Boolean);
+    out.shotsTotal = shots.length; out.logRows = n;
   } else if (mode === 'trends') {
     const sv = q(db, 'shot_videos', 'select shot_id,created_at from shot_videos where project_id=? order by created_at', project);
     const days = []; for (let i = 6; i >= 0; i--) { const t = ptMidnight(now - i * 86400e3); days.push({ day: ptDay(t), from: t }); }

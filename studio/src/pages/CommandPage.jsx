@@ -145,9 +145,10 @@ function Overview({ go }) {
         <div className="flex flex-col gap-1 text-xs">
           <div className="text-[11px] font-semibold text-[var(--fg-3)]">排序规则（越靠上越优先）</div>
           {(d.priority?.rules || []).map((r, i) => <div key={r.id} className="font-semibold">{i + 1}. ★ {r.text}<span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
+          {d.priority?.activeChains ? <div className="text-[11px] text-[var(--fg-3)]">参与判断的链（在跑 / 已挂好）：{d.priority.activeChains.length ? d.priority.activeChains.map((c) => `${c.label}${c.state === 'running' ? '（在跑' : '（已挂'}，剩 ${c.remaining} 镜）`).join('、') : '没有'}</div> : null}
           {d.priority?.unfinishedEarly?.length ? <div className="text-[11px] text-[var(--fg-3)]">第1–10集还没做完：{d.priority.unfinishedEarly.map((e) => `第${e.no}集（${e.why}）`).join('；')}</div> : null}
           {(d.priority?.violations || []).map((v, i) => <div key={i} className={v.level === 'red' ? 'font-semibold text-red-500' : 'text-amber-400'}>{v.level === 'red' ? '✖ 违反：' : '⚠ 注意：'}{v.text}</div>)}
-          {d.priority && !(d.priority.violations || []).length ? <div className="text-green-500">✔ 现在的链和待排链的稿都没有违反排序规则</div> : null}
+          {d.priority && !(d.priority.violations || []).length ? <div className="text-green-500">✔ 在跑和已挂好的链都符合「第1–10集最先」，第1–10集也没有改过字段却没进链的镜头</div> : null}
           {d.priority?.note ? <div className="text-[10px] text-[var(--fg-4)]">{d.priority.note}</div> : null}
           <div className="mt-2 text-[11px] font-semibold text-[var(--fg-3)]">派工规则</div>
           {(d.priority?.dispatchRules || []).map((r) => <div key={r.id}>· {r.text}<span className="ml-1 text-[10px] text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
