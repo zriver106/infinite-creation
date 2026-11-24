@@ -1,0 +1,48 @@
+{
+  "skill": "adapt-rules",
+  "version": "adapt-test-r1",
+  "file": "规则全文.md",
+  "file_md5": "bcd0ae75423c5db9b948aa225441d29a",
+  "total_lines": 12,
+  "base_end_line": 9,
+  "base_chars": 94,
+  "budget_chars": 40000,
+  "sections": [
+    {
+      "id": "MAP",
+      "title": "地图",
+      "tier": "map",
+      "start": 1,
+      "end": 6,
+      "chars": 63,
+      "checksum": "EA4AA173",
+      "when": [
+        "always"
+      ]
+    },
+    {
+      "id": "A",
+      "title": "改编基础",
+      "tier": "base",
+      "start": 7,
+      "end": 9,
+      "chars": 31,
+      "checksum": "6A4AD4A0",
+      "when": [
+        "always"
+      ]
+    },
+    {
+      "id": "V",
+      "title": "改编分册",
+      "tier": "volume",
+      "start": 10,
+      "end": 12,
+      "chars": 29,
+      "checksum": "A56FB5F8",
+      "when": [
+        "always"
+      ]
+    }
+  ]
+}

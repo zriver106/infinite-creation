@@ -1,0 +1,96 @@
+{
+  "skill": "h3-prompt-writing",
+  "version": "rules-test-r1",
+  "file": "规则全文.md",
+  "file_md5": "a0243263359157e7bc571da4e17e004f",
+  "total_lines": 95,
+  "base_end_line": 14,
+  "base_chars": 306,
+  "budget_chars": 3000,
+  "sections": [
+    {
+      "id": "MAP",
+      "title": "地图",
+      "tier": "map",
+      "start": 1,
+      "end": 8,
+      "chars": 90,
+      "checksum": "C92717D3",
+      "when": [
+        "always"
+      ]
+    },
+    {
+      "id": "A",
+      "title": "基础",
+      "tier": "base",
+      "start": 9,
+      "end": 14,
+      "chars": 216,
+      "checksum": "B19F5043",
+      "when": [
+        "always"
+      ]
+    },
+    {
+      "id": "OS",
+      "title": "心声",
+      "tier": "volume",
+      "start": 15,
+      "end": 19,
+      "chars": 170,
+      "checksum": "9401B175",
+      "when": [
+        "os"
+      ]
+    },
+    {
+      "id": "SYS",
+      "title": "系统声",
+      "tier": "volume",
+      "start": 20,
+      "end": 24,
+      "chars": 174,
+      "checksum": "D551D4B9",
+      "when": [
+        "system"
+      ]
+    },
+    {
+      "id": "MULTI",
+      "title": "多人",
+      "tier": "volume",
+      "start": 25,
+      "end": 29,
+      "chars": 179,
+      "checksum": "0E8CF269",
+      "when": [
+        "multi"
+      ]
+    },
+    {
+      "id": "BIG",
+      "title": "交易逻辑",
+      "tier": "volume",
+      "start": 30,
+      "end": 91,
+      "chars": 3133,
+      "checksum": "C558CA21",
+      "when": [
+        "logic"
+      ]
+    },
+    {
+      "id": "RARE",
+      "title": "罕见",
+      "tier": "volume",
+      "start": 92,
+      "end": 95,
+      "chars": 124,
+      "checksum": "3FB8A433",
+      "when": [
+        "rare"
+      ]
+    }
+  ]
+}

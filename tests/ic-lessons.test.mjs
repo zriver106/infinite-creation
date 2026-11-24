@@ -54,37 +54,62 @@ describe('ic-lessons 解析与按阶段选择', () => {
   });
 });
 
-describe('真实技能加载时带上经验规则', () => {
-  test('h3-prompt-writing 带【提示词】正式与待测，正文原样保留在前', () => {
-    const raw = fs.readFileSync(path.join(process.cwd(), 'skills', 'h3-prompt-writing', 'SKILL.md'), 'utf8');
+// 续轮6（契约 r6）：h3-prompt-writing、adapt-rules 已是规则书（有 规则全文.index.json）。
+// 剧本/分镜技能附 adapt-rules 的地图+基础规则（<adapt_rules>）代替 ic-lessons；提示词阶段什么都不附；其余阶段照旧附 ic-lessons。
+const SK = path.join(process.cwd(), 'skills');
+const hasBook = (n) => fs.existsSync(path.join(SK, n, '规则全文.index.json'));
+
+describe('真实技能加载时附带的规则', () => {
+  test('h3-prompt-writing：规则书布局不附 ic-lessons；旧布局附【提示词】', () => {
     const k = SE.loadSkill('h3-prompt-writing');
-    const i = k.body.indexOf('<ic_lessons stage="提示词"');
-    assert.ok(i > 0);
-    assert.ok(k.body.slice(0, i).includes('## Inner-Monologue (OS / 心声) Shots'));
-    assert.ok(raw.length > 0);
-    assert.ok(k.body.includes('【待测】【提示词】两人有对白就写视线锁'));
-    assert.ok(!k.body.includes('【待测】【审片】'), '不带审片待测');
-  });
-  test('分镜、剧本、审片、资产、总控各自的技能带对应阶段', () => {
-    const cases = [['story-pipeline-cn', '剧本、分镜'], ['sd-storyboard-engine', '分镜'], ['sd-script-engine', '剧本'], ['sd-qc-engine', '审片'], ['sd-asset-engine', '资产'], ['novel-to-video', '总控']];
-    for (const [name, stage] of cases) {
-      const k = SE.loadSkill(name);
-      assert.ok(k, name);
-      assert.ok(k.body.includes('<ic_lessons stage="' + stage + '"'), name + ' → ' + stage);
+    if (hasBook('h3-prompt-writing')) {
+      assert.ok(!k.body.includes('<ic_lessons') && !k.body.includes('<adapt_rules'));
+      assert.ok(k.body.includes('本段校验码：'));
+    } else {
+      assert.ok(k.body.includes('<ic_lessons stage="提示词"'));
     }
   });
-  test('ic-lessons 本身不重复附；不在映射表里的技能不附', () => {
+  test('剧本/分镜技能附 adapt-rules（有时）；审片、资产、总控照旧附 ic-lessons', () => {
+    const adapt = hasBook('adapt-rules') || fs.existsSync(path.join(SK, 'adapt-rules', 'SKILL.md'));
+    for (const name of ['story-pipeline-cn', 'sd-storyboard-engine', 'sd-script-engine']) {
+      const k = SE.loadSkill(name);
+      assert.ok(k, name);
+      if (adapt) {
+        assert.match(k.body, /<adapt_rules version="[^"]*">/, name);
+        assert.ok(!k.body.includes('<ic_lessons'), name + ' 不再附 ic-lessons');
+        assert.ok(!/^---\nname: adapt-rules/m.test(k.body.slice(k.body.indexOf('<adapt_rules'))), '去掉 frontmatter');
+      } else {
+        assert.ok(k.body.includes('<ic_lessons'), name);
+      }
+    }
+    for (const [name, stage] of [['sd-qc-engine', '审片'], ['sd-asset-engine', '资产'], ['novel-to-video', '总控']]) {
+      assert.ok(SE.loadSkill(name).body.includes('<ic_lessons stage="' + stage + '"'), name + ' → ' + stage);
+    }
+  });
+  test('提示词阶段的其它技能（规则书存在时）不附', () => {
+    if (!hasBook('h3-prompt-writing')) return;
+    assert.ok(!SE.loadSkill('video-cinematography').body.includes('<ic_lessons'));
+  });
+  test('ic-lessons / adapt-rules 本身不重复附；不在映射表里的技能不附', () => {
     assert.ok(!SE.loadSkill('ic-lessons').body.includes('<ic_lessons'));
     assert.ok(!SE.loadSkill('tts-voice-design').body.includes('<ic_lessons'));
+    if (fs.existsSync(path.join(SK, 'adapt-rules', 'SKILL.md'))) assert.ok(!SE.loadSkill('adapt-rules').body.includes('<adapt_rules'));
   });
-  test('skill 工具渲染（外部 Agent 与 writeShotVideoPrompt 同一路径）带经验规则', () => {
-    const t = SE.renderSkillContent({ ...SE.loadSkillWithResources('h3-prompt-writing'), references: [] });
-    assert.ok(t.includes('<ic_lessons stage="提示词"'));
-    assert.ok(t.indexOf('<ic_lessons') < t.indexOf('</skill_instructions>'));
+  test('IC_LESSONS=off 时剧本/分镜也不附 adapt-rules', () => {
+    const old = process.env.IC_LESSONS;
+    process.env.IC_LESSONS = 'off';
+    try {
+      const b = SE.loadSkill('story-pipeline-cn').body;
+      assert.ok(!b.includes('<adapt_rules') && !b.includes('<ic_lessons'));
+    } finally { if (old === undefined) delete process.env.IC_LESSONS; else process.env.IC_LESSONS = old; }
   });
-  test('剧本接口（不走技能）也带【剧本】', () => {
+  test('adapt-rules 不存在时退回 ic-lessons（夹具覆盖目录里放一个没有 adapt-rules 的空目录不影响；直接测 renderStageRules）', () => {
+    const s = L.renderStageRules(['审片']);
+    assert.ok(s.includes('<ic_lessons stage="审片"'));
+  });
+  test('剧本接口（不走技能）附剧本阶段规则', () => {
     const m = P.buildChapterScriptMessages({ chapterTitle: 't', novel: 'x', mode: 'generate' });
-    assert.ok(m[0].content.includes('<ic_lessons stage="剧本"'));
-    assert.ok(m[0].content.includes('念出来的数字写汉字'));
+    if (fs.existsSync(path.join(SK, 'adapt-rules', 'SKILL.md'))) assert.ok(m[0].content.includes('<adapt_rules'));
+    else assert.ok(m[0].content.includes('<ic_lessons stage="剧本"'));
   });
 });
