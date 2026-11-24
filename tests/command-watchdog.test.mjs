@@ -298,3 +298,51 @@ test('连接拦截生效：测试进程连 8189/8188 直接抛错', async () => 
     assert.match(String(err && err.message), /测试禁止连接/);
   }
 });
+
+// ---------- 第三轮（20:40）：外部 PATCH 写稿 + 作废链标注 ----------
+test('第三轮：外部 PATCH 告警（列章/镜号/shot_id/时间/字段，按 id 去重）+ changedFields', () => {
+  assert.deepEqual(L.changedFields('{"a":1,"visual":"x","updated_at":1}', '{"a":1,"visual":"y","updated_at":2,"dialogue":"d"}'), ['visual', 'dialogue']);
+  const rows = [{ id: 'c1', ts: NOW - 60000, ch: '第6章', idx: 10, shot: 'c465fcc3-aaaa', fields: ['visual', 'dialogue'] }];
+  const f = L.evaluate(snap({ extPatches: [{ group: 'b1', rows }] }));
+  assert.equal(f.length, 1); assert.equal(f[0].key, 'ext_patch:b1'); assert.equal(f[0].level, 'ERROR');
+  assert.match(f[0].text, /第6章#10（c465fcc3，18:56，改了 visual\/dialogue）/); assert.match(f[0].text, /铁律/);
+  const f2 = L.evaluate(snap({ extPatches: [{ group: 'b1', rows: [...rows, { id: 'c2', ts: NOW, ch: '第6章', idx: 6, shot: 'ed266bb2', fields: ['sub_shots'] }] }] }));
+  assert.notEqual(f2[0].sig, f[0].sig, '同批新增一条 → 变化推一次');
+  assert.equal(L.evaluate(snap({ extPatches: [{ group: 'b1', rows: [...rows] }] }))[0].sig, f[0].sig, '同样的 id 集合 → 不重复推');
+});
+
+test('第三轮：gpu_idle / 闸门告警把作废链标「已作废（外部稿），不应起」', () => {
+  const v = view({ name: 'rr2010b2', logExists: false, scriptMtimeMs: NOW - 30 * 60000, plan: [{ chapter: '第20章', ch: 20, ids: [1], tag: 'ch20' }], shots: { unsubmitted: ['第20章#1'], uncertain: [] } });
+  const voids = new Map([['rr2010b2', 'seq61：第20/21章 22 镜现稿来自外部会话 PATCH，作废']]);
+  const f = L.evaluate(snap({ idle: { sinceMs: NOW - 400000 }, allChains: [v], chains: [v], gateFlag: false, voidChains: voids }));
+  const idle = f.find((a) => a.key === 'gpu_idle'); assert.match(idle.text, /rr2010b2（.*已作废（外部稿），不应起.*seq61/); assert.match(idle.text, /这些都已作废，没有可起的链/);
+  const gate = f.find((a) => a.key === 'gate_chain:rr2010b2'); assert.match(gate.title, /已作废/); assert.match(gate.text, /已作废（外部稿），不应起/);
+  const g2 = L.evaluate(snap({ idle: { sinceMs: NOW - 400000 }, allChains: [v], chains: [v], gateFlag: false })).find((a) => a.key === 'gpu_idle');
+  assert.ok(!/已作废/.test(g2.text), '不在作废名单就不标');
+});
+
+test('第三轮集成：只读 fixture ic.db；首轮只定起点，之后新 PATCH 报一次、重复不推、非 PATCH 不报；作废说明.txt 生效；页脚 dry', async (t) => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const Mx = path.join(FX, 'M4'); const Ux = path.join(Mx, '_'); const Gx = path.join(Mx, 'G'); const WDx = path.join(FX, 'wd4'); const VD = path.join(FX, 'void'); const dbF = path.join(FX, 'ic_fixture.db');
+  for (const d of [Ux, Gx, WDx, path.join(VD, 'rr2010b2')]) fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(VD, 'rr2010b2', '作废说明.txt'), 'seq61：外部会话 PATCH 稿，按铁律作废；本链不起。\n');
+  const w = new DatabaseSync(dbF); w.exec("create table change_logs (id text primary key, project_id text, batch_id text default '', ts integer, source text, entity text, entity_id text, action text, before text, after text, revert_of text default '', reverted_by text default '', meta text default '{}')");
+  const ins = (id, ts, src, batch, idx) => w.prepare('insert into change_logs (id,project_id,batch_id,ts,source,entity,entity_id,action,before,after) values (?,?,?,?,?,?,?,?,?,?)').run(id, 'p', batch, ts, src, 'shot', 'shot-' + id, 'update', JSON.stringify({ chapter: '第6章', idx, visual: 'a' }), JSON.stringify({ chapter: '第6章', idx, visual: 'b', updated_at: 1 }));
+  ins('old', Date.now() - 3600000, 'PATCH /api/projects/:id/shots/:sid', 'b0', 1);
+  fs.writeFileSync(path.join(WDx, 'watchdog-config.json'), JSON.stringify({ patchCheckEverySec: 0, voidChains: [], voidNoteDirs: [VD], gateFlag: path.join(FX, 'noflag'), deadlines: [], sessionOutputs: { roots: [path.join(FX, 'none')] }, recovery: { mode: 'dry', whitelist: [] } }));
+  const procsF = path.join(FX, 'procs4.json'); fs.writeFileSync(procsF, JSON.stringify([{ pid: 4, ppid: 0, name: 'WmiPrvSE.exe' }]));
+  const q = await fakeQueue({ queue_running: [], queue_pending: [] }); t.after(() => { q.closeAllConnections(); q.close(); try { w.close(); } catch {} });
+  const env = { WD_M: Mx, WD_G: Gx, WD_DIR: WDx, WD_CF: `http://127.0.0.1:${q.address().port}`, WD_IC: 'http://127.0.0.1:9', WD_PROCS_FILE: procsF, WD_ICDB: dbF };
+  const evs = async () => JSON.parse((await runOnce(env)).o).events.filter((e) => e.key.startsWith('ext_patch'));
+  assert.deepEqual(await evs(), [], '首轮只定起点，不翻旧账（old 那条不报）');
+  ins('n1', Date.now() + 1000, 'PATCH /api/projects/:id/shots/:sid', 'b1', 10);
+  ins('x1', Date.now() + 1000, 'POST /api/projects/:id/shots', 'b1', 11);
+  const e1 = await evs(); assert.equal(e1.length, 1); assert.equal(e1[0].type, 'new'); assert.match(e1[0].text, /第6章#10（shot-n1，.*改了 visual）/); assert.ok(!/#11/.test(e1[0].text), '非 PATCH 不算');
+  assert.deepEqual(await evs(), [], '同一条不重复推');
+  ins('n2', Date.now() + 2000, 'PATCH /api/projects/:id/shots/:sid', 'b1', 12);
+  const e2 = await evs(); assert.equal(e2.length, 1); assert.equal(e2[0].type, 'changed'); assert.match(e2[0].text, /2 条/);
+  const md = fs.readFileSync(path.join(WDx, '当前告警.md'), 'utf8');
+  assert.match(md, /有外部会话用 PATCH 直接改了镜头/); assert.match(md, /^自动拉链：dry（只记录「将会执行的命令」，不起链）。白名单：空/m);
+  const st = JSON.parse(fs.readFileSync(path.join(WDx, 'state.json'), 'utf8')); assert.deepEqual(Object.keys(st.patch.seen).sort(), ['n1', 'n2']);
+  assert.equal(w.prepare('select count(*) n from change_logs').get().n, 4, '看门狗没写库');
+});

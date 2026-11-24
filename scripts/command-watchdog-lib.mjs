@@ -173,7 +173,8 @@ export function evaluate(snap) {
       const fresh = prep.filter((c) => c.scriptMtimeMs && now - c.scriptMtimeMs < recentH * 3600000).sort((a, b) => b.scriptMtimeMs - a.scriptMtimeMs);
       const old = prep.length - fresh.length;
       const startTxt = lastDone ? `上一条链 ${lastDone.name} 在 ${lastDone.last.slice(11, 19)} ${terminalOf(lastDone.name, lastDone.last) === 'done' ? '出完（done）' : '停下（stopped）'}` : '没找到上一条链的结束行';
-      const prepTxt = fresh.length ? `最近 ${recentH} 小时内准备好、还没起的链：` + fresh.map((c) => `${c.name}（脚本 ${ptHM(new Date(c.scriptMtimeMs))} 改，待出 ${c.shots.unsubmitted.length} 镜${(c.plan || []).some((p) => p.ch > (cfg.gateMaxChapter ?? 10)) ? '，含第11章以后' : ''}）`).join('、') + '。' : `最近 ${recentH} 小时内没有准备好的新链。`;
+      const voidM = snap.voidChains || new Map();
+      const prepTxt = fresh.length ? `最近 ${recentH} 小时内准备好、还没起的链：` + fresh.map((c) => `${c.name}（脚本 ${ptHM(new Date(c.scriptMtimeMs))} 改，待出 ${c.shots.unsubmitted.length} 镜${(c.plan || []).some((p) => p.ch > (cfg.gateMaxChapter ?? 10)) ? '，含第11章以后' : ''}${voidM.has(c.name) ? `；**已作废（外部稿），不应起**${voidM.get(c.name) ? '：' + trim(voidM.get(c.name), 80) : ''}` : ''}）`).join('、') + '。' + (fresh.every((c) => voidM.has(c.name)) ? '这些都已作废，没有可起的链。' : '') : `最近 ${recentH} 小时内没有准备好的新链。`;
       const gateTxt = snap.gateFlag ? '' : ' 注意：第1–10集闸门生效（Andy 19:00：EP1–10 没做完前第11章以后不上 GPU）——若是闸门要求的空闲，请主会话确认。';
       add('gpu_idle', lv, 1, lv === 'ERROR' ? `GPU 空闲 ${Math.round(sec / 60)} 分钟，没有链在跑` : 'GPU 空闲，没有链在跑',
         `8189 队列空、4610 无 running/queued、没有活着的 gpu_*chain/gpu_submit 进程，已持续 ${sec >= 120 ? Math.round(sec / 60) + ' 分钟' : sec + ' 秒'}（看门狗从 ${ptHM(new Date(snap.idle.sinceMs))} 起看到）。空闲起点：${startTxt}。${prepTxt}${old ? `更早准备的链 ${old} 条（多半已作废，不列）。` : ''}${lv === 'ERROR' ? gateTxt || ' 若是有意的空闲，请主会话确认。' : ''}`,
@@ -230,6 +231,15 @@ export function evaluate(snap) {
     add(`deadline:${d.id}`, lv, 5, stage === 'over' ? `过点：${d.name}` : `快到点：${d.name}`, txt, { stage });
   }
 
+  // 8. 外部 PATCH 写稿（Andy 20:20–20:27 铁律：写稿改稿只走 IC 工作流）。snap.extPatches: [{group, rows:[{id,ts,ch,idx,shot,fields}]}]
+  for (const g of snap.extPatches || []) {
+    const rows = [...g.rows].sort((a, b) => a.ts - b.ts);
+    const head = rows.slice(0, 12).map((r) => `${r.ch || '?'}#${r.idx ?? '?'}（${String(r.shot).slice(0, 8)}，${ptHM(new Date(r.ts))}，改了 ${r.fields.length ? r.fields.slice(0, 6).join('/') : '（无字段差异）'}）`).join('；');
+    add(`ext_patch:${g.group}`, 'ERROR', 8, `有外部会话用 PATCH 直接改了镜头（${rows.length} 条）`,
+      `ic.db change_logs 里出现 source='PATCH /api/projects/:id/shots/:sid' 的新记录 ${rows.length} 条（${ptHM(new Date(rows[0].ts))}–${ptHM(new Date(rows.at(-1).ts))}）：${head}${rows.length > 12 ? `；另 ${rows.length - 12} 条见 alerts.jsonl` : ''}。按 Andy 20:20–20:27 铁律，写稿改稿只走 IC 工作流，外部手写后 PATCH 写库的稿作废，没走 IC 的片一律作废。看门狗只读，不回滚。`,
+      { ids: rows.map((r) => r.id).sort() });
+  }
+
   // 6. 第1–10集闸门
   if (!snap.gateFlag) {
     const max = cfg.gateMaxChapter;
@@ -242,7 +252,8 @@ export function evaluate(snap) {
       const hi = (c.plan || []).filter((p) => p.ch != null && p.ch > max);
       if (!hi.length) continue;
       const lv = c.state === 'prepared' ? 'WARN' : 'ERROR';
-      add(`gate_chain:${c.name}`, lv, 6, `第1–10集没做完，链 ${c.name} 计划里有第11章以后`, `${c.name}（${stateZh(c.state)}）计划含 ${hi.map((p) => p.chapter).join('、')}。闸门标记文件不存在 = 闸门生效。只报警，不杀不取消。`, { st: c.state, hi: hi.map((p) => p.ch) });
+      const isVoid = (snap.voidChains || new Map()).has(c.name);
+      add(`gate_chain:${c.name}`, lv, 6, `第1–10集没做完，链 ${c.name} 计划里有第11章以后${isVoid ? '（已作废）' : ''}`, `${c.name}（${stateZh(c.state)}${isVoid ? '，已作废（外部稿），不应起' : ''}）计划含 ${hi.map((p) => p.chapter).join('、')}。闸门标记文件不存在 = 闸门生效。只报警，不杀不取消。`, { st: c.state, hi: hi.map((p) => p.ch), v: isVoid });
     }
   }
   return out;
@@ -366,4 +377,11 @@ export function eventText(e) {
   const tag = e.type === 'resolved' ? '已解决' : e.type === 'changed' ? '有变化' : e.type === 'recovery' ? '自动恢复' : '新问题';
   const lv = e.level === 'ERROR' ? '严重' : e.level === 'INFO' ? '信息' : '注意';
   return `【看门狗·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}（${ptHM(new Date(e.at))}，${e.key}）`;
+}
+
+// 外部 PATCH：比较 change_logs 的 before/after，列出改了哪些字段（忽略 updated_at 等系统字段）
+const PATCH_IGNORE = new Set(['updated_at', 'created_at']);
+export function changedFields(before, after) {
+  let a = {}, b = {}; try { b = JSON.parse(before || '{}') || {}; } catch {} try { a = JSON.parse(after || '{}') || {}; } catch {}
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !PATCH_IGNORE.has(k) && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
 }

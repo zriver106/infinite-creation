@@ -10,6 +10,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 import * as L from './command-watchdog-lib.mjs';
 
 const ENV = process.env;
@@ -32,6 +33,13 @@ export const DEFAULT_CONFIG = {
   gpuIdleWarnSec: 60,
   gpuIdleErrorSec: 180,
   idlePreparedHours: 3,
+  icDb: 'C:\\tmp_infinite_creation\\infinite-creation\\data\\ic.db',
+  patchCheckEverySec: 60,
+  patchKeepHours: 6,
+  patchNote: '外部 PATCH 写稿：只读打开 ic.db（file:?mode=ro），每 60 秒查 change_logs 里 source=PATCH /api/projects/:id/shots/:sid、ts 晚于上次检查的新记录；按 batch_id 归组报 ERROR，按 change_log id 去重；6 小时后从当前告警里退出。',
+  voidChains: ['rr2010b2', 'rr678b'],
+  voidNoteDirs: ['C:\\Users\\usazr\\Documents\\moviePro\\Claude工作区\\指挥\\派工\\附件_20261123'],
+  voidNote: '已作废（外部稿）的链：voidChains 名单 + voidNoteDirs\\<链名>\\作废说明.txt 存在的链。gpu_idle/闸门告警里标「已作废（外部稿），不应起」。',
   chainStaleMin: 50,
   chainWaitStaleMin: 5,
   recentHours: 6,
@@ -262,6 +270,48 @@ function sessionCheck(procs, now) {
   return { long, errors, watched: files.size };
 }
 
+// ---------- 外部 PATCH 写稿（只读 ic.db，最多 60 秒一次） ----------
+const PATCH_SRC = 'PATCH /api/projects/:id/shots/:sid';
+let patchAt = 0;
+function patchCheck(now, errs) {
+  const dbPath = ENV.WD_ICDB || cfg.icDb;
+  if (TEST && !ENV.WD_ICDB) return; // 测试模式不碰真 ic.db
+  if (now - patchAt < cfg.patchCheckEverySec * 1000) return;
+  patchAt = now;
+  state.patch = state.patch || { lastTs: null, seen: {} };
+  if (state.patch.lastTs == null) { state.patch.lastTs = now; return; } // 第一次：从现在起算，不翻旧账
+  let db;
+  try {
+    db = new DatabaseSync('file:' + dbPath.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
+    const rows = db.prepare('select id, ts, batch_id, entity_id, before, after from change_logs where source = ? and ts > ? order by ts limit 500').all(PATCH_SRC, state.patch.lastTs);
+    for (const r of rows) {
+      if (state.patch.seen[r.id]) continue;
+      let ch = null, idx = null; try { const a = JSON.parse(r.after || '{}'); ch = a.chapter ?? null; idx = a.idx ?? null; } catch {}
+      state.patch.seen[r.id] = { ts: r.ts, group: r.batch_id || r.id, ch, idx, shot: r.entity_id, fields: L.changedFields(r.before, r.after) };
+      if (r.ts > state.patch.lastTs) state.patch.lastTs = r.ts;
+    }
+  } catch (e) { errs.push('外部PATCH检查：' + e.message); }
+  finally { try { db?.close(); } catch {} }
+  const keep = now - cfg.patchKeepHours * 3600000;
+  for (const [k, v] of Object.entries(state.patch.seen)) if (v.ts < keep) delete state.patch.seen[k];
+}
+function patchGroups() {
+  const g = new Map();
+  for (const [id, v] of Object.entries(state.patch?.seen || {})) { if (!g.has(v.group)) g.set(v.group, []); g.get(v.group).push({ id, ...v }); }
+  return [...g.entries()].map(([group, rows]) => ({ group, rows }));
+}
+// ---------- 作废的链（外部稿） ----------
+let voidCache = { at: 0, map: new Map() };
+function voidChains(now) {
+  if (now - voidCache.at < cfg.heavyEverySec * 1000 && voidCache.at) return voidCache.map;
+  const m = new Map((cfg.voidChains || []).map((n) => [n, '']));
+  for (const d of cfg.voidNoteDirs || []) {
+    let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()); } catch {}
+    for (const e of ents) { const f = path.join(d, e.name, '作废说明.txt'); if (exists(f)) { let t = ''; try { t = readTail(f, 2048).replace(/^﻿/, '').split(/\r?\n/)[0]; } catch {} m.set(e.name, t); } }
+  }
+  voidCache = { at: now, map: m }; return m;
+}
+
 // ---------- 主循环 ----------
 let state = null;
 async function round() {
@@ -309,7 +359,11 @@ async function round() {
   const idleNow = gpu.ok && !gpu.running.length && !gpu.pending.length && !icBusy && procsOk && submitters.length === 0;
   if (idleNow) { if (state.idleSince == null) state.idleSince = now; } else if (gpu.ok && procsOk) state.idleSince = null;
   summary.idle = { now: idleNow, sinceSec: state.idleSince != null ? Math.round((now - state.idleSince) / 1000) : null, submitters: submitters.map((p) => p.pid), ic4610Busy: !!icBusy };
-  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, idle: { sinceMs: state.idleSince }, chains: views, allChains: [...byName.values()], procs, sessions, deadlines, gateFlag, queueChapters });
+  patchCheck(now, errs);
+  const extPatches = patchGroups();
+  summary.extPatch = { lastCheckTs: state.patch?.lastTs ?? null, open: extPatches.reduce((n, g) => n + g.rows.length, 0) };
+  const voids = voidChains(now);
+  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, idle: { sinceMs: state.idleSince }, extPatches, voidChains: voids, chains: views, allChains: [...byName.values()], procs, sessions, deadlines, gateFlag, queueChapters });
   const events = L.diffAlerts(state, found, nowIso, cfg.resolveAfterRounds);
   // 自动恢复（只对白名单脚本、进程没了的链）
   const recov = [];
