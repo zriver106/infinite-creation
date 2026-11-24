@@ -151,12 +151,33 @@ export function evaluate(snap) {
   // 1. GPU 空闲但还有未提交镜头
   if (!snap.gpu.ok) add('gpu_queue_unreachable', 'WARN', 1, '读不到 8189 队列', `GET 8189 /queue 失败：${snap.gpu.error || ''}`, { e: 'unreach' });
   else if (!snap.gpu.running.length && !snap.gpu.pending.length && snap.gpuEmptySinceMs != null) {
+    // 1a. 有链（在跑/在等/进程没了）还有没提交的镜头，但 8189 空着（例：链卡在 waiting for idle）
     const idleSec = Math.round((now - snap.gpuEmptySinceMs) / 1000);
     const pend = live.filter((c) => ['running', 'waiting', 'dead'].includes(c.state) && c.shots && c.shots.unsubmitted.length);
     if (idleSec >= cfg.gpuIdleGraceSec && pend.length) {
-      add('gpu_idle', 'ERROR', 1, 'GPU 空着，但链计划里还有没提交的镜头',
-        `8189 队列已空约 ${Math.round(idleSec / 60)} 分钟（宽限 ${cfg.gpuIdleGraceSec} 秒）。还有没提交的：` + pend.map((c) => `${c.name}（${stateZh(c.state)}，${c.shots.unsubmitted.length} 镜：${c.shots.unsubmitted.slice(0, 6).join('、')}${c.shots.unsubmitted.length > 6 ? '…' : ''}）`).join('；'),
+      add('gpu_stall', 'ERROR', 1, 'GPU 空着，但链计划里还有没提交的镜头',
+        `8189 队列已空约 ${Math.round(idleSec / 60)} 分钟（宽限 ${cfg.gpuIdleGraceSec} 秒）。还有没提交的：` + pend.map((c) => `${c.name}（${stateZh(c.state)}，${c.shots.unsubmitted.length} 镜：${c.shots.unsubmitted.slice(0, 6).join('、')}${c.shots.unsubmitted.length > 6 ? '…' : ''}；最后一行「${trim(stripTs(c.last), 80)}」）`).join('；'),
         { chains: pend.map((c) => [c.name, c.state, c.shots.unsubmitted.length]) });
+    }
+  }
+  // 1b. GPU 空闲（第二轮，20:20）：8189 空 + 4610 无 running/queued + 没有任何活着的 gpu_*chain/gpu_submit 进程，持续 ≥60 秒 WARN、≥180 秒 ERROR
+  if (snap.idle && snap.idle.sinceMs != null) {
+    const sec = Math.round((now - snap.idle.sinceMs) / 1000);
+    const warnS = cfg.gpuIdleWarnSec ?? 60, errS = cfg.gpuIdleErrorSec ?? 180;
+    if (sec >= warnS) {
+      const lv = sec >= errS ? 'ERROR' : 'WARN';
+      const all = (snap.allChains || snap.chains).filter((c) => !c.ignored);
+      const lastDone = all.filter((c) => (c.state === 'done' || c.state === 'stopped') && lineTs(c.last)).sort((a, b) => lineTs(b.last).localeCompare(lineTs(a.last)))[0];
+      const recentH = cfg.idlePreparedHours ?? 3;
+      const prep = all.filter((c) => c.state === 'prepared' && c.shots && c.shots.unsubmitted.length);
+      const fresh = prep.filter((c) => c.scriptMtimeMs && now - c.scriptMtimeMs < recentH * 3600000).sort((a, b) => b.scriptMtimeMs - a.scriptMtimeMs);
+      const old = prep.length - fresh.length;
+      const startTxt = lastDone ? `上一条链 ${lastDone.name} 在 ${lastDone.last.slice(11, 19)} ${terminalOf(lastDone.name, lastDone.last) === 'done' ? '出完（done）' : '停下（stopped）'}` : '没找到上一条链的结束行';
+      const prepTxt = fresh.length ? `最近 ${recentH} 小时内准备好、还没起的链：` + fresh.map((c) => `${c.name}（脚本 ${ptHM(new Date(c.scriptMtimeMs))} 改，待出 ${c.shots.unsubmitted.length} 镜${(c.plan || []).some((p) => p.ch > (cfg.gateMaxChapter ?? 10)) ? '，含第11章以后' : ''}）`).join('、') + '。' : `最近 ${recentH} 小时内没有准备好的新链。`;
+      const gateTxt = snap.gateFlag ? '' : ' 注意：第1–10集闸门生效（Andy 19:00：EP1–10 没做完前第11章以后不上 GPU）——若是闸门要求的空闲，请主会话确认。';
+      add('gpu_idle', lv, 1, lv === 'ERROR' ? `GPU 空闲 ${Math.round(sec / 60)} 分钟，没有链在跑` : 'GPU 空闲，没有链在跑',
+        `8189 队列空、4610 无 running/queued、没有活着的 gpu_*chain/gpu_submit 进程，已持续 ${sec >= 120 ? Math.round(sec / 60) + ' 分钟' : sec + ' 秒'}（看门狗从 ${ptHM(new Date(snap.idle.sinceMs))} 起看到）。空闲起点：${startTxt}。${prepTxt}${old ? `更早准备的链 ${old} 条（多半已作废，不列）。` : ''}${lv === 'ERROR' ? gateTxt || ' 若是有意的空闲，请主会话确认。' : ''}`,
+        { lv }); // 只在 WARN→ERROR、出现、恢复时推送
     }
   }
 
@@ -320,15 +341,28 @@ export function redirectTargets(cl) {
 }
 
 // ---------- 当前告警.md ----------
-export function renderCurrentMd(alerts, hb) {
+// 页脚：如实写自动拉链的模式和白名单（链名 + md5 前 8 位 + 链现状）
+export function recoveryFooter(cfg, chainsByName) {
+  const wl = cfg?.recovery?.whitelist || [];
+  const items = wl.map((w) => { const n = chainNameFromScript(w.script); const c = chainsByName?.get?.(n); const st = c ? c.state : '找不到脚本'; return { n, md5: String(w.md5 || '').slice(0, 8).toUpperCase(), st, live: !!w.live, usable: c && !['done', 'stopped'].includes(c.state) }; });
+  const list = items.length ? items.map((i) => `${i.n}（md5 ${i.md5}，${stateZh(i.st)}${i.live ? '' : '，本条未开 live'}）`).join('、') : '空';
+  const mode = cfg?.recovery?.mode === 'live' ? 'live' : 'dry';
+  let head;
+  if (mode === 'dry') head = '自动拉链：dry（只记录「将会执行的命令」，不起链）';
+  else if (!items.some((i) => i.usable && i.live)) head = '自动拉链：已上线但白名单无可拉的链';
+  else head = '自动拉链：已上线（live），白名单里的链满足全部 13 条条件时会用 WMI 以 --after=none 起成独立进程，然后报警';
+  return `${head}。白名单：${list}。除此之外看门狗只看不动：不提交 GPU、不改链、不建/删 STOP、不杀进程。告警变化记录见 alerts.jsonl。`;
+}
+export function renderCurrentMd(alerts, hb, footer) {
   const L = ['# 看门狗：当前未解决的问题', '', `更新：${ptStr(new Date(hb.at))}（太平洋时间） · 第 ${hb.round} 轮 · 本轮 ${hb.ms} 毫秒`, ''];
   const arr = Object.entries(alerts).map(([key, a]) => ({ key, ...a })).sort((a, b) => (a.level === b.level ? 0 : a.level === 'ERROR' ? -1 : 1));
   if (!arr.length) L.push('现在没有问题。');
   for (const a of arr) L.push(`- **${a.level === 'ERROR' ? '严重' : '注意'}** ${a.title}（从 ${ptHM(new Date(a.since))} 起）`, `  ${a.text}`, `  \`${a.key}\``);
-  L.push('', '看门狗只看不动：不提交 GPU、不改链、不建/删 STOP、不杀进程。告警变化记录见 alerts.jsonl。');
+  L.push('', footer || '看门狗：告警变化记录见 alerts.jsonl。');
   return L.join('\n') + '\n';
 }
 export function eventText(e) {
+  if (e.type === 'resolved' && e.key === 'gpu_idle') return `【看门狗·已恢复·信息】GPU 已恢复：有任务或链在跑了（${ptHM(new Date(e.at))}，gpu_idle）`;
   const tag = e.type === 'resolved' ? '已解决' : e.type === 'changed' ? '有变化' : e.type === 'recovery' ? '自动恢复' : '新问题';
   const lv = e.level === 'ERROR' ? '严重' : e.level === 'INFO' ? '信息' : '注意';
   return `【看门狗·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}（${ptHM(new Date(e.at))}，${e.key}）`;

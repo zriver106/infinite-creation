@@ -10,6 +10,10 @@ import { fileURLToPath } from 'node:url';
 import * as L from '../scripts/command-watchdog-lib.mjs';
 
 process.env.IC_CONFIG = ':9';
+// 连接拦截：本测试进程里任何去 8188/8189 的 TCP 连接直接抛错（子进程由看门狗自身的 IC_CONFIG=:9 守卫拦）
+import net from 'node:net';
+const _connect = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...args) { const o = Array.isArray(args[0]) ? args[0][0] : args[0]; const port = typeof o === 'object' && o ? Number(o.port) : Number(o); if (port === 8188 || port === 8189) throw new Error('测试禁止连接 ' + port); return _connect.apply(this, args); };
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WDJS = path.join(ROOT, 'scripts', 'command-watchdog.mjs');
 const REAL_U = 'C:\\Users\\usazr\\Documents\\moviePro\\_';
@@ -37,9 +41,9 @@ test('解析真链脚本 gpu_rr1845_chain.py（PLAN/STOPF/LOGD/UPSTREAM）', () 
 
 test('检查1：GPU 空 ≥60 秒且计划有未提交 → ERROR；不到宽限不报', () => {
   const c = view({ name: 'a', alive: [11], last: '2026-11-23T18:56:00 第6章 prelint start', shots: { unsubmitted: ['第6章#4'], uncertain: [] } });
-  assert.ok(keys(L.evaluate(snap({ chains: [c], gpuEmptySinceMs: NOW - 70000 }))).includes('gpu_idle'));
-  assert.ok(!keys(L.evaluate(snap({ chains: [c], gpuEmptySinceMs: NOW - 30000 }))).includes('gpu_idle'));
-  assert.ok(!keys(L.evaluate(snap({ chains: [view({ name: 'b', last: 'b stopped (stop marker)', shots: { unsubmitted: ['x'], uncertain: [] } })], gpuEmptySinceMs: NOW - 900000 }))).includes('gpu_idle'), '人为停下的链不算');
+  assert.ok(keys(L.evaluate(snap({ chains: [c], gpuEmptySinceMs: NOW - 70000 }))).includes('gpu_stall'));
+  assert.ok(!keys(L.evaluate(snap({ chains: [c], gpuEmptySinceMs: NOW - 30000 }))).includes('gpu_stall'));
+  assert.ok(!keys(L.evaluate(snap({ chains: [view({ name: 'b', last: 'b stopped (stop marker)', shots: { unsubmitted: ['x'], uncertain: [] } })], gpuEmptySinceMs: NOW - 900000 }))).includes('gpu_stall'), '人为停下的链不算');
 });
 
 test('检查2：进程没了 / 出片中日志 50 分钟没更新 / 等待 5 分钟且上游不在', () => {
@@ -60,7 +64,7 @@ test('检查3 + 今晚回放：rr678 18:50:45 done、rr1845 进程没了、计�
   const dn = view({ name: 'rr1845', script: 'gpu_rr1845_chain.py', plan: plan1845, md5: '0DAB8B2399C4BF0A48CBF92670E45A7F', last: '2026-11-23T18:50:30 waiting for rr678 pid [41000] to exit; last line: ...', upstream: 'rr678', shots: { unsubmitted: plan1845.flatMap((p) => p.ids.map((k) => `${p.chapter}#${k}`)), uncertain: [] } });
   const found = L.evaluate(snap({ chains: [up, dn], gpuEmptySinceMs: Date.parse('2026-11-24T02:50:46Z') }));
   const k = keys(found);
-  assert.ok(k.includes('handoff_broken:rr1845')); assert.ok(k.includes('gpu_idle')); assert.ok(!k.includes('chain_gone:rr1845'), '交接断取代进程没了');
+  assert.ok(k.includes('handoff_broken:rr1845')); assert.ok(k.includes('gpu_stall')); assert.ok(!k.includes('chain_gone:rr1845'), '交接断取代进程没了');
   const d = L.recoveryDecision({ c: dn, up, cfg: CFG, procs: [], gpu: gpuEmpty, gpuIdleSec: 370, stopExists: false, upProgUncertain: [], history: [], now: NOW, M: 'C:\\Users\\usazr\\Documents\\moviePro', python: 'C:\\Python315\\python.exe' });
   assert.equal(d.ok, true, d.reasons.join('；')); assert.equal(d.live, false, 'dry');
   assert.match(d.cmd, /^cmd \/c "cd \/d C:\\Users\\usazr\\Documents\\moviePro\\_ && "C:\\Python315\\python\.exe" -X utf8 -u gpu_rr1845_chain\.py --after=none 1> "C:\\Users\\usazr\\Documents\\moviePro\\_\\rr678b_release\\run_stdout_rr1845_wd\d{12}\.txt" 2> "C:\\Users\\usazr\\Documents\\moviePro\\_\\rr678b_release\\run_stderr_rr1845_wd\d{12}\.txt""$/);
@@ -167,7 +171,7 @@ test('集成回放：今晚交接断（真 rr1845 脚本副本，md5 在白名�
   const r1 = await runOnce(env); assert.equal(r1.code, 0, r1.e);
   const out1 = JSON.parse(r1.o);
   const k1 = out1.events.map((e) => e.key);
-  assert.ok(k1.includes('handoff_broken:rr1845'), k1.join(',')); assert.ok(k1.includes('gpu_idle'));
+  assert.ok(k1.includes('handoff_broken:rr1845'), k1.join(',')); assert.ok(k1.includes('gpu_stall'));
   assert.ok(k1.includes('recovery:rr1845'));
   const rec = fs.readFileSync(path.join(WDx, 'recoveries.jsonl'), 'utf8').trim().split('\n').map((x) => JSON.parse(x));
   assert.equal(rec.length, 1); assert.equal(rec[0].ok, true); assert.equal(rec[0].live, false); assert.equal(rec[0].mode, 'dry');
@@ -228,4 +232,69 @@ test('心跳过期变红：>25 秒 → stopped「看门狗停了」；新鲜 →
   hb(3); fs.writeFileSync(path.join(WDx, 'current_alerts.json'), JSON.stringify({ alerts: { 'gpu_idle': { level: 'ERROR', title: 't', text: 'x' } } }));
   v = api.watchdogView(); assert.equal(v.status, 'error');
   fs.renameSync(path.join(WDx, 'heartbeat.json'), path.join(WDx, 'heartbeat.moved')); v = api.watchdogView(); assert.equal(v.status, 'stopped');
+});
+
+// ---------- 第二轮（20:20）：GPU 空闲 + 页脚 ----------
+test('第二轮：GPU 空闲 ≥60 秒 WARN、≥180 秒 ERROR；列近 3 小时 prepared 链，老的只计数；闸门文案', () => {
+  const rr1925 = view({ name: 'rr1925', last: '2026-11-23T19:49:23 rr1925 done', shots: { unsubmitted: [], uncertain: [] } });
+  const fresh = view({ name: 'rr1955', logExists: false, scriptMtimeMs: NOW - 20 * 60000, plan: [{ chapter: '第3章', ch: 3, ids: [1, 2], tag: 'ch3' }], shots: { unsubmitted: ['第3章#1', '第3章#2'], uncertain: [] } });
+  const old = view({ name: 'rr1550', logExists: false, scriptMtimeMs: NOW - 5 * 3600000, plan: [{ chapter: '第22章', ch: 22, ids: [1], tag: 'ch22' }], shots: { unsubmitted: ['x'], uncertain: [] } });
+  const ev = (sec, o = {}) => L.evaluate(snap({ idle: { sinceMs: NOW - sec * 1000 }, allChains: [rr1925, fresh, old], chains: [rr1925], gateFlag: false, ...o })).filter((a) => a.key === 'gpu_idle');
+  assert.deepEqual(ev(30), []);
+  const w = ev(70); assert.equal(w[0].level, 'WARN');
+  const e = ev(27 * 60); assert.equal(e[0].level, 'ERROR');
+  assert.match(e[0].text, /上一条链 rr1925 在 19:49:23 出完/); assert.match(e[0].text, /rr1955（脚本 .* 改，待出 2 镜）/);
+  assert.ok(!/rr1550/.test(e[0].text)); assert.match(e[0].text, /更早准备的链 1 条/);
+  assert.match(e[0].text, /若是闸门要求的空闲，请主会话确认/);
+  assert.notEqual(w[0].sig, e[0].sig, 'WARN→ERROR 签名变 → 推一次'); assert.equal(ev(28 * 60)[0].sig, e[0].sig, '同为 ERROR 分钟数变不推');
+  assert.deepEqual(L.evaluate(snap({ idle: { sinceMs: null } })).filter((a) => a.key === 'gpu_idle'), [], '有链/队列在跑 → 不报');
+  // 去重：WARN 出现 1 次、→ERROR 1 次、恢复 1 次（文案「已恢复」）
+  const st = {}; const types = [];
+  for (const s of [70, 80, 200, 210, 220]) types.push(...L.diffAlerts(st, ev(s), 't' + s).map((x) => x.type));
+  for (let i = 0; i < 3; i++) types.push(...L.diffAlerts(st, [], new Date(NOW + i * 10000).toISOString()).map((x) => { assert.match(L.eventText(x), /已恢复/); return x.type; }));
+  assert.deepEqual(types, ['new', 'changed', 'resolved']);
+});
+
+test('第二轮：页脚如实写自动拉链模式和白名单', () => {
+  const m = new Map([['rr1845', { state: 'done' }], ['rr2000', { state: 'dead' }]]);
+  const wl = (w, mode = 'live') => L.recoveryFooter({ recovery: { mode, whitelist: w } }, m);
+  assert.match(wl([{ script: 'gpu_rr1845_chain.py', md5: '0dab8b2399c4', live: true }]), /^自动拉链：已上线但白名单无可拉的链。白名单：rr1845（md5 0DAB8B23，已完成）/);
+  assert.match(wl([]), /已上线但白名单无可拉的链。白名单：空/);
+  assert.match(wl([{ script: 'gpu_rr2000_chain.py', md5: 'abcdef1234', live: true }]), /^自动拉链：已上线（live）/);
+  assert.match(wl([{ script: 'gpu_rr2000_chain.py', md5: 'abcdef1234', live: true }], 'dry'), /^自动拉链：dry/);
+  assert.ok(!/只看不动：不提交/.test(wl([])) || /除此之外看门狗只看不动/.test(wl([])));
+});
+
+test('第二轮集成回放：19:49:23 rr1925 done → 20:16 前 GPU 空 27 分钟、rr1955 已准备未起 → gpu_idle ERROR；页脚如实', async (t) => {
+  const Mx = path.join(FX, 'M3'); const Ux = path.join(Mx, '_'); const Gx = path.join(Mx, 'G'); const WDx = path.join(FX, 'wd3');
+  for (const d of [Ux, path.join(Gx, 'rr1925_chain_20261123'), path.join(Gx, 'rr1925_ch2_20261123'), WDx]) fs.mkdirSync(d, { recursive: true });
+  const scr = (n, ch) => `PLAN=[('第${ch}章',[1, 2, 3],'ch${ch}')]\nSTOPF=os.path.join(U,'${n}.STOP')\nLOGD=os.path.join(U,'${n}_dryrun') if DRY else os.path.join(G,'${n}_chain_20261123')\no=os.path.join(G,'${n}_%s_20261123'%tag)\n`;
+  fs.writeFileSync(path.join(Ux, 'gpu_rr1925_chain.py'), scr('rr1925', 2)); fs.writeFileSync(path.join(Ux, 'gpu_rr1955_chain.py'), scr('rr1955', 3));
+  fs.writeFileSync(path.join(Gx, 'rr1925_chain_20261123', 'chain.log'), '2026-11-23T19:20:00 rr1925 chain start (no upstream wait) pid 1\n2026-11-23T19:49:23 rr1925 done\n');
+  fs.writeFileSync(path.join(Gx, 'rr1925_ch2_20261123', 'progress.json'), JSON.stringify({ status: 'done', shots: [1, 2, 3].map((k) => ({ '镜序': k, status: 'done_not_selected' })) }));
+  const procsF = path.join(FX, 'procs3.json'); fs.writeFileSync(procsF, JSON.stringify([{ pid: 4, ppid: 0, name: 'WmiPrvSE.exe' }]));
+  fs.writeFileSync(path.join(WDx, 'watchdog-config.json'), JSON.stringify({ gateFlag: path.join(FX, 'EP1_10_DONE.flag.none'), deadlines: [], sessionOutputs: { roots: [path.join(FX, 'none')] }, recovery: { mode: 'live', whitelist: [{ script: 'gpu_rr1845_chain.py', md5: '0DAB8B2399C4BF0A48CBF92670E45A7F', live: true }] } }));
+  fs.writeFileSync(path.join(WDx, 'state.json'), JSON.stringify({ alerts: {}, recoveries: [], round: 0, gpuEmptySince: Date.now() - 27 * 60000, idleSince: Date.now() - 27 * 60000, dryLast: {} }));
+  const q = await fakeQueue({ queue_running: [], queue_pending: [] }); t.after(() => { q.closeAllConnections(); q.close(); });
+  const env = { WD_M: Mx, WD_G: Gx, WD_DIR: WDx, WD_CF: `http://127.0.0.1:${q.address().port}`, WD_IC: 'http://127.0.0.1:9', WD_PROCS_FILE: procsF };
+  const r = await runOnce(env); assert.equal(r.code, 0, r.e);
+  const ev = JSON.parse(r.o).events.find((e) => e.key === 'gpu_idle');
+  assert.ok(ev, r.o.slice(0, 500)); assert.equal(ev.level, 'ERROR');
+  assert.match(ev.text, /rr1925 在 19:49:23 出完/); assert.match(ev.text, /rr1955（脚本 .* 改，待出 3 镜）/);
+  const md = fs.readFileSync(path.join(WDx, '当前告警.md'), 'utf8');
+  assert.match(md, /自动拉链：已上线但白名单无可拉的链。白名单：rr1845（md5 0DAB8B23，找不到脚本）/);
+  console.log('  回放告警：', ev.text);
+  // 链起来了（进程活着）→ 3 轮后「已恢复」
+  fs.writeFileSync(procsF, JSON.stringify([{ pid: 4, ppid: 0, name: 'WmiPrvSE.exe' }, { pid: 70, ppid: 4, name: 'python.exe', cmd: 'python -u gpu_rr1955_chain.py --after=none', created: new Date().toISOString() }]));
+  for (let i = 0; i < 3; i++) await runOnce(env);
+  assert.match(fs.readFileSync(path.join(WDx, 'alerts.jsonl'), 'utf8'), /GPU 已恢复/);
+  assert.equal(q.bad || 0, 0);
+});
+
+test('连接拦截生效：测试进程连 8189/8188 直接抛错', async () => {
+  for (const port of [8189, 8188]) {
+    assert.throws(() => net.connect(port, '127.0.0.1'), /测试禁止连接/);
+    const err = await new Promise((res) => { try { const r = http.get(`http://127.0.0.1:${port}/queue`, () => res(null)); r.on('error', res); } catch (e) { res(e); } });
+    assert.match(String(err && err.message), /测试禁止连接/);
+  }
 });

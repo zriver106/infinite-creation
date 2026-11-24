@@ -29,6 +29,9 @@ export const DEFAULT_CONFIG = {
   note: '看门狗配置（CLA-34）。时间一律太平洋时间。改了下一轮自动生效（按 mtime 重读）。',
   intervalSec: 10,
   gpuIdleGraceSec: 60,
+  gpuIdleWarnSec: 60,
+  gpuIdleErrorSec: 180,
+  idlePreparedHours: 3,
   chainStaleMin: 50,
   chainWaitStaleMin: 5,
   recentHours: 6,
@@ -299,7 +302,14 @@ async function round() {
   const gateFlag = exists(cfg.gateFlag);
   summary.gate = gateFlag ? '标记文件存在：第1–10集已完成，闸门关闭' : '闸门生效（标记文件不存在）';
   // 评估 + 去重
-  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, chains: views, procs, sessions, deadlines, gateFlag, queueChapters });
+  // GPU 空闲（第二轮）：8189 空 + 4610 无 running/queued（读不到 4610 时只看另两项）+ 没有活着的 gpu_*chain/gpu_submit 进程
+  const procsOk = !errs.some((x) => x.startsWith('进程表'));
+  const icBusy = !ic4610.error && ic4610.data && ((ic4610.data.running || 0) > 0 || (ic4610.data.waiting || 0) > 0);
+  const submitters = L.anyChainOrSubmit(procs, null);
+  const idleNow = gpu.ok && !gpu.running.length && !gpu.pending.length && !icBusy && procsOk && submitters.length === 0;
+  if (idleNow) { if (state.idleSince == null) state.idleSince = now; } else if (gpu.ok && procsOk) state.idleSince = null;
+  summary.idle = { now: idleNow, sinceSec: state.idleSince != null ? Math.round((now - state.idleSince) / 1000) : null, submitters: submitters.map((p) => p.pid), ic4610Busy: !!icBusy };
+  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, idle: { sinceMs: state.idleSince }, chains: views, allChains: [...byName.values()], procs, sessions, deadlines, gateFlag, queueChapters });
   const events = L.diffAlerts(state, found, nowIso, cfg.resolveAfterRounds);
   // 自动恢复（只对白名单脚本、进程没了的链）
   const recov = [];
@@ -329,7 +339,7 @@ async function round() {
   const ms = Date.now() - t0;
   const hb = { at: nowIso, atPT: L.ptStr(new Date(now)), pid: process.pid, round: state.round, ms, intervalSec: cfg.intervalSec, test: TEST, alerts: Object.keys(state.alerts).length, errorAlerts: Object.values(state.alerts).filter((a) => a.level === 'ERROR').length, events: events.length, recoveryMode: cfg.recovery.mode, summary, errors: errs };
   writeAtomic(path.join(WD, 'current_alerts.json'), JSON.stringify({ at: nowIso, alerts: state.alerts }, null, 1));
-  writeAtomic(path.join(WD, '当前告警.md'), L.renderCurrentMd(state.alerts, hb));
+  writeAtomic(path.join(WD, '当前告警.md'), L.renderCurrentMd(state.alerts, hb, L.recoveryFooter(cfg, byName)));
   writeAtomic(STATE_F(), JSON.stringify(state));
   writeAtomic(path.join(WD, 'heartbeat.json'), JSON.stringify(hb, null, 1));
   if (errs.length) wlog('本轮错误：', errs.join(' | '));
