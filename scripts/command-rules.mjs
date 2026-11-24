@@ -52,3 +52,34 @@ export function checkOrder(o) {
   }
   return { level, canSend: level !== 'red', msgs, task, model: model || null, reason: reason || null, suggested: task.defaultModel };
 }
+
+// ---------- 拍板规则（总导 2026-11-23 17:22 决定；交接清单 md5 275ADA78 第二、五节）----------
+export const GATE_MD5 = 'ED8D5910611AD8FF25A58CA3AE4478F7'; // 门禁 md5：谁都不改，对不上就标红
+export const DECISION_RULES = [
+  { id: 'chain-tech', text: '卡链技术拍板（不挂上游直接正式启动、换链里写死的工具钉值、挂链顺序、从已放行的链复制只改镜单/路径/上游）→ 拍板人：指挥中心主会话；审查会话复审通过才放。放行记录缺 diff 和它的 md5、脚本 sha256、空跑日志 md5 任一项就标红「不许放」；不挂上游启动的三个前提（没有别的 gpu_ 链或等待器在跑、没有 STOP 文件、空跑通过）缺一项也标红。', check: '缺项标红「不许放」', source: '总导 2026-11-23 17:22（Andy 17:20「不要搞 我点头这些 你直接安排好」）' },
+  { id: 'escalate-zongdao', text: '改动碰到 gpu_submit.py、提交函数、单一提交者检查、STOP 检查、等待循环、门禁 → 不归主会话，标红「报总导」。门禁 md5 ED8D5910 谁都不改。', check: '碰到就标红「报总导」', source: '总导 2026-11-23 17:22' },
+  { id: 'ask-andy', text: '花钱（包括 2K 放大）、每集导出交付、改手册、改剧情 → 标红「直接问 Andy」。', check: '碰到就标红「直接问 Andy」', source: '总导 2026-11-23 17:22 转 Andy' },
+];
+const ESCALATE_RE = /gpu_submit\.py|提交函数|submit_?(job|shot)|单一提交者|single.?submitter|STOP\s*(检查|check)|等待循环|wait.?loop|门禁|gate|rulepack/i;
+const ASK_ANDY_RE = /花钱|付费|充值|2K|放大|upscale|导出|交付|export|deliver|手册|剧情|plot/i;
+const TECH_KINDS = { 'no-upstream': '不挂上游直接正式启动', pin: '换工具钉值', order: '挂链顺序', copy: '复制链只改镜单/路径/上游' };
+// 放行记录要带的栏：kind、decider、reviewer、diffPath、diffMd5、scriptSha256、dryrunMd5、at
+export const RELEASE_FIELDS = ['kind', 'decider', 'reviewer', 'diffPath', 'diffMd5', 'scriptSha256', 'dryrunMd5', 'at'];
+export function checkRelease(r) {
+  r = r || {}; const msgs = []; let level = 'ok';
+  const red = (m) => { level = 'red'; msgs.push(m); };
+  const blob = str([r.kind, r.note, r.changes, r.diffSummary, r.touches]);
+  if (ESCALATE_RE.test(blob)) red('改动碰到提交逻辑/安全闸/门禁：报总导，主会话不能放');
+  if (ASK_ANDY_RE.test(blob)) red('涉及花钱/导出交付/手册/剧情：直接问 Andy');
+  if (r.gateMd5 && String(r.gateMd5).toUpperCase() !== GATE_MD5) red(`门禁 md5 对不上（${String(r.gateMd5).slice(0, 8)}，应为 ED8D5910）`);
+  const miss = [];
+  if (!r.diffPath || !/^[0-9A-Fa-f]{8,32}$/.test(String(r.diffMd5 || ''))) miss.push('diff 和它的 md5');
+  if (!/^[0-9A-Fa-f]{64}$/.test(String(r.scriptSha256 || ''))) miss.push('脚本 sha256（64 位）');
+  if (!/^[0-9A-Fa-f]{8,32}$/.test(String(r.dryrunMd5 || ''))) miss.push('空跑日志 md5');
+  if (!r.decider) miss.push('decider（拍板人）'); if (!r.reviewer) miss.push('reviewer（复审）');
+  if (miss.length) red('不许放：缺 ' + miss.join('、'));
+  if (r.decider && r.reviewer && String(r.decider) === String(r.reviewer)) red('拍板人和复审是同一个，要审查会话另审');
+  if (r.kind === 'no-upstream') { const p = r.preconditions || {}; const lack = [!p.noOtherChain && '没有别的 gpu_ 链或等待器在跑', !p.noStopFile && '没有 STOP 文件', !p.dryrunOk && '空跑通过'].filter(Boolean); if (lack.length) red('不挂上游启动的前提缺：' + lack.join('、')); }
+  if (r.kind && !TECH_KINDS[r.kind] && level !== 'red') { level = 'amber'; msgs.push(`kind「${r.kind}」不在拍板类型里（${Object.keys(TECH_KINDS).join('/')}）`); }
+  return { level, canRelease: level !== 'red', msgs, kindLabel: TECH_KINDS[r.kind] || r.kind || null };
+}

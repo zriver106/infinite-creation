@@ -7,6 +7,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, execFile } from 'node:child_process';
+import { modeFor, apiKeyForChild, recordUsage } from './command-apikey.mjs';
 
 const CHAT_ROOT = process.env.CMD_CHAT_ROOT || 'C:\\Users\\usazr\\Documents\\moviePro\\Claude工作区\\指挥聊天测试';
 const CONFIG_FILE = path.join(CHAT_ROOT, 'chat-config.json');
@@ -127,13 +128,17 @@ function summary(m) {
 // ---------- claude CLI ----------
 const SYS_MAIN = '你是 IC 指挥系统的主会话，统一接收 Andy 的指令。你只有只读工具（Read/Grep/Glob），工作目录是沙箱。不写库、不提交 GPU、不改脚本、不读任何凭据或密钥文件、不打印密钥。需要另开辅助会话分担一件独立的小活时，在回复里单独一行写：[[开辅助:标题:给它的指令]]（系统会按上限决定是否开启，用完会自动停）。回答用中文，简洁。';
 const SYS_AUX = '你是 IC 指挥系统的辅助会话，由主会话按需开启，只做交给你的那一件事。你只有只读工具（Read/Grep/Glob），工作目录是沙箱。不写库、不提交 GPU、不改脚本、不读任何凭据或密钥文件、不打印密钥。回答用中文，简洁。';
-function runClaude(m, text) {
+async function runClaude(m, text) {
+  // 走 API 还是照旧走 Claude Code：默认 Claude Code；只有 Andy 在设置页把这个会话/角色改成 API、且存了密钥，才给子进程 ANTHROPIC_API_KEY
+  const via = await modeFor(m.id, m.role).catch(() => 'cc');
+  const env = { ...process.env }; delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN;
+  if (via === 'api') { const k = await apiKeyForChild(); if (k) env.ANTHROPIC_API_KEY = k; }
   return new Promise((resolve) => {
     const args = ['-p', '--model', cfg.model, '--restricted', '--strict-mcp-config', '--tools', cfg.tools.join(','), '--permission-mode', 'dontAsk', '--permission-prompts', 'none', '--output-format', 'json', '--append-system-prompt', m.role === 'main' ? SYS_MAIN : SYS_AUX];
     for (const d of cfg.readDirs || []) args.push('--add-dir', d);
     if (m.cliSessionId) args.push('--resume', m.cliSessionId); else { m.cliSessionId = crypto.randomUUID(); args.push('--session-id', m.cliSessionId); }
     const t0 = Date.now();
-    const child = spawn(cfg.claudeExe, args, { cwd: path.join(WORK_DIR, m.id), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(cfg.claudeExe, args, { cwd: path.join(WORK_DIR, m.id), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env });
     procs.set(m.id, child);
     let out = '', err = '';
     child.stdout.on('data', (d) => { out += d; });
@@ -142,7 +147,8 @@ function runClaude(m, text) {
     child.on('close', (code) => {
       clearTimeout(timer); procs.delete(m.id);
       let j = null; try { j = JSON.parse(out); } catch {}
-      resolve({ code, ms: Date.now() - t0, result: j?.result ?? null, isError: j ? !!j.is_error : true, cost: j?.total_cost_usd || 0, err: (j ? '' : (out + err)).slice(0, 800) });
+      if (via === 'api' && j?.usage) recordUsage(m.id, j.usage).catch(() => {});
+      resolve({ code, ms: Date.now() - t0, via, result: j?.result ?? null, isError: j ? !!j.is_error : true, cost: j?.total_cost_usd || 0, err: (j ? '' : (out + err)).slice(0, 800) });
     });
     child.stdin.end(text);
   });
@@ -200,7 +206,7 @@ async function sendMessage(id, text, from = 'Andy') {
     cur.status = 'idle';
     if (r.isError || r.result == null) await appendMsg(id, { role: 'system', text: `调用失败（rc=${r.code}，${r.ms}ms）：${redact(r.err || r.result || '')}` });
     else {
-      await appendMsg(id, { role: 'assistant', text: redact(r.result), ms: r.ms, cost: r.cost });
+      await appendMsg(id, { role: 'assistant', text: redact(r.result), ms: r.ms, cost: r.cost, via: r.via || (m.provider === 'codex' ? 'codex' : 'cc') });
       if (cur.role === 'main') {
         for (const mm of String(r.result).matchAll(/\[\[开辅助:([^:\]]{1,40}):([^\]]{1,2000})\]\]/g)) {
           const res = await openAux({ title: mm[1].trim(), instruction: mm[2].trim(), parent: 'main' });

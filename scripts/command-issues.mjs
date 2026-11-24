@@ -13,9 +13,9 @@ const M = 'C:\\Users\\usazr\\Documents\\moviePro';
 const P = path.join(M, 'projects', '我在城市用交易系统修仙');
 const G = path.join(M, '运行记录', 'gpu生产');
 const U = path.join(M, '_');
-const REAL_FILE = 'C:\\Users\\usazr\\Desktop\\问题描述.txt';
+const REAL_FILE = process.env.CMD_ISSUES_REAL_FILE || 'C:\\Users\\usazr\\Desktop\\问题描述.txt'; // 测试实例用环境变量指向副本
 const TEST_DIR = path.join(M, 'Claude工作区', '指挥预览测试');
-const CONFIG_FILE = path.join(TEST_DIR, 'issues-config.json');
+const CONFIG_FILE = process.env.CMD_ISSUES_CONFIG || path.join(TEST_DIR, 'issues-config.json');
 const LIVE = process.env.CMD_LIVE_BACKEND || 'http://127.0.0.1:4610';
 const PROJECT = '51ed8141-419f-4cf6-af96-406142970482';
 const DEFAULT_CFG = {
@@ -143,7 +143,7 @@ function lineDiff(a, b) {
 }
 async function appendLog(rec) { await fsp.appendFile(cfg.logFile, JSON.stringify({ at: nowIso(), ...rec }) + '\n'); }
 let writing = false;
-async function commit(op, operator, baseMd5, via) {
+async function commit(op, operator, baseMd5, via, reason) {
   if (path.resolve(cfg.target).toLowerCase() === path.resolve(cfg.realFile).toLowerCase() && !cfg.allowRealFile) {
     await appendLog({ operator, op, result: 'refused', reason: '目标是桌面真文件，Andy 未点头，拒写' });
     throw Object.assign(new Error('目标是桌面真文件；Andy 点头前不写'), { code: 403 });
@@ -159,7 +159,7 @@ async function commit(op, operator, baseMd5, via) {
     const lines = applyOp(doc, op);
     const out = serialize(doc, lines);
     await fsp.mkdir(cfg.backupDir, { recursive: true });
-    const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
+    const ts = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles', hour12: false }).replace(/[-:]/g, '').replace(' ', '_'); // 太平洋时间 年月日_时分秒
     const bak = path.join(cfg.backupDir, `${path.basename(cfg.target, '.txt')}_${ts}_${doc.md5.slice(0, 8)}.txt`);
     await fsp.writeFile(bak, doc.buf, { flag: 'wx' }).catch(async () => fsp.writeFile(bak.replace(/\.txt$/, '_' + crypto.randomBytes(2).toString('hex') + '.txt'), doc.buf));
     const tmp = cfg.target + '.writing';
@@ -170,8 +170,12 @@ async function commit(op, operator, baseMd5, via) {
     await fsp.rename(tmp, cfg.target);
     const after = md5(await fsp.readFile(cfg.target));
     const diff = lineDiff(doc.lines, lines);
-    await appendLog({ operator, op, via, result: 'written', target: cfg.target, beforeMd5: doc.md5, afterMd5: after, backup: bak, diff });
-    return { ok: true, beforeMd5: doc.md5, afterMd5: after, backup: bak, diff };
+    // 写后重读核对：BOM、换行符、改动行都要和预期一致
+    const re = await readDoc(); const verify = { bom: re.bom === doc.bom, eol: re.eol === doc.eol, md5: re.md5 === md5(out), lines: re.lines.length === lines.length && re.lines.every((l, i) => l === lines[i]) };
+    const verifyOk = Object.values(verify).every(Boolean);
+    await appendLog({ operator, op, via, reason: reason || null, result: verifyOk ? 'written' : 'written_verify_failed', target: cfg.target, beforeMd5: doc.md5, afterMd5: after, backup: bak, bom: re.bom, eol: re.eol === '\r\n' ? 'CRLF' : 'LF', verify, changedLines: diff.filter((d) => d.startsWith('+')).map((d) => Number(d.slice(1, d.indexOf(':')))), diff });
+    if (!verifyOk) throw Object.assign(new Error('写后核对不过（BOM/换行/内容），备份在 ' + bak), { code: 500 });
+    return { ok: true, beforeMd5: doc.md5, afterMd5: after, backup: bak, diff, verify };
   } finally { writing = false; }
 }
 
@@ -544,14 +548,14 @@ export async function handleIssues(req, res, url) {
         const rec = await addSuggestion({ by: operator, op: b.op, episode: b.episode, itemText: b.itemText || b.op?.text, from: b.from, to: b.op?.status ? STATUS_LABEL[b.op.status] : null, reason: b.reason || 'AI 提交的建议', baseMd5: b.baseMd5 });
         return send(res, 202, { suggested: true, suggestion: rec, note: 'AI 不能直接改，已进待确认队列，等 Andy 或总导确认' });
       }
-      const r = await commit(b.op, operator, b.baseMd5, 'direct'); return send(res, 200, r);
+      const r = await commit(b.op, operator, b.baseMd5, 'direct', String(b.reason || '').slice(0, 300) || null); return send(res, 200, r);
     }
     if (parts[0] === 'suggestions' && parts[1] && (parts[2] === 'confirm' || parts[2] === 'reject')) {
       if (!isHuman(operator)) return send(res, 403, { error: '只有 Andy 或总导能确认/驳回建议' });
       const a = await loadSugs(); const s = a.find((x) => x.id === parts[1] && x.state === 'pending');
       if (!s) return send(res, 404, { error: '没有这条待确认建议' });
       if (parts[2] === 'reject') { s.state = 'rejected'; s.decidedBy = operator; s.decidedAt = nowIso(); await saveSugs(a); await appendLog({ operator, result: 'suggestion_rejected', suggestion: s.id }); return send(res, 200, s); }
-      const r = await commit(s.op, operator, b.baseMd5 || null, `confirm ${s.id} (by ${s.by})`);
+      const r = await commit(s.op, operator, b.baseMd5 || null, `confirm ${s.id} (by ${s.by})`, s.reason || null);
       s.state = 'applied'; s.decidedBy = operator; s.decidedAt = nowIso(); s.result = { afterMd5: r.afterMd5, backup: r.backup }; await saveSugs(a);
       return send(res, 200, { ...r, suggestion: s });
     }

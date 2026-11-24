@@ -13,7 +13,9 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { handleIssues } from './command-issues.mjs';
-import { handleChat } from './command-chat.mjs';
+import { handleChat, chatRegistry, chatInit } from './command-chat.mjs';
+import { handleApiKey } from './command-apikey.mjs';
+import { handleTrial, trialInit } from './command-codex-trial.mjs';
 import { handleOverview, overviewInit } from './command-overview.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
@@ -302,6 +304,90 @@ async function readSession(provider, id, page, size) {
   return { provider, id, size: st.size, mtime: st.mtime.toISOString(), total, page, pages, pageSize: size, messages: msgs };
 }
 
+// ---------- 正在干活的会话（只读，尾部读取，首屏要快） ----------
+// 只从文件尾部读（默认 1.5MB），不全文件扫描；按 文件+大小+修改时间 缓存；所有文本过 redact
+const liveCache = new Map();
+async function readTail(file, maxBytes) {
+  const st = await fsp.stat(file);
+  const start = Math.max(0, st.size - maxBytes);
+  const fh = await fsp.open(file, 'r');
+  try { const buf = Buffer.alloc(st.size - start); await fh.read(buf, 0, buf.length, start); const lines = buf.toString('utf8').split(/\r?\n/).filter(Boolean); if (start > 0) lines.shift(); return { st, lines, truncated: start > 0 }; }
+  finally { await fh.close(); }
+}
+async function readHeadTitle(file, provider) {
+  const fh = await fsp.open(file, 'r');
+  try {
+    const buf = Buffer.alloc(64 * 1024); const { bytesRead } = await fh.read(buf, 0, buf.length, 0);
+    for (const l of buf.subarray(0, bytesRead).toString('utf8').split(/\r?\n/)) {
+      let o; try { o = JSON.parse(l); } catch { continue; }
+      const m = extract(o, provider); if (m && m.role === 'user' && m.text && !m.text.startsWith('[工具结果]') && !/^\s*<(local-command|command-|system-reminder)/.test(m.text)) return redact(m.text.replace(/\s+/g, ' ').slice(0, 60));
+    }
+  } catch {} finally { await fh.close(); }
+  return null;
+}
+function liveStatus(objs, provider, mtimeMs) {
+  const ageSec = Math.round((Date.now() - mtimeMs) / 1000);
+  let state = '不明', tool = null, busy = null;
+  for (let i = objs.length - 1; i >= 0; i--) {
+    const o = objs[i];
+    if (provider === 'claude') {
+      if (o.type !== 'user' && o.type !== 'assistant') continue;
+      const c = o.message?.content; const parts = Array.isArray(c) ? c : [{ type: 'text', text: String(c || '') }];
+      const tu = parts.filter((p) => p.type === 'tool_use');
+      if (o.type === 'assistant' && tu.length) { tool = tu.map((p) => p.name).join('、'); state = `在调用工具：${tool}`; busy = true; break; }
+      if (o.type === 'user' && parts.some((p) => p.type === 'tool_result')) { state = '工具已返回，在想下一步'; busy = true; break; }
+      if (o.type === 'user') { state = '收到新消息，在想'; busy = true; break; }
+      if (o.type === 'assistant') { const sr = o.message?.stop_reason; if (sr === 'end_turn' || sr === 'stop_sequence') { state = '这一轮答完了，在等下一条'; busy = false; } else { state = '在写回复'; busy = true; } break; }
+    } else {
+      const p = o.payload || {};
+      if (o.type === 'event_msg' && /task_complete|turn_complete/.test(p.type || '')) { state = '这一轮做完了，在等下一条'; busy = false; break; }
+      if (o.type !== 'response_item') continue;
+      if (p.type === 'function_call' || p.type === 'custom_tool_call') { tool = p.name; state = `在调用工具：${p.name}`; busy = true; break; }
+      if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') { state = '工具已返回，在想下一步'; busy = true; break; }
+      if (p.type === 'message') { state = p.role === 'assistant' ? '刚回复完' : '收到新消息，在想'; busy = p.role !== 'assistant'; break; }
+    }
+  }
+  if (busy && ageSec > 180) state += `（已 ${Math.round(ageSec / 60)} 分钟没写入：可能在跑长命令，或已卡住）`;
+  return { state, busy, tool, ageSec };
+}
+async function liveRead(provider, id, n) {
+  const file = safeSessionPath(provider, id);
+  if (!file) return { error: '路径不允许' };
+  const st0 = await fsp.stat(file);
+  const key = `${file}|${st0.size}|${st0.mtimeMs}|${n}`;
+  const hit = liveCache.get(key); if (hit) { const { _objs, ...rest } = hit; return { ...rest, cached: true, status: liveStatus(_objs, provider, st0.mtimeMs) }; }
+  let bytes = 1536 * 1024, r, objs, msgs;
+  for (;;) {
+    r = await readTail(file, bytes); objs = []; msgs = [];
+    for (const l of r.lines) { let o; try { o = JSON.parse(l); } catch { continue; } objs.push(o); const m = extract(o, provider); if (m) msgs.push(m); }
+    if (msgs.length >= n || !r.truncated || bytes >= 12 * 1024 * 1024) break;
+    bytes *= 3;
+  }
+  const out = { provider, id, size: r.st.size, mtime: r.st.mtime.toISOString(), tailBytes: Math.min(bytes, r.st.size), olderNotLoaded: r.truncated, messages: msgs.slice(-n).map((m) => ({ role: m.role, ts: m.ts, text: redact(m.text.length > 3000 ? m.text.slice(0, 3000) + '…（截断）' : m.text) })) };
+  const cwdObj = objs.find((o) => o.cwd || o.payload?.cwd); out.cwd = cwdObj ? redact(cwdObj.cwd || cwdObj.payload.cwd) : null;
+  liveCache.set(key, { ...out, _objs: objs.slice(-50) }); if (liveCache.size > 40) liveCache.delete(liveCache.keys().next().value);
+  return { ...out, cached: false, status: liveStatus(objs.slice(-50), provider, r.st.mtimeMs) };
+}
+const titleCache = new Map();
+async function liveList() {
+  await chatInit().catch(() => {});
+  const reg = (() => { try { return chatRegistry(); } catch { return []; } })();
+  const since = Date.now() - 10 * 60e3;
+  const out = [];
+  for (const provider of ['claude', 'codex']) {
+    const l = await listSessions(provider, 1).catch(() => null);
+    for (const s of (l?.sessions || []).filter((x) => new Date(x.mtime).getTime() >= since).slice(0, 15)) {
+      const file = safeSessionPath(provider, s.id); if (!file) continue;
+      let title = titleCache.get(file); if (title === undefined) { title = await readHeadTitle(file, provider); titleCache.set(file, title); }
+      const r0 = reg.find((x) => x.cliSessionId && String(s.id).includes(x.cliSessionId));
+      let status = null; try { const t = await readTail(file, 96 * 1024); const objs = []; for (const ln of t.lines.slice(-40)) { try { objs.push(JSON.parse(ln)); } catch {} } status = liveStatus(objs, provider, t.st.mtimeMs); } catch {}
+      out.push({ provider, id: s.id, project: s.project, size: s.size, mtime: s.mtime, title: r0 ? `聊天·${r0.title}` : title || '(没有找到第一条指令)', chat: r0 ? r0.id : null, status });
+    }
+  }
+  out.sort((a, b) => b.mtime.localeCompare(a.mtime));
+  return { at: new Date().toISOString(), windowMin: 10, sessions: out, note: '「正在干活」= 会话文件 10 分钟内有新内容；状态按文件最后几条记录推断（只读，不连进程）' };
+}
+
 // ---------- ⑩ 证据与日志 ----------
 const EV_ROOTS = { cmd: PATHS.cmdDir, link: PATHS.linkDir };
 async function evidence() {
@@ -498,6 +584,9 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/issues' || p.startsWith('/api/issues/')) return handleIssues(req, res, url);
     // 聊天走自己独立的接口（只写聊天沙箱目录 CMD_CHAT_ROOT）
     if (p === '/api/chat' || p.startsWith('/api/chat/')) return handleChat(req, res, url);
+    // 设置页：Claude API 密钥（只存本机 local_secrets，接口只回 {set, last4}）；Codex 只读试用
+    if (p.startsWith('/api/command/settings/claude-api')) return handleApiKey(req, res, p.slice('/api/command/'.length), send);
+    if (p === '/api/command/codex-trial' || p.startsWith('/api/command/codex-trial/')) return handleTrial(req, res, p.slice('/api/command/'.length), send);
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return send(res, 403, { error: '指挥系统预览为只读：拒绝 ' + req.method + ' ' + p + '（不提交任何任务、不写任何数据）' });
     }
@@ -515,6 +604,13 @@ const server = http.createServer(async (req, res) => {
         const size = Math.min(200, Math.max(5, Number(url.searchParams.get('size') || 40)));
         const r = await readSession(url.searchParams.get('provider'), url.searchParams.get('id'), Number(url.searchParams.get('page') ?? -1), size);
         return send(res, r.error ? 400 : 200, r);
+      }
+      if (sub === 'live') { const t0 = Date.now(); const r = await liveList(); r.serverMs = Date.now() - t0; return send(res, 200, r); }
+      if (sub === 'live/session') {
+        const t0 = Date.now(); const n = Math.min(200, Math.max(5, Number(url.searchParams.get('n') || 60)));
+        const r = await liveRead(url.searchParams.get('provider'), url.searchParams.get('id'), n).catch((e) => ({ error: String(e.message || e) }));
+        if (!r.error && url.searchParams.get('since') && url.searchParams.get('since') === `${r.size}|${r.mtime}`) return send(res, 200, { unchanged: true, size: r.size, mtime: r.mtime, status: r.status, serverMs: Date.now() - t0 });
+        r.serverMs = Date.now() - t0; return send(res, r.error ? 400 : 200, r);
       }
       if (sub === 'dispatch') return send(res, 200, await dispatchView());
       if (sub === 'evidence') return send(res, 200, await evidence());
@@ -534,4 +630,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 overviewInit({ listSessions, readSession });
-server.listen(PORT, HOST, () => console.log(`[command-preview] pid ${process.pid} http://${HOST}:${PORT} dist=${DIST} live=${LIVE} (GET only)`));
+server.listen(PORT, HOST, () => { trialInit().catch(() => {}); }); server.on('listening', () => console.log(`[command-preview] pid ${process.pid} http://${HOST}:${PORT} dist=${DIST} live=${LIVE} (GET only)`));

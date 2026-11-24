@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Pencil, Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film } from 'lucide-react';
+import { MessageCircle, Pencil, Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film, Settings as SettingsIcon } from 'lucide-react';
 
 // 指挥系统 第一期：只读预览。本页没有任何写操作按钮。
 const SUBS = [
@@ -15,8 +15,9 @@ const SUBS = [
   { id: 'usage', label: '用量与计费', icon: Gauge, phase: 1 },
   { id: 'dispatch', label: '派工', icon: Send, phase: 1 },
   { id: 'evidence', label: '证据与日志', icon: ScrollText, phase: 1 },
+  { id: 'settings', label: '设置', icon: SettingsIcon, phase: 1 },
 ];
-const READY = new Set(['overview', 'issues', 'chat', 'episodes', 'sessions', 'evidence', 'dispatch']);
+const READY = new Set(['overview', 'issues', 'chat', 'episodes', 'sessions', 'evidence', 'dispatch', 'settings']);
 
 const PLACEHOLDER = {
   writes: { phase: '第二期', desc: '写库包 before/after_expected 逐字段 diff、非目标镜漂移检查、回读 md5 对比。第三期才加「确认写库」（人点）。' },
@@ -152,6 +153,10 @@ function Overview({ go }) {
           {d.priority?.note ? <div className="text-[10px] text-[var(--fg-4)]">{d.priority.note}</div> : null}
           <div className="mt-2 text-[11px] font-semibold text-[var(--fg-3)]">派工规则</div>
           {(d.priority?.dispatchRules || []).map((r) => <div key={r.id}>· {r.text}<span className="ml-1 text-[10px] text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
+          <div className="mt-2 text-[11px] font-semibold text-[var(--fg-3)]" data-decision-rules="1">拍板规则</div>
+          {(d.priority?.decisionRules || []).map((r) => <div key={r.id}>· {r.text}<span className="ml-1 text-[10px] text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
+          {d.priority?.releaseFields ? <div className="text-[11px] text-[var(--fg-3)]">放行记录必须带：{d.priority.releaseFields.join('、')}；门禁 md5 固定 {String(d.priority.gateMd5 || '').slice(0, 8)}</div> : null}
+          {(d.priority?.releaseChecks || []).map((c) => <div key={c.key} className={c.level === 'red' ? 'font-semibold text-red-500' : c.level === 'amber' ? 'text-amber-400' : 'text-green-500'}>{c.level === 'red' ? '✖' : c.level === 'amber' ? '⚠' : '✔'} 放行记录 {c.key}{c.kindLabel ? `（${c.kindLabel}）` : ''}：{c.msgs.length ? c.msgs.join('；') : '各栏齐全'}</div>)}
         </div>
       </Card>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -736,12 +741,67 @@ function ChatPanel({ sid, summary, onClose }) {
     </section>
   );
 }
+function LivePanel({ s, onClose }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState(null);
+  const [first, setFirst] = useState(null);
+  const t0 = useRef(performance.now());
+  const boxRef = useRef(null);
+  const sinceRef = useRef('');
+  const q = `provider=${encodeURIComponent(s.provider)}&id=${encodeURIComponent(s.id)}&n=60`;
+  useEffect(() => {
+    let alive = true; t0.current = performance.now(); sinceRef.current = ''; setD(null); setFirst(null); setErr(null);
+    const load = async (initial) => {
+      try {
+        const r = await fetch(`/api/command/live/session?${q}${sinceRef.current ? `&since=${encodeURIComponent(sinceRef.current)}` : ''}`, { cache: 'no-store' });
+        const j = await r.json(); if (!alive) return;
+        if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+        if (j.unchanged) { setD((x) => (x ? { ...x, status: j.status } : x)); return; }
+        sinceRef.current = `${j.size}|${j.mtime}`; setD(j);
+        if (initial) requestAnimationFrame(() => { setFirst({ ms: Math.round(performance.now() - t0.current), server: j.serverMs, cached: j.cached }); });
+        requestAnimationFrame(() => { if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight; });
+      } catch (e) { if (alive) setErr(String(e.message || e)); }
+    };
+    load(true);
+    const t = setInterval(() => load(false), 3000);
+    return () => { alive = false; clearInterval(t); };
+  }, [q]);
+  const st = d?.status;
+  return (
+    <div className="panel flex min-w-0 flex-1 flex-col p-2 text-xs" data-live-panel={s.id} data-live-ready={d ? '1' : '0'}>
+      <div className="mb-1 flex items-center gap-2">
+        <b className="flex-1 truncate" title={s.id}>{s.title}</b>
+        <Pill tone="blue">只读</Pill>
+        <span className="text-[10px] text-[var(--fg-4)]">{s.provider}</span>
+        <button type="button" className="rounded border border-[var(--line)] px-1.5 text-[10px]" onClick={onClose}>关</button>
+      </div>
+      <div className={'mb-1 rounded px-2 py-1 text-[11px] ' + (st?.busy ? 'bg-[rgba(34,197,94,0.12)]' : 'bg-[var(--line)]')}>
+        {st ? <>状态：<b>{st.state}</b> · 最后写入 {st.ageSec} 秒前</> : '读取中…'}
+        {d ? <span className="ml-2 text-[10px] text-[var(--fg-4)]">文件 {(d.size / 1048576).toFixed(1)} MB · 只读了尾部 {(d.tailBytes / 1048576).toFixed(1)} MB{d.olderNotLoaded ? '（更早的没加载）' : ''} · 每 3 秒刷新</span> : null}
+        {first ? <span className="ml-2 text-[10px] text-[var(--fg-4)]" data-first-ms={first.ms}>首屏 {first.ms} ms（服务端 {first.server} ms{first.cached ? '，缓存' : ''}）</span> : null}
+      </div>
+      <Err e={err} />
+      <div ref={boxRef} className="max-h-[70vh] overflow-auto">
+        {(d?.messages || []).map((m, i) => (
+          <div key={i} className={'mb-1 rounded border border-[var(--line)] p-1.5 ' + (m.role === 'user' ? 'bg-[rgba(59,130,246,0.08)]' : m.role === 'tool' ? 'opacity-80' : '')}>
+            <div className="text-[9px] text-[var(--fg-4)]">{({ user: '指令/工具结果', assistant: '会话', tool: '工具', summary: '摘要', meta: '开始' })[m.role] || m.role} · {m.ts ? fmtTime(m.ts) : ''}</div>
+            <div className="whitespace-pre-wrap break-all text-[11px]">{m.text}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Chat() {
   const list = useJson('/api/chat/sessions');
   const [open, setOpen] = useState(() => { const sid = new URLSearchParams(window.location.search).get('sid'); return sid && sid !== 'main' ? ['main', sid] : ['main']; });
   const [form, setForm] = useState({ title: '', provider: 'claude', instruction: '' });
   const [msg, setMsg] = useState(null);
   useEffect(() => { const t = setInterval(list.reload, 5000); return () => clearInterval(t); }, [list.reload]);
+  const live = useJson('/api/command/live');
+  useEffect(() => { const t = setInterval(live.reload, 10000); return () => clearInterval(t); }, [live.reload]);
+  const [liveOpen, setLiveOpen] = useState(() => { const v = new URLSearchParams(window.location.search).get('live'); if (!v) return null; const i = v.indexOf(':'); return i > 0 ? { provider: v.slice(0, i), id: v.slice(i + 1), title: v.slice(i + 1) } : null; });
   const byId = Object.fromEntries((list.data?.sessions || []).map((s) => [s.id, s]));
   const toggle = (id) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id].slice(-MAX_OPEN)));
   const openAux = async () => {
@@ -760,7 +820,16 @@ function Chat() {
       </div>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <div className="panel p-2 lg:w-[250px] lg:shrink-0">
-          <p className="section-label px-1 pb-1">会话（只拉摘要）</p>
+          <p className="section-label px-1 pb-1">正在干活的会话（只读，10 分钟内有动静）</p>
+          {live.error ? <Err e={live.error} /> : null}
+          {(live.data?.sessions || []).map((x) => (
+            <button key={x.provider + x.id} type="button" data-live-item={x.id} onClick={() => setLiveOpen(liveOpen && liveOpen.id === x.id ? null : x)} className={'mb-1 w-full rounded-lg border p-1.5 text-left text-[11px] ' + (liveOpen && liveOpen.id === x.id ? 'border-[var(--accent)]' : 'border-[var(--line)]')}>
+              <div className="flex items-center gap-1"><span className={'inline-block h-2 w-2 rounded-full ' + (x.status?.busy ? 'bg-green-500' : 'bg-[var(--fg-4)]')} /><b className="flex-1 truncate">{x.title}</b><span className="text-[9px]">{x.provider}</span></div>
+              <div className="truncate text-[9px] text-[var(--fg-4)]">{x.status ? `${x.status.state} · ${x.status.ageSec} 秒前` : '状态不明'}</div>
+            </button>
+          ))}
+          {live.data && !live.data.sessions.length ? <p className="px-1 text-[10px] text-[var(--fg-4)]">10 分钟内没有会话在写入</p> : null}
+          <p className="section-label mt-2 px-1 pb-1">聊天会话（只拉摘要）</p>
           {(list.data?.sessions || []).map((s) => (
             <button key={s.id} type="button" onClick={() => toggle(s.id)} data-session={s.id} className={'mb-1 w-full rounded-lg border p-1.5 text-left text-[11px] ' + (open.includes(s.id) ? 'border-[var(--accent)]' : 'border-[var(--line)]')}>
               <div className="flex items-center gap-1"><b className="flex-1 truncate">{s.title}</b><span className="text-[9px]">{s.role === 'main' ? '主' : '辅'}·{s.provider}</span></div>
@@ -779,8 +848,9 @@ function Chat() {
           </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3 xl:flex-row">
+          {liveOpen ? <LivePanel key={liveOpen.provider + liveOpen.id} s={(live.data?.sessions || []).find((x) => x.id === liveOpen.id) || liveOpen} onClose={() => setLiveOpen(null)} /> : null}
           {open.map((id) => <ChatPanel key={id} sid={id} summary={byId[id]} onClose={() => toggle(id)} />)}
-          {!open.length ? <p className="text-xs text-[var(--fg-3)]">点左边的会话展开。</p> : null}
+          {!open.length && !liveOpen ? <p className="text-xs text-[var(--fg-3)]">点左边的会话展开。</p> : null}
         </div>
       </div>
     </div>
@@ -803,7 +873,7 @@ export default function CommandPage() {
         <FileSearch size={14} className="text-[var(--accent)]" />
         <b>指挥系统 · 预览</b>
         <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本；聊天只写聊天沙箱、AI 只有只读工具</Pill>
-        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用（聊天里暂停：缺读取限制） · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
+        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 聊天里关着，只读巡视对账试用一天（设置页） · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <nav className="panel p-2 lg:w-[180px] lg:shrink-0">
@@ -825,9 +895,85 @@ export default function CommandPage() {
           {sub === 'sessions' ? <Sessions /> : null}
           {sub === 'evidence' ? <Evidence /> : null}
           {sub === 'dispatch' ? <Dispatch /> : null}
+          {sub === 'settings' ? <Settings /> : null}
           {!READY.has(sub) ? <Placeholder sub={cur} /> : null}
         </div>
       </div>
     </div>
   );
+}
+
+// ---------- 设置：Claude API 密钥 + Codex 只读试用 ----------
+async function postJson(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.error) || 'HTTP ' + r.status);
+  return j;
+}
+const fmtN = (n) => Number(n || 0).toLocaleString('en-US');
+function ApiKeyCard() {
+  const { data, error, load } = useJson('/api/command/settings/claude-api');
+  const sess = useJson('/api/chat/sessions');
+  const [val, setVal] = useState(''); const [editing, setEditing] = useState(false); const [msg, setMsg] = useState(null); const [busy, setBusy] = useState(false); const [test, setTest] = useState(null);
+  const act = async (fn) => { setBusy(true); setMsg(null); try { await fn(); load(); } catch (e) { setMsg('✖ ' + e.message); } finally { setBusy(false); } };
+  const k = data?.key; const rt = data?.routing;
+  const save = () => act(async () => { await postJson('/api/command/settings/claude-api/key', { key: val }); setVal(''); setEditing(false); setMsg('✔ 已保存'); });
+  const modeSel = (cur, onChange, withDefault) => (
+    <select className="rounded border border-[var(--line)] bg-transparent px-1 text-xs" value={cur} disabled={busy} onChange={(e) => act(() => onChange(e.target.value))}>
+      {withDefault ? <option value="default">跟角色默认</option> : null}
+      <option value="cc">Claude Code（照旧）</option>
+      <option value="api">API</option>
+    </select>
+  );
+  return (
+    <Card title="Claude API 密钥">
+      {error ? <p className="text-xs text-red-400">{error}</p> : null}
+      {data ? <div className="flex flex-col gap-2 text-xs" data-apikey-card="1">
+        <div>状态：{k.set ? <b data-apikey-last4="1">已设置 ••••{k.last4}</b> : <b>未设置</b>}{k.savedAt ? <span className="ml-2 text-[var(--fg-4)]">保存于 {ptHM(k.savedAt)}（太平洋时间）</span> : null}</div>
+        {!k.set || editing ? <div className="flex flex-wrap items-center gap-2">
+          <input type="password" autoComplete="new-password" spellCheck={false} className="w-[360px] rounded border border-[var(--line)] bg-transparent px-2 py-1 font-mono" placeholder="sk-ant-…" value={val} onChange={(e) => setVal(e.target.value)} />
+          <button type="button" disabled={busy || !val} className="rounded border border-[var(--line)] px-2 py-1" onClick={save}>保存</button>
+          {editing ? <button type="button" className="rounded border border-[var(--line)] px-2 py-1" onClick={() => { setEditing(false); setVal(''); }}>取消</button> : null}
+        </div> : <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={busy} className="rounded border border-[var(--line)] px-2 py-1" onClick={() => setEditing(true)}>更换</button>
+          <button type="button" disabled={busy} className="rounded border border-[var(--line)] px-2 py-1" onClick={() => { if (window.confirm('确定清除已保存的 Claude API 密钥？')) act(async () => { await postJson('/api/command/settings/claude-api/clear', {}); setMsg('✔ 已清除'); }); }}>清除</button>
+          <button type="button" disabled={busy} className="rounded border border-[var(--line)] px-2 py-1" onClick={() => act(async () => setTest(await postJson('/api/command/settings/claude-api/test', {})))}>测试连接</button>
+          {test ? <span data-apikey-test="1" className={test.ok ? 'text-green-500' : 'text-red-500'}>{test.ok ? 'OK' : 'FAIL'}{test.status ? `（HTTP ${test.status}）` : `（${test.msg}）`}</span> : null}
+        </div>}
+        {msg ? <div>{msg}</div> : null}
+        <div className="text-[10px] text-[var(--fg-4)]">密钥只存在 agent1 本机：{k.file}（不在任何 git 仓库里{k.acl ? `；文件夹权限：${k.acl}` : ''}）。页面和接口只回「有没有」和末 4 位；不写日志、聊天记录、会话登记表。测试连接只在服务端调 Anthropic 的模型列表接口，只显示通不通和 HTTP 状态码。</div>
+        <div className="mt-2 font-semibold text-[var(--fg-3)]">哪些会话走 API（默认全部照旧走 Claude Code；选了 API 但没存密钥时也照旧走 Claude Code）</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span>主会话：{modeSel(rt.roles.main, (v) => postJson('/api/command/settings/claude-api/routing', { role: 'main', mode: v }))}</span>
+          <span>辅助会话（默认）：{modeSel(rt.roles.aux, (v) => postJson('/api/command/settings/claude-api/routing', { role: 'aux', mode: v }))}</span>
+        </div>
+        {(sess.data?.sessions || []).filter((s) => s.provider === 'claude' && s.status !== 'stopped').map((s) => <div key={s.id} className="flex items-center gap-2"><span className="w-[280px] truncate">{s.title}</span><span className="text-[var(--fg-4)]">{s.id}</span>{modeSel(rt.sessions[s.id] || 'default', (v) => postJson('/api/command/settings/claude-api/routing', { session: s.id, mode: v }), true)}</div>)}
+        <div className="text-[10px] text-[var(--fg-4)]">已接通：指挥系统聊天页新发的每一轮都会按这里的选择决定走 API 还是 Claude Code（下一条消息起生效）。别的机器人和 4610 那边的任务不受这里影响。{rt.changedAt ? `最后改动：${ptHM(rt.changedAt)} ${rt.changedBy || ''}` : ''}</div>
+        <div className="mt-2 font-semibold text-[var(--fg-3)]">API 用量（我们自己记的 token 数）</div>
+        {data.usage.days.length ? <table className="text-[11px]"><thead><tr className="text-left text-[var(--fg-3)]"><th className="pr-4">日期（太平洋）</th><th className="pr-4">次数</th><th className="pr-4">输入 token</th><th>输出 token</th></tr></thead><tbody>{data.usage.days.map((d) => <tr key={d.day} className="border-t border-[var(--line)]"><td className="pr-4">{d.day}</td><td className="pr-4">{d.calls}</td><td className="pr-4">{fmtN(d.input)}</td><td>{fmtN(d.output)}</td></tr>)}</tbody></table> : <div className="text-[var(--fg-3)]">还没有走 API 的调用</div>}
+        <div className="text-[10px] text-[var(--fg-4)]">{data.usage.note}</div>
+      </div> : null}
+    </Card>
+  );
+}
+const ptDT = (x) => (x ? new Date(x).toLocaleString('zh-CN', { timeZone: 'America/Los_Angeles', hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+function CodexTrialCard() {
+  const { data, error } = useJson('/api/command/codex-trial');
+  if (error) return <Card title="Codex 只读试用"><p className="text-xs text-red-400">{error}</p></Card>;
+  if (!data) return null;
+  const s = data.state || {};
+  return (
+    <Card title="Codex 只读试用（Andy 17:27「可以，Codex 按只读巡视对账试一天」）">
+      <div className="flex flex-col gap-1 text-xs" data-codex-trial="1">
+        <div>状态：{s.enabled ? <b className="text-green-500">试用中</b> : <b>{s.autoOffAt ? '已到期自动关' : s.stoppedAt ? '已手动关' : '未开始'}</b>}{s.start ? `　开始 ${ptDT(s.start)}　自动关 ${ptDT(s.end)}（太平洋时间）` : ''}{s.everyMin ? `　每 ${s.everyMin} 分钟跑一轮` : ''}</div>
+        <div>只做：{data.tasks.map((t) => `${t.label}${t.wired ? '' : `（未接：${t.why}）`}`).join('；')}。聊天页里 Codex 仍然关着。</div>
+        <div>结果：{data.runs} 次{data.agreePct != null ? `，和脚本结果一致 ${data.agreePct}%` : ''}，漏报 {data.missedAlarms}，写文件 {data.fileWrites}，越界读 {data.outOfScopeReads}，Codex 用工具 {data.toolEvents} 次{data.pass == null ? '' : data.pass ? ' → 目前达标' : ' → 目前不达标'}</div>
+        <div className="text-[10px] text-[var(--fg-4)]">Codex 不给任何读文件、跑命令、浏览器、看图工具（-s read-only，并关掉 shell_tool / unified_exec 等）；材料由指挥系统按白名单取好、过读取限制（.claude、.codex、.credentials*、local_secrets、P\项目数据\封存\、*.env）后放进提示词。逐次记录：{data.runsFile}</div>
+        {(data.last || []).slice(0, 6).map((r, i) => <div key={i} className="text-[11px] text-[var(--fg-3)]">{ptHM(r.at)} {r.event ? `【${r.event}】` : r.canary ? `【读取限制测试】${r.leaked ? '✖ 读到了' : '✔ 没读到'}` : r.skipped ? `${r.task} 跳过：${r.skipped}` : `${r.task}：${r.agree ? '✔ 一致' : '✖ 不一致'}${r.missedAlarm ? '（漏报）' : ''}`}</div>)}
+      </div>
+    </Card>
+  );
+}
+function Settings() {
+  return <div className="flex flex-col gap-4"><ApiKeyCard /><CodexTrialCard /></div>;
 }

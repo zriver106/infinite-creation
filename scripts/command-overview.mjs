@@ -7,8 +7,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gpuQueue, issuesForOverview, writeLead, logCacheStats } from './command-issues.mjs';
-import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE } from './command-rules.mjs';
+import { gpuQueue, issuesForOverview, writeLead, logCacheStats, issuesCfg } from './command-issues.mjs';
+import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE, DECISION_RULES, RELEASE_FIELDS, checkRelease, GATE_MD5 } from './command-rules.mjs';
+function releaseChecks() { const a = (issuesCfg() || {}).approvals || {}; return Object.entries(a).map(([key, r]) => ({ key, at: r && r.at || null, by: r && (r.decider || r.by) || null, ...checkRelease(r) })); }
 import { chatInit, chatRegistry, chatRegistryFile } from './command-chat.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -127,7 +128,7 @@ function priorityCheck(gpu, iss, edits, missingEps, partial) {
     }
     editNote = `改字段时间取 ic.db change_logs 里内容字段（提示词、画面、分镜、台词、绑定等）真有变化的最后一次；${edits.logRows} 条记录、${edits.shotsTotal} 个镜头，2 分钟缓存`;
   }
-  return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, activeChains: active.map((c) => ({ key: c.key, label: c.label, state: c.state, pid: c.pid || null, remaining: remOf(c).length })), ignoredChains: ignored, violations, ok: !violations.some((v) => v.level === 'red'), note: '只提醒，系统不改链、不改稿、不提交。判顺序只看在跑和已挂好的链' + (active.length ? `（${active.map((c) => c.label).join('、')}）` : '（现在没有）') + (ignored.length ? `；不参与判断：${ignored.join('、')}` : '') + (editNote ? `；${editNote}` : '') };
+  return { decisionRules: DECISION_RULES, releaseFields: RELEASE_FIELDS, gateMd5: GATE_MD5, releaseChecks: releaseChecks(), rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, activeChains: active.map((c) => ({ key: c.key, label: c.label, state: c.state, pid: c.pid || null, remaining: remOf(c).length })), ignoredChains: ignored, violations, ok: !violations.some((v) => v.level === 'red'), note: '只提醒，系统不改链、不改稿、不提交。判顺序只看在跑和已挂好的链' + (active.length ? `（${active.map((c) => c.label).join('、')}）` : '（现在没有）') + (ignored.length ? `；不参与判断：${ignored.join('、')}` : '') + (editNote ? `；${editNote}` : '') };
 }
 
 async function computeTop() {
@@ -218,7 +219,7 @@ async function computeTop() {
     },
     sessionsCount: ses?.data ? { active: ses.data.active.length, registered: ses.data.registered, working: ses.data.working, unregistered: ses.data.unregistered } : null,
     writeLead: lead && !lead.error ? { value: lead.count, byChapter: lead.byChapter, note: 'IC 里 video_prompt 已改、晚于最新视频、且不在任何未跑完链的镜单里' } : none('IC 镜头读数' + (lead?.error ? `（${lead.error}）` : '')),
-    priority: await (async () => { try { let ed = null; try { ed = await shotEdits(); } catch (e) { errs.push('改字段时间（change_logs）：' + e.message); } return priorityCheck(gpu, iss, ed, missingEps, db.partial); } catch (e) { errs.push('排序规则检查：' + e.message); return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, violations: [], error: e.message }; } })(),
+    priority: await (async () => { try { let ed = null; try { ed = await shotEdits(); } catch (e) { errs.push('改字段时间（change_logs）：' + e.message); } return priorityCheck(gpu, iss, ed, missingEps, db.partial); } catch (e) { errs.push('排序规则检查：' + e.message); return { decisionRules: DECISION_RULES, releaseFields: RELEASE_FIELDS, gateMd5: GATE_MD5, releaseChecks: releaseChecks(), rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, violations: [], error: e.message }; } })(),
     andy,
     errors: errs,
     sources: { db: { path: DB, readOnly: true, elapsedMs: db.elapsedMs, timings: db.timings }, delivery: dl.dir, probedNow: dl.probedNow, chainLogs: logCacheStats().length },
