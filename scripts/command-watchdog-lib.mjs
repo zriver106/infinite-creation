@@ -226,7 +226,7 @@ export function evaluate(snap) {
   }
   return out;
 }
-export function stateZh(s) { return ({ running: '在跑', waiting: '在等上游', dead: '进程没了', done: '已完成', stopped: '已停', prepared: '已准备未启动' })[s] || s; }
+export function stateZh(s) { return ({ running: '在跑', waiting: '在等（上游或空闲）', dead: '进程没了', done: '已完成', stopped: '已停', prepared: '已准备未启动' })[s] || s; }
 function trim(s, n) { s = String(s ?? ''); return s.length > n ? s.slice(0, n) + '…' : s; }
 export function sig(o) { return crypto.createHash('md5').update(JSON.stringify(o)).digest('hex').slice(0, 12); }
 
