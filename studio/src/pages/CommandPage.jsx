@@ -141,6 +141,18 @@ function Overview({ go }) {
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-[var(--fg-3)]"><span>按太平洋时间 {ptHM(new Date().toISOString())}</span><Stamp p={top} sec={30} /></div>
       </div>
       {d.errors?.length ? <p className="text-xs text-red-400">部分数据源读取失败：{d.errors.join('；')}</p> : null}
+      <Card title="规则（排序规则 + 派工规则；只显示和提醒，不自动改链、不自动派单）" right={<button type="button" className="rounded border border-[var(--line)] px-2 text-xs" onClick={() => go('dispatch')}>看派工单 →</button>}>
+        <div className="flex flex-col gap-1 text-xs">
+          <div className="text-[11px] font-semibold text-[var(--fg-3)]">排序规则（越靠上越优先）</div>
+          {(d.priority?.rules || []).map((r, i) => <div key={r.id} className="font-semibold">{i + 1}. ★ {r.text}<span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
+          {d.priority?.unfinishedEarly?.length ? <div className="text-[11px] text-[var(--fg-3)]">第1–10集还没做完：{d.priority.unfinishedEarly.map((e) => `第${e.no}集（${e.why}）`).join('；')}</div> : null}
+          {(d.priority?.violations || []).map((v, i) => <div key={i} className={v.level === 'red' ? 'font-semibold text-red-500' : 'text-amber-400'}>{v.level === 'red' ? '✖ 违反：' : '⚠ 注意：'}{v.text}</div>)}
+          {d.priority && !(d.priority.violations || []).length ? <div className="text-green-500">✔ 现在的链和待排链的稿都没有违反排序规则</div> : null}
+          {d.priority?.note ? <div className="text-[10px] text-[var(--fg-4)]">{d.priority.note}</div> : null}
+          <div className="mt-2 text-[11px] font-semibold text-[var(--fg-3)]">派工规则</div>
+          {(d.priority?.dispatchRules || []).map((r) => <div key={r.id}>· {r.text}<span className="ml-1 text-[10px] text-[var(--fg-4)]">（{r.check}；{r.source}）</span></div>)}
+        </div>
+      </Card>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Tile title="做完的集（Andy 口径）">
           {d.films.doneAndy.value === null ? <Missing m={d.films.doneAndy} /> : <><div className="text-xl font-semibold">{d.films.doneAndy.n} <span className="text-xs font-normal">/ {T}</span></div><Bar v={d.films.doneAndy.n / T} /><div className="mt-1 text-[10px] text-[var(--fg-4)]" title={d.films.doneAndy.note}>第 {d.films.doneAndy.list.join('、') || '—'} 集 · 已导出且登记问题全修好；整集验收：<Missing m={d.films.accepted} /></div></>}
@@ -418,7 +430,7 @@ function PartyCol({ p }) {
     </section>
   );
 }
-const ORDER_FIELDS = ['编号', '来源', '接单方', '范围', '验收标准', '截止时间', '状态', '交付物', '需要Andy点头'];
+const ORDER_FIELDS = ['编号', '来源', '接单方', '范围', '模型', '选它的理由', '验收标准', '截止时间', '状态', '交付物', '需要Andy点头'];
 function showVal(v) {
   if (v == null || v === '') return '—';
   if (typeof v === 'boolean') return v ? '是' : '否';
@@ -438,16 +450,22 @@ function Dispatch() {
         {data ? <p className="mb-2 text-[11px] text-[var(--fg-3)]">读取时间 {fmtTime(data.at)}</p> : null}
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(data?.parties || []).map((p) => <PartyCol key={p.id} p={p} />)}</div>
       </Card>
+      <Card title="派工规则：模型分配表（Andy 17:04）">
+        <div className="flex flex-col gap-1 text-xs">
+          {(data?.orders.rules || []).map((r) => <div key={r.id} className="font-semibold">· {r.text.split('：')[0]}<span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]">（{r.check}）</span></div>)}
+          <table className="mt-1 text-[11px]"><thead><tr className="text-left text-[var(--fg-3)]"><th className="pr-4">活</th><th>模型</th></tr></thead><tbody>{(data?.orders.modelTable || []).map((m) => <tr key={m.kind} className="border-t border-[var(--line)]"><td className="py-1 pr-4">{m.label}</td><td>{m.model}</td></tr>)}</tbody></table>
+        </div>
+      </Card>
       <Card title="派工单草稿（只读）">
         {data ? <p className="mb-2 break-all text-[11px] text-[var(--fg-3)]">目录：{data.orders.dir}{data.orders.exists ? '' : '（不存在）'} · 共 {data.orders.orders.length} 张</p> : null}
         <div className="overflow-auto">
           <table className="w-full text-[11px]">
-            <thead><tr className="text-left text-[var(--fg-3)]"><th className="pr-2">文件</th>{ORDER_FIELDS.map((f) => <th key={f} className="pr-2">{f}</th>)}</tr></thead>
+            <thead><tr className="text-left text-[var(--fg-3)]"><th className="pr-2">文件</th><th className="pr-2">模型规则</th>{ORDER_FIELDS.map((f) => <th key={f} className="pr-2">{f}</th>)}</tr></thead>
             <tbody>
               {(data?.orders.orders || []).map((o) => (
                 <tr key={o.file} className="border-t border-[var(--line)] align-top">
-                  <td className="py-1.5 pr-2"><div className="font-mono">{o.file}</div><div className="font-mono text-[9px] text-[var(--fg-4)]">md5 {o.md5}</div>{o.data?.['示例'] ? <Pill tone="blue">示例</Pill> : null}</td>
-                  {o.error ? <td colSpan={ORDER_FIELDS.length} className="text-red-500">{o.error}</td> : ORDER_FIELDS.map((f) => <td key={f} className="whitespace-pre-wrap break-all pr-2">{showVal(o.data[f])}</td>)}
+                  <td className="py-1.5 pr-2"><div className="font-mono">{o.file}</div><div className="font-mono text-[9px] text-[var(--fg-4)]">md5 {o.md5}</div>{o.data?.['示例'] ? <Pill tone="blue">示例</Pill> : null}</td><td className={'pr-2 ' + (o.rule?.level === 'red' ? 'font-semibold text-red-500' : o.rule?.level === 'amber' ? 'text-amber-400' : 'text-green-500')}>{o.rule ? <>{o.rule.level === 'red' ? '✖ 不许派出' : o.rule.level === 'amber' ? '⚠ 模型要再看' : '✔ 合规'}{o.rule.msgs.map((m, i) => <div key={i} className="text-[10px]">{m}</div>)}<div className="text-[10px] text-[var(--fg-4)]">活：{o.rule.task.label}{o.rule.suggested ? ` · 默认：${o.rule.suggested}` : ''}</div></> : null}</td>
+                  {o.error ? <td colSpan={ORDER_FIELDS.length + 1} className="text-red-500">{o.error}</td> : ORDER_FIELDS.map((f) => <td key={f} className="whitespace-pre-wrap break-all pr-2">{showVal(o.data[f])}</td>)}
                 </tr>
               ))}
             </tbody>

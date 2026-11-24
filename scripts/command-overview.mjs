@@ -8,6 +8,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gpuQueue, issuesForOverview, writeLead, logCacheStats } from './command-issues.mjs';
+import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE } from './command-rules.mjs';
 import { chatInit, chatRegistry, chatRegistryFile } from './command-chat.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,37 @@ async function getPart(name, fn) {
 
 const est = (value, samples, window, method) => ({ value, estimate: true, samples, window, method });
 const none = (why) => ({ value: null, missing: '暂无数据：缺' + why });
+
+const EARLY = 10;
+const chN = (c) => Number(String(c || '').replace(/\D/g, '')) || null;
+function priorityCheck(gpu, iss, lead, missingEps, partial) {
+  const unfinished = new Map();
+  for (const e of iss?.eps || []) if (e.no <= EARLY && e.items - e.done > 0) unfinished.set(e.no, `问题描述还有 ${e.items - e.done} 条未完成`);
+  for (const n of missingEps || []) if (n <= EARLY) unfinished.set(n, (unfinished.get(n) ? unfinished.get(n) + '；' : '') + '还没导出');
+  for (const x of partial || []) if (x.ch <= EARLY) unfinished.set(x.ch, (unfinished.get(x.ch) ? unfinished.get(x.ch) + '；' : '') + `镜头出好 ${x.done}/${x.total}`);
+  const eps = [...unfinished.entries()].sort((a, b) => a[0] - b[0]).map(([no, why]) => ({ no, why }));
+  const violations = [];
+  const chapsOf = (c) => [...new Set((c?.shots || []).filter((s) => !s.done).map((s) => chN(s.ch)).filter(Boolean))].sort((a, b) => a - b);
+  const byKey = new Map((gpu.chains || []).map((c) => [c.key, c]));
+  const leadEarly = Object.entries(lead?.byChapter || {}).filter(([k]) => chN(k) <= EARLY).map(([k, v]) => `${k} ${v} 镜`);
+  const qs = (gpu.queue || []).filter((c) => c.state !== 'missing');
+  const laterHasEarly = (i) => qs.slice(i + 1).some((c) => chapsOf(byKey.get(c.key) || c).some((n) => n <= EARLY));
+  let qn = 0;
+  qs.forEach((c, i) => {
+    const ch = chapsOf(byKey.get(c.key) || c); if (!ch.length) return;
+    const isRun = c.state === 'running' || (gpu.running && gpu.running.key === c.key);
+    const pos = isRun ? '正在跑的' : `队列第 ${++qn} 条`;
+    const early = ch.filter((n) => n <= EARLY), late = ch.filter((n) => n > EARLY);
+    const tail = isRun ? '（这条按指令跑完，系统不改链）' : '';
+    if (!early.length && (laterHasEarly(i) || leadEarly.length)) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」只有第 ${late.join('、')} 章，却排在第1–10集的镜头前面${laterHasEarly(i) ? '（后面的链里还有第1–10集的镜头）' : ''}${leadEarly.length ? `（第1–10集已写库待排链：${leadEarly.join('、')}）` : ''}${tail}` });
+    else if (!early.length && eps.length) violations.push({ rule: 'ep1-10-before-new', kind: 'chain', key: c.key, level: 'red', text: `${pos}「${c.label}」是第 ${late.join('、')} 章，第1–10集还没做完${tail}` });
+    else if (early.length && late.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'chain', key: c.key, level: 'amber', text: `${pos}「${c.label}」混排：第 ${early.join('、')} 章和第 ${late.join('、')} 章，第1–10集的镜头最好单独先跑` });
+  });
+  if (leadEarly.length) violations.push({ rule: 'gpu-ep1-10-first', kind: 'write', level: 'red', text: `第1–10集已写库但还没进任何链：${leadEarly.join('、')}，应排到链序最前` });
+  const leadLate = Object.entries(lead?.byChapter || {}).filter(([k]) => chN(k) > EARLY).sort((a, b) => chN(a[0]) - chN(b[0]));
+  if (eps.length && leadLate.length) violations.push({ rule: 'ep1-10-before-new', kind: 'write', level: 'red', text: `已写库待排链的稿里有第11集以后的：${leadLate.map(([k, v]) => `${k} ${v} 镜`).join('、')}（第1–10集没做完前，排链先排第1–10集）` });
+  return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, violations, ok: !violations.some((v) => v.level === 'red'), note: '违反只做红字提醒，系统不改链、不改稿；「正在写还没写库的稿」系统看不到，不在检查范围' + (eps.length ? '' : '；第1–10集已按问题描述、导出、镜头出好判断为做完') };
+}
 
 async function computeTop() {
   const t0 = Date.now();
@@ -169,6 +201,7 @@ async function computeTop() {
     },
     sessionsCount: ses?.data ? { active: ses.data.active.length, registered: ses.data.registered, working: ses.data.working, unregistered: ses.data.unregistered } : null,
     writeLead: lead && !lead.error ? { value: lead.count, byChapter: lead.byChapter, note: 'IC 里 video_prompt 已改、晚于最新视频、且不在任何未跑完链的镜单里' } : none('IC 镜头读数' + (lead?.error ? `（${lead.error}）` : '')),
+    priority: (() => { try { return priorityCheck(gpu, iss, lead && !lead.error ? lead : null, missingEps, db.partial); } catch (e) { errs.push('排序规则检查：' + e.message); return { rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, violations: [], error: e.message }; } })(),
     andy,
     errors: errs,
     sources: { db: { path: DB, readOnly: true, elapsedMs: db.elapsedMs, timings: db.timings }, delivery: dl.dir, probedNow: dl.probedNow, chainLogs: logCacheStats().length },

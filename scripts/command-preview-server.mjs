@@ -3,6 +3,7 @@
 // - /api/command/* ：只读文件 / 只读进程表 / 对 4610 只发 GET
 // - 其余 /api /files /samples：只允许 GET/HEAD 透传到线上 4610（只读），任何 POST/PUT/PATCH/DELETE 一律 403
 // - 不连 8188/8189，不读写 ic.db，不读任何凭据文件
+import { checkOrder, DISPATCH_RULES, MODEL_TABLE } from './command-rules.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -442,17 +443,17 @@ async function partyDirs(id, name, root, guessNote) {
 }
 async function dispatchOrders() {
   const ents = await fsp.readdir(DISPATCH_DIR).catch(() => null);
-  if (!ents) return { dir: DISPATCH_DIR, exists: false, orders: [] };
+  if (!ents) return { dir: DISPATCH_DIR, exists: false, orders: [], rules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m) };
   const orders = [];
   for (const f of ents.filter((n) => n.toLowerCase().endsWith('.json')).sort()) {
     const full = path.join(DISPATCH_DIR, f);
     const buf = await fsp.readFile(full).catch(() => null);
     if (!buf) continue;
     const md5 = crypto.createHash('md5').update(buf).digest('hex').toUpperCase();
-    try { orders.push({ file: f, md5, data: JSON.parse(buf.toString('utf8').replace(/^\uFEFF/, '')) }); }
+    try { const data = JSON.parse(buf.toString('utf8').replace(/^\uFEFF/, '')); orders.push({ file: f, md5, data, rule: checkOrder(data) }); }
     catch (e) { orders.push({ file: f, md5, error: 'JSON 解析失败：' + e.message }); }
   }
-  return { dir: DISPATCH_DIR, exists: true, orders };
+  return { dir: DISPATCH_DIR, exists: true, orders, rules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m) };
 }
 async function dispatchView() {
   const [gpu, claude, wf, asset, orders] = await Promise.all([
