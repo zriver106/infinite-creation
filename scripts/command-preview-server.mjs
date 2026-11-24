@@ -17,6 +17,7 @@ import { handleChat, chatRegistry, chatInit } from './command-chat.mjs';
 import { handleApiKey } from './command-apikey.mjs';
 import { handleTrial, trialInit } from './command-codex-trial.mjs';
 import { handleOverview, overviewInit } from './command-overview.mjs';
+import { handleWatchdog, watchdogInit } from './command-watchdog-api.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
 const HOST = process.env.CMD_PREVIEW_HOST || '0.0.0.0';
@@ -595,6 +596,7 @@ const server = http.createServer(async (req, res) => {
       if (sub === 'ping') return send(res, 200, { ok: true, readOnly: true, port: PORT, live: LIVE, pid: process.pid });
       if (sub === 'overview') return send(res, 200, await overview());
       if (sub === 'ov') return handleOverview(req, res, url, send);
+      if (sub === 'watchdog') return handleWatchdog(req, res, send);
       if (sub === 'episodes') return send(res, 200, await episodes());
       if (sub === 'sessions') {
         const days = Math.min(30, Math.max(1, Number(url.searchParams.get('days') || 3)));
@@ -630,4 +632,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 overviewInit({ listSessions, readSession });
-server.listen(PORT, HOST, () => { trialInit().catch(() => {}); }); server.on('listening', () => console.log(`[command-preview] pid ${process.pid} http://${HOST}:${PORT} dist=${DIST} live=${LIVE} (GET only)`));
+server.listen(PORT, HOST, () => { trialInit().catch(() => {}); watchdogInit(); }); server.on('listening', () => console.log(`[command-preview] pid ${process.pid} http://${HOST}:${PORT} dist=${DIST} live=${LIVE} (GET only)`));

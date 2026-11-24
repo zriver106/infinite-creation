@@ -263,6 +263,13 @@ async function readBody(req, max = 64 * 1024) {
 function send(res, code, obj) { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); }
 
 let ready = null;
+// 看门狗（CLA-34）：把系统消息追加到主会话 'main'，走 appendMsg（保持 seq/索引一致）；不触发回复、不调用 claude
+export async function postSystemToMain(text, extra = {}) {
+  await chatInit();
+  if (!sessions.has('main')) return { ok: false, error: '没有主会话 main' };
+  const rec = await appendMsg('main', { role: 'system', from: '看门狗', text: String(text).slice(0, 4000), ...extra });
+  return { ok: true, seq: rec.seq };
+}
 export function chatInit() { if (!ready) ready = loadConfig().then(loadSessions).then(() => scheduleRegistry()); return ready; }
 export async function handleChat(req, res, url) {
   await chatInit();

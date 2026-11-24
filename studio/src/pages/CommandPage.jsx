@@ -126,13 +126,44 @@ function MiniBars({ rows, field, fmt = (x) => x, max }) {
     </div>
   );
 }
+// 看门狗卡片（CLA-34）：心跳正常绿；心跳 >25 秒没更新红「看门狗停了」；有严重告警也红
+function WatchdogCard() {
+  const w = usePoll('/api/command/watchdog', 5);
+  const [open, setOpen] = useState(false);
+  const d = w.data;
+  const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f((x) => x + 1), 5000); return () => clearInterval(t); }, []);
+  const age = d?.heartbeat?.at ? Math.round((Date.now() - new Date(d.heartbeat.at).getTime()) / 1000) : null;
+  const stale = !d || age == null || age > (d.staleAfterSec || 25) || w.ok === false;
+  const errs = (d?.alerts || []).filter((a) => a.level === 'ERROR');
+  const tone = stale || errs.length ? 'red' : (d?.alerts || []).length ? 'yellow' : 'green';
+  const label = stale ? '看门狗停了' : errs.length ? `${errs.length} 个严重告警` : (d?.alerts || []).length ? `${d.alerts.length} 个注意` : '正常';
+  return (
+    <section data-watchdog={tone} className="panel p-4" style={{ borderColor: tone === 'red' ? '#dc2626' : tone === 'green' ? '#16a34a' : undefined, borderWidth: tone === 'yellow' ? undefined : 2 }}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">看门狗 <Pill tone={tone}>{label}</Pill></h3>
+        <span className="text-[10px] text-[var(--fg-4)]">{d?.heartbeat ? `心跳 ${ptHM(d.heartbeat.at)}（${age} 秒前）· 第 ${d.heartbeat.round} 轮 · ${d.heartbeat.ms} 毫秒 · 每 ${d.heartbeat.intervalSec} 秒一轮 · 自动恢复 ${d.config?.recoveryMode === 'live' ? '开' : 'dry'}` : '没有心跳'}{w.error ? ` · 接口读不到：${w.error}` : ''}</span>
+      </div>
+      {stale ? <p className="mb-1 text-xs font-semibold text-red-500">看门狗停了：心跳{age == null ? '读不到' : ` ${age} 秒没更新`}（超过 2 个周期）。保活任务每分钟会拉起它。</p> : null}
+      <div className="flex flex-col gap-1 text-xs">
+        {(d?.alerts || []).length === 0 && !stale ? <div className="text-green-500">现在没有问题</div> : null}
+        {(d?.alerts || []).map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : 'text-amber-400'} title={a.key}>● {a.title}<span className="ml-1 text-[11px] text-[var(--fg-3)]">{a.text}（{ptHM(a.since)} 起）</span></div>)}
+      </div>
+      <button type="button" className="mt-2 rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '最近变化 / 自动恢复记录'}</button>
+      {open ? <div className="mt-2 flex flex-col gap-0.5 font-mono text-[10px] text-[var(--fg-3)]">
+        {(d?.changes || []).map((c, i) => <div key={i}>{c.atPT} {c.msg}</div>)}
+        <div className="mt-1 font-sans text-[11px]">自动恢复记录：</div>
+        {(d?.recoveries || []).length ? d.recoveries.map((r, i) => <div key={'r' + i}>{ptHM(r.at)} {r.chain} {r.ok ? (r.live ? (r.started ? '已重启' : '重启失败') : '条件满足（dry，没执行）') : '不满足：' + (r.reasons || []).join('；')} · {r.cmd}</div>) : <div>无</div>}
+      </div> : null}
+    </section>
+  );
+}
 function Overview({ go }) {
   const top = usePoll('/api/command/ov?part=top', 30);
   const iss = usePoll('/api/command/ov?part=issues', 60);
   const ses = usePoll('/api/command/ov?part=sessions', 60);
   const tr = usePoll('/api/command/ov?part=trends', 600);
   const d = top.data;
-  if (!d) return <Card title="总览">{top.loading ? <p className="text-xs text-[var(--fg-3)]">读取中…</p> : <Err e={top.error} />}</Card>;
+  if (!d) return <div className="flex flex-col gap-4"><WatchdogCard /><Card title="总览">{top.loading ? <p className="text-xs text-[var(--fg-3)]">读取中…</p> : <Err e={top.error} />}</Card></div>;
   const T = d.films.totalChapters;
   const sesActive = ses.data?.active || [];
   return (
@@ -142,6 +173,7 @@ function Overview({ go }) {
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-[var(--fg-3)]"><span>按太平洋时间 {ptHM(new Date().toISOString())}</span><Stamp p={top} sec={30} /></div>
       </div>
       {d.errors?.length ? <p className="text-xs text-red-400">部分数据源读取失败：{d.errors.join('；')}</p> : null}
+      <WatchdogCard />
       <Card title="规则（排序规则 + 派工规则；只显示和提醒，不自动改链、不自动派单）" right={<button type="button" className="rounded border border-[var(--line)] px-2 text-xs" onClick={() => go('dispatch')}>看派工单 →</button>}>
         <div className="flex flex-col gap-1 text-xs">
           <div className="text-[11px] font-semibold text-[var(--fg-3)]">排序规则（越靠上越优先）</div>
