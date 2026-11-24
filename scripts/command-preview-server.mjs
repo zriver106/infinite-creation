@@ -12,6 +12,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { handleIssues } from './command-issues.mjs';
+import { handleOverview, overviewInit } from './command-overview.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
 const HOST = process.env.CMD_PREVIEW_HOST || '0.0.0.0';
@@ -500,6 +501,7 @@ const server = http.createServer(async (req, res) => {
       const sub = p.slice('/api/command/'.length);
       if (sub === 'ping') return send(res, 200, { ok: true, readOnly: true, port: PORT, live: LIVE, pid: process.pid });
       if (sub === 'overview') return send(res, 200, await overview());
+      if (sub === 'ov') return handleOverview(req, res, url, send);
       if (sub === 'episodes') return send(res, 200, await episodes());
       if (sub === 'sessions') {
         const days = Math.min(30, Math.max(1, Number(url.searchParams.get('days') || 3)));
@@ -527,4 +529,5 @@ const server = http.createServer(async (req, res) => {
     send(res, 500, { error: String(e.message || e) });
   }
 });
+overviewInit({ listSessions, readSession });
 server.listen(PORT, HOST, () => console.log(`[command-preview] pid ${process.pid} http://${HOST}:${PORT} dist=${DIST} live=${LIVE} (GET only)`));
