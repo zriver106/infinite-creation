@@ -751,7 +751,7 @@ function Chat() {
           <div className="mt-2 border-t border-[var(--line)] pt-2 text-[11px]">
             <p className="section-label pb-1">手动开辅助会话（演示用）</p>
             <input className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" placeholder="标题" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <select className="mb-1 w-full rounded border border-[var(--line)] bg-transparent" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option value="claude">Claude</option><option value="codex">Codex</option><option value="kimi">Kimi（未启用）</option></select>
+            <select className="mb-1 w-full rounded border border-[var(--line)] bg-transparent" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option value="claude">Claude</option><option value="codex" disabled>Codex（聊天里暂停：缺读取限制）</option><option value="kimi">Kimi（未启用）</option></select>
             <textarea className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" rows={2} placeholder="第一条指令（可空）" value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
             <button type="button" className="rounded border border-[var(--line)] px-2" onClick={openAux}>开启</button>
             {msg ? <p className="mt-1 text-[10px]">{msg}</p> : null}
@@ -782,7 +782,7 @@ export default function CommandPage() {
         <FileSearch size={14} className="text-[var(--accent)]" />
         <b>指挥系统 · 预览</b>
         <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本；聊天只写聊天沙箱、AI 只有只读工具</Pill>
-        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用 · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
+        <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用（聊天里暂停：缺读取限制） · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <nav className="panel p-2 lg:w-[180px] lg:shrink-0">

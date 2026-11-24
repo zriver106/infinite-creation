@@ -12,13 +12,14 @@ const CHAT_ROOT = process.env.CMD_CHAT_ROOT || 'C:\\Users\\usazr\\Documents\\mov
 const CONFIG_FILE = path.join(CHAT_ROOT, 'chat-config.json');
 const SESS_DIR = path.join(CHAT_ROOT, 'sessions');
 const WORK_DIR = path.join(CHAT_ROOT, 'work');
+const CODEX_PAUSED = 'Codex 在聊天里暂停：缺读取限制';
 const DEFAULT_CONFIG = {
   maxAux: 3, // 同时开着的辅助会话上限（方案增补 §8.1 建议 3，待 Andy 定）
   idleMinutes: 20, // 辅助会话空闲多久自动停（§8.1 建议 20 分钟）
   model: 'opus',
   claudeExe: 'C:\\Users\\usazr\\.local\\bin\\claude.exe',
   codexExe: 'C:\\Users\\usazr\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.exe',
-  codexEnabled: true,
+  codexEnabled: false, // Andy 16:3x 裁定：聊天里的 Codex 暂停（缺读取限制）；只有测试实例用环境变量 CMD_CHAT_CODEX=1 临时打开，配置文件里的值不认
   tools: ['Read', 'Grep', 'Glob'],
   readDirs: ['C:\\Users\\usazr\\Documents\\moviePro\\Claude工作区\\指挥'],
   turnTimeoutSec: 600,
@@ -42,6 +43,7 @@ async function loadConfig() {
   catch { await fsp.writeFile(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2)); cfg = { ...DEFAULT_CONFIG }; }
   if (process.env.CMD_CHAT_IDLE_SEC) cfg.idleMinutes = Number(process.env.CMD_CHAT_IDLE_SEC) / 60; // 仅测试用
   if (process.env.CMD_CHAT_MAX_AUX) cfg.maxAux = Number(process.env.CMD_CHAT_MAX_AUX);
+  cfg.codexEnabled = process.env.CMD_CHAT_CODEX === '1';
 }
 const metaFile = (id) => path.join(SESS_DIR, id, 'meta.json');
 const msgFile = (id) => path.join(SESS_DIR, id, 'messages.jsonl');
@@ -178,7 +180,7 @@ async function sendMessage(id, text, from = 'Andy') {
   if (!m) return { code: 404, body: { error: '会话不存在' } };
   if (m.status === 'stopped') return { code: 410, body: { error: '会话已停止' } };
   if (m.status === 'busy') return { code: 409, body: { error: '会话正在回复，等它答完再发' } };
-  if (m.provider === 'codex' && !cfg.codexEnabled) return { code: 501, body: { error: 'Codex 在配置里关着' } };
+  if (m.provider === 'codex' && !cfg.codexEnabled) return { code: 501, body: { error: CODEX_PAUSED } };
   if (m.provider !== 'claude' && m.provider !== 'codex') return { code: 501, body: { error: `${m.provider} 未启用` } };
   if (!text || !String(text).trim()) return { code: 400, body: { error: '空消息' } };
   const rec = await appendMsg(id, { role: 'user', from, text: String(text).slice(0, 20000) });
@@ -206,7 +208,7 @@ async function sendMessage(id, text, from = 'Andy') {
 }
 async function openAux({ title, instruction, parent = 'main', provider = 'claude' }) {
   if (provider === 'kimi') return { code: 501, body: { error: 'Kimi 未启用（启用需 Andy 本人批）' } };
-  if (provider === 'codex' && !cfg.codexEnabled) return { code: 501, body: { error: 'Codex 在配置里关着' } };
+  if (provider === 'codex' && !cfg.codexEnabled) return { code: 501, body: { error: CODEX_PAUSED } };
   if (activeAux().length >= cfg.maxAux) {
     const q = { qid: 'q-' + Date.now().toString(36), title, instruction, parent, provider, at: now(), reason: `辅助会话已达上限 ${cfg.maxAux} 个，排队等有会话停掉` };
     pending.push(q);
@@ -260,7 +262,7 @@ export async function handleChat(req, res, url) {
       if (process.env.CMD_CHAT_TEST !== '1') return send(res, 403, { error: '压测接口只在 CMD_CHAT_TEST=1 时开' });
       return send(res, 200, await seedLongSession(Math.min(20000, Number(url.searchParams.get('n') || 3000))));
     }
-    if (req.method === 'GET' && parts[0] === 'config') return send(res, 200, { config: cfg, chatRoot: CHAT_ROOT, kimi: '未启用（接口预留，启用需 Andy 本人批）' });
+    if (req.method === 'GET' && parts[0] === 'config') return send(res, 200, { config: cfg, chatRoot: CHAT_ROOT, kimi: '未启用（接口预留，启用需 Andy 本人批）', codex: cfg.codexEnabled ? '仅测试实例临时开启（CMD_CHAT_CODEX=1）' : CODEX_PAUSED });
     if (parts[0] !== 'sessions') return send(res, 404, { error: 'unknown' });
     if (parts.length === 1) {
       if (req.method === 'GET') {
