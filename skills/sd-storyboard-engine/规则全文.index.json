@@ -1,0 +1,195 @@
+{
+ "skill": "sd-storyboard-engine",
+ "set": "sd-storyboard-engine",
+ "version": "rules-38e022645e",
+ "file": "规则全文.md",
+ "file_md5": "79A511FC5051ACB71E22CF95C3EA7ADA",
+ "total_lines": 583,
+ "base_end_line": 480,
+ "base_chars": 30802,
+ "base_budget_chars": 40000,
+ "budget_chars": 40000,
+ "section_max_chars": 20000,
+ "sections": [
+  {
+   "id": "MAP",
+   "title": "地图",
+   "tier": "map",
+   "start": 1,
+   "end": 34,
+   "when": [
+    "always"
+   ],
+   "chars": 2108,
+   "checksum": "7708D776"
+  },
+  {
+   "id": "S01",
+   "title": "S01 引言",
+   "tier": "base",
+   "start": 36,
+   "end": 41,
+   "when": [
+    "always"
+   ],
+   "chars": 163,
+   "checksum": "250A5480"
+  },
+  {
+   "id": "S02",
+   "title": "S02 一、角色定位",
+   "tier": "base",
+   "start": 43,
+   "end": 54,
+   "when": [
+    "always"
+   ],
+   "chars": 500,
+   "checksum": "3626CEEA"
+  },
+  {
+   "id": "S03",
+   "title": "S03 二、与总控的关系（套装契约）",
+   "tier": "base",
+   "start": 56,
+   "end": 77,
+   "when": [
+    "always"
+   ],
+   "chars": 3132,
+   "checksum": "9E0C3DF6"
+  },
+  {
+   "id": "S04",
+   "title": "S04 三、术语口径",
+   "tier": "base",
+   "start": 79,
+   "end": 87,
+   "when": [
+    "always"
+   ],
+   "chars": 423,
+   "checksum": "3E0938E7"
+  },
+  {
+   "id": "S05",
+   "title": "S05 四、工作流程",
+   "tier": "base",
+   "start": 89,
+   "end": 121,
+   "when": [
+    "always"
+   ],
+   "chars": 2099,
+   "checksum": "672E23D4"
+  },
+  {
+   "id": "S06",
+   "title": "S06 五、输出格式与总控投喂衔接",
+   "tier": "base",
+   "start": 123,
+   "end": 142,
+   "when": [
+    "always"
+   ],
+   "chars": 523,
+   "checksum": "81F147BD"
+  },
+  {
+   "id": "S07",
+   "title": "S07 台词精简建议清单（本稿承接 N 句 / 上游 M 句）",
+   "tier": "base",
+   "start": 144,
+   "end": 225,
+   "when": [
+    "always"
+   ],
+   "chars": 3296,
+   "checksum": "250D07E9"
+  },
+  {
+   "id": "S08",
+   "title": "S08 六、高频铁律速查",
+   "tier": "base",
+   "start": 227,
+   "end": 247,
+   "when": [
+    "always"
+   ],
+   "chars": 1689,
+   "checksum": "AB0B1619"
+  },
+  {
+   "id": "S09",
+   "title": "S09 心声（OS）镜铁律（2026-11-23 按手册 M33/M34 重写，与 h3-prompt-writing 心声节同",
+   "tier": "base",
+   "start": 249,
+   "end": 263,
+   "when": [
+    "always"
+   ],
+   "chars": 1750,
+   "checksum": "EF7A11AE"
+  },
+  {
+   "id": "S10",
+   "title": "S10 夸张表演、特效与 Q 版（2026-11-16 新增 · v3.1 补强 · v4 加入应用入口、选择表与用量台账 · ",
+   "tier": "base",
+   "start": 265,
+   "end": 388,
+   "when": [
+    "always"
+   ],
+   "chars": 10714,
+   "checksum": "8ED924DB"
+  },
+  {
+   "id": "S11",
+   "title": "S11 七、故事板图（面板链）",
+   "tier": "base",
+   "start": 390,
+   "end": 446,
+   "when": [
+    "always"
+   ],
+   "chars": 2146,
+   "checksum": "9A3A905F"
+  },
+  {
+   "id": "S12",
+   "title": "S12 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）",
+   "tier": "base",
+   "start": 448,
+   "end": 465,
+   "when": [
+    "always"
+   ],
+   "chars": 614,
+   "checksum": "D24498AD"
+  },
+  {
+   "id": "S13",
+   "title": "S13 八、规则库索引",
+   "tier": "base",
+   "start": 467,
+   "end": 479,
+   "when": [
+    "always"
+   ],
+   "chars": 1631,
+   "checksum": "7DC88A2A"
+  },
+  {
+   "id": "S14",
+   "title": "S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切",
+   "tier": "volume",
+   "start": 484,
+   "end": 583,
+   "when": [
+    "rare"
+   ],
+   "chars": 8021,
+   "checksum": "25C07E2B"
+  }
+ ]
+}

@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-2026.11.23-2244 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-f09fcb9489 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -12,7 +12,7 @@ compatibility: Portable to any agent that can read local files — no external A
 3. 拿不准、遇到新情况、或觉得「应该这样写」时，先回本地图查；有规则一律以规则为准。
 4. 查过确实没有规则，才凭判断做，并调用 `report_rule_gap` 登记（什么情况、怎么做的、为什么），不自己编一套固定写法。
 5. 每段最后一行是「本段校验码」。保存时把读过各段的校验码放进 `ranges_ack`，IC 核对，对不上不收。
-6. 一镜要读的规则超过预算（brief 里 `too_dense`），说明这一镜太满：不写，报回分镜层拆成两镜（各 7–8 秒），不删规则。
+6. 一镜要读的分册超过 40,000 字（brief 里 `too_dense`），说明这一镜太满：不写，报回分镜层拆成两镜（各 7–8 秒），不删规则。
 
 | 段 | 内容 | 层级 | 行号 | 什么时候读 |
 |---|---|---|---|---|
@@ -32,7 +32,7 @@ compatibility: Portable to any agent that can read local files — no external A
 | Q | Q 审片 | 分册 | L526–L547 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：B8C30152
+本段校验码：CDDEFC5F
 
 ## A 铁律与流程
 

@@ -1,0 +1,802 @@
+[
+ {
+  "file": "S01_引言.md",
+  "id": "S01",
+  "title": "S01 引言",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 359
+ },
+ {
+  "file": "S02__下游专家文档调用机制_核心_.md",
+  "id": "S02",
+  "title": "S02 🔧 下游专家文档调用机制（核心）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 7482
+ },
+ {
+  "file": "S03__开场强制自检_必须最先执行_.md",
+  "id": "S03",
+  "title": "S03 ⚠️ 开场强制自检（必须最先执行）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1649
+ },
+ {
+  "file": "S04_1_1_总控的职责.md",
+  "id": "S04",
+  "title": "S04 1.1 总控的职责",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 144
+ },
+ {
+  "file": "S05_1_2_总控不替代专家.md",
+  "id": "S05",
+  "title": "S05 1.2 总控不替代专家",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 195
+ },
+ {
+  "file": "S06_1_3_共享底线.md",
+  "id": "S06",
+  "title": "S06 1.3 共享底线",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 226
+ },
+ {
+  "file": "S07_2_0_运行模式_正式模式与压测模式.md",
+  "id": "S07",
+  "title": "S07 2.0 运行模式：正式模式与压测模式",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 398
+ },
+ {
+  "file": "S08_S0_灵感输入.md",
+  "id": "S08",
+  "title": "S08 S0 灵感输入",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 201
+ },
+ {
+  "file": "S09_S1_核心信息收集.md",
+  "id": "S09",
+  "title": "S09 S1 核心信息收集",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 243
+ },
+ {
+  "file": "S10_S2_项目档案生成.md",
+  "id": "S10",
+  "title": "S10 S2 项目档案生成",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 496
+ },
+ {
+  "file": "S11_S3_大纲锁定.md",
+  "id": "S11",
+  "title": "S11 S3 大纲锁定",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 145
+ },
+ {
+  "file": "S12_S4_剧本初稿.md",
+  "id": "S12",
+  "title": "S12 S4 剧本初稿",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 366
+ },
+ {
+  "file": "S13_S5_圆桌会诊.md",
+  "id": "S13",
+  "title": "S13 S5 圆桌会诊",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 605
+ },
+ {
+  "file": "S14_S6_结构修订.md",
+  "id": "S14",
+  "title": "S14 S6 结构修订",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 150
+ },
+ {
+  "file": "S15_S7_台词诊断.md",
+  "id": "S15",
+  "title": "S15 S7 台词诊断",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 322
+ },
+ {
+  "file": "S16_S8_台词整合.md",
+  "id": "S16",
+  "title": "S16 S8 台词整合",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 175
+ },
+ {
+  "file": "S17_S9_最终可执行剧本包.md",
+  "id": "S17",
+  "title": "S17 S9 最终可执行剧本包",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 191
+ },
+ {
+  "file": "S18_长篇项目状态快照机制.md",
+  "id": "S18",
+  "title": "S18 长篇项目状态快照机制",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 415
+ },
+ {
+  "file": "S19_3_1_用户只有灵感.md",
+  "id": "S19",
+  "title": "S19 3.1 用户只有灵感",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 152
+ },
+ {
+  "file": "S20_3_2_用户已有大纲.md",
+  "id": "S20",
+  "title": "S20 3.2 用户已有大纲",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 96
+ },
+ {
+  "file": "S21_3_3_用户已有剧本.md",
+  "id": "S21",
+  "title": "S21 3.3 用户已有剧本",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 119
+ },
+ {
+  "file": "S22_3_4_用户已有会诊报告.md",
+  "id": "S22",
+  "title": "S22 3.4 用户已有会诊报告",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 88
+ },
+ {
+  "file": "S23_3_5_用户已有台词诊断.md",
+  "id": "S23",
+  "title": "S23 3.5 用户已有台词诊断",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 105
+ },
+ {
+  "file": "S24_4_1_调用剧本框架.md",
+  "id": "S24",
+  "title": "S24 4.1 调用剧本框架",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 147
+ },
+ {
+  "file": "S25_4_2_调用剧本写作.md",
+  "id": "S25",
+  "title": "S25 4.2 调用剧本写作",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 145
+ },
+ {
+  "file": "S26_4_3_调用剧本医生.md",
+  "id": "S26",
+  "title": "S26 4.3 调用剧本医生",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 147
+ },
+ {
+  "file": "S27_4_4_调用台词专家.md",
+  "id": "S27",
+  "title": "S27 4.4 调用台词专家",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 294
+ },
+ {
+  "file": "S28_5_1_版本命名规则.md",
+  "id": "S28",
+  "title": "S28 5.1 版本命名规则",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 200
+ },
+ {
+  "file": "S29_5_2_回退规则.md",
+  "id": "S29",
+  "title": "S29 5.2 回退规则",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1507
+ },
+ {
+  "file": "S30_9_1_用户说_我有个灵感_.md",
+  "id": "S30",
+  "title": "S30 9.1 用户说“我有个灵感”",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 126
+ },
+ {
+  "file": "S31_9_2_用户说_帮我写完整剧本_.md",
+  "id": "S31",
+  "title": "S31 9.2 用户说“帮我写完整剧本”",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 165
+ },
+ {
+  "file": "S32_9_3_用户说_帮我看看这个剧本_.md",
+  "id": "S32",
+  "title": "S32 9.3 用户说“帮我看看这个剧本”",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 111
+ },
+ {
+  "file": "S33_9_4_用户说_台词不行_.md",
+  "id": "S33",
+  "title": "S33 9.4 用户说“台词不行”",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 234
+ },
+ {
+  "file": "S34_11_1_三档衔接策略.md",
+  "id": "S34",
+  "title": "S34 11.1 三档衔接策略",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 943
+ },
+ {
+  "file": "S35_11_2_衔接时的产物传递规则.md",
+  "id": "S35",
+  "title": "S35 11.2 衔接时的产物传递规则",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 191
+ },
+ {
+  "file": "S36_11_3_阻断与回退.md",
+  "id": "S36",
+  "title": "S36 11.3 阻断与回退",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 343
+ },
+ {
+  "file": "S37_12_1_压测模式三硬规则.md",
+  "id": "S37",
+  "title": "S37 12.1 压测模式三硬规则",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 163
+ },
+ {
+  "file": "S38_12_2_各阶段压测最小输出标准.md",
+  "id": "S38",
+  "title": "S38 12.2 各阶段压测最小输出标准",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 601
+ },
+ {
+  "file": "S39_12_3_压测报告格式.md",
+  "id": "S39",
+  "title": "S39 12.3 压测报告格式",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 272
+ },
+ {
+  "file": "S40_12_4_压测模式的启动.md",
+  "id": "S40",
+  "title": "S40 12.4 压测模式的启动",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 226
+ },
+ {
+  "file": "S41_13_1_四种快速启动模板.md",
+  "id": "S41",
+  "title": "S41 13.1 四种快速启动模板",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1729
+ },
+ {
+  "file": "S42_13_2_快速启动后的衔接.md",
+  "id": "S42",
+  "title": "S42 13.2 快速启动后的衔接",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 220
+ },
+ {
+  "file": "S43_14_1_场景推荐矩阵.md",
+  "id": "S43",
+  "title": "S43 14.1 场景推荐矩阵",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 538
+ },
+ {
+  "file": "S44_14_2_场景一_抖音竖屏短剧_最常见_.md",
+  "id": "S44",
+  "title": "S44 14.2 场景一：抖音竖屏短剧（最常见）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 299
+ },
+ {
+  "file": "S45_14_3_场景二_AI_视频微电影.md",
+  "id": "S45",
+  "title": "S45 14.3 场景二：AI 视频微电影",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 314
+ },
+ {
+  "file": "S46_14_4_场景三_出海短剧.md",
+  "id": "S46",
+  "title": "S46 14.4 场景三：出海短剧",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 322
+ },
+ {
+  "file": "S47_14_5_场景四_院线长篇电影.md",
+  "id": "S47",
+  "title": "S47 14.5 场景四：院线长篇电影",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 298
+ },
+ {
+  "file": "S48_15_1_问题分级.md",
+  "id": "S48",
+  "title": "S48 15.1 问题分级",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 393
+ },
+ {
+  "file": "S49_15_2_飞轮触发规则.md",
+  "id": "S49",
+  "title": "S49 15.2 飞轮触发规则",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 615
+ },
+ {
+  "file": "S50_15_3_修正指令格式.md",
+  "id": "S50",
+  "title": "S50 15.3 修正指令格式",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 228
+ },
+ {
+  "file": "S51_15_4_飞轮工作流.md",
+  "id": "S51",
+  "title": "S51 15.4 飞轮工作流",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 577
+ },
+ {
+  "file": "S52_15_5_质量日志格式.md",
+  "id": "S52",
+  "title": "S52 15.5 质量日志格式",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 252
+ },
+ {
+  "file": "S53_15_6_飞轮总结报告.md",
+  "id": "S53",
+  "title": "S53 15.6 飞轮总结报告",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 201
+ },
+ {
+  "file": "S54_15_7_与现有机制的关系.md",
+  "id": "S54",
+  "title": "S54 15.7 与现有机制的关系",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 727
+ },
+ {
+  "file": "S55_第十六部分_工作区文件协议.md",
+  "id": "S55",
+  "title": "S55 第十六部分：工作区文件协议",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1342
+ },
+ {
+  "file": "S56_情感基调.md",
+  "id": "S56",
+  "title": "S56 情感基调",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 62
+ },
+ {
+  "file": "S57_节奏判断.md",
+  "id": "S57",
+  "title": "S57 节奏判断",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 51
+ },
+ {
+  "file": "S58_视觉记忆.md",
+  "id": "S58",
+  "title": "S58 视觉记忆",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 59
+ },
+ {
+  "file": "S59_未完成的情感线.md",
+  "id": "S59",
+  "title": "S59 未完成的情感线",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 58
+ },
+ {
+  "file": "S60_本集伏笔.md",
+  "id": "S60",
+  "title": "S60 本集伏笔",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 68
+ },
+ {
+  "file": "S61_呼应的前文元素.md",
+  "id": "S61",
+  "title": "S61 呼应的前文元素",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 47
+ },
+ {
+  "file": "S62_创作意图.md",
+  "id": "S62",
+  "title": "S62 创作意图",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 45
+ },
+ {
+  "file": "S63_下一集方向暗示.md",
+  "id": "S63",
+  "title": "S63 下一集方向暗示",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 646
+ },
+ {
+  "file": "S64_17_1_触发条件.md",
+  "id": "S64",
+  "title": "S64 17.1 触发条件",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 276
+ },
+ {
+  "file": "S65_17_2_前置条件.md",
+  "id": "S65",
+  "title": "S65 17.2 前置条件",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 145
+ },
+ {
+  "file": "S66_17_3_输出内容_两个文档_.md",
+  "id": "S66",
+  "title": "S66 17.3 输出内容（两个文档）",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 620
+ },
+ {
+  "file": "S67_一_故事梗概.md",
+  "id": "S67",
+  "title": "S67 一、故事梗概",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 1104
+ },
+ {
+  "file": "S68_二_分集提纲.md",
+  "id": "S68",
+  "title": "S68 二、分集提纲",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 410
+ },
+ {
+  "file": "S69_三_作品卖点.md",
+  "id": "S69",
+  "title": "S69 三、作品卖点",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 1505
+ },
+ {
+  "file": "S70_17_4_净化规则_强制_.md",
+  "id": "S70",
+  "title": "S70 17.4 净化规则（强制）",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 1159
+ },
+ {
+  "file": "S71_17_5_执行流程.md",
+  "id": "S71",
+  "title": "S71 17.5 执行流程",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 823
+ },
+ {
+  "file": "S72_17_6_与_S9_最终可执行剧本包的区别.md",
+  "id": "S72",
+  "title": "S72 17.6 与 S9 最终可执行剧本包的区别",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 390
+ },
+ {
+  "file": "S73_17_7_常见场景.md",
+  "id": "S73",
+  "title": "S73 17.7 常见场景",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 435
+ },
+ {
+  "file": "S74_18_1_触发条件.md",
+  "id": "S74",
+  "title": "S74 18.1 触发条件",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 357
+ },
+ {
+  "file": "S75_18_2_前置条件_版本与范围确认.md",
+  "id": "S75",
+  "title": "S75 18.2 前置条件、版本与范围确认",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 730
+ },
+ {
+  "file": "S76_18_3_调用与输出规则.md",
+  "id": "S76",
+  "title": "S76 18.3 调用与输出规则",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 1135
+ },
+ {
+  "file": "S77_18_4_与普通剧本_交付模式的关系.md",
+  "id": "S77",
+  "title": "S77 18.4 与普通剧本、交付模式的关系",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 406
+ },
+ {
+  "file": "S78_18_5_输出完成后的交接.md",
+  "id": "S78",
+  "title": "S78 18.5 输出完成后的交接",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 299
+ },
+ {
+  "file": "S79__最后步骤_读完文档后执行_.md",
+  "id": "S79",
+  "title": "S79 ⚠️ 最后步骤（读完文档后执行）",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 95
+ },
+ {
+  "file": "S80_版本记录.md",
+  "id": "S80",
+  "title": "S80 版本记录",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 500
+ }
+]

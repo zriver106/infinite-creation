@@ -69,11 +69,17 @@ describe('真实技能加载时附带的规则', () => {
       assert.ok(k.body.includes('<ic_lessons stage="提示词"'));
     }
   });
-  test('剧本/分镜技能附 adapt-rules（有时）；审片、资产、总控照旧附 ic-lessons', () => {
+  test('剧本/分镜技能附 adapt-rules（有时）；规则书技能地图指路 adapt-rules；审片、资产、总控附规则书指路（续轮7）', () => {
     const adapt = hasBook('adapt-rules') || fs.existsSync(path.join(SK, 'adapt-rules', 'SKILL.md'));
     for (const name of ['story-pipeline-cn', 'sd-storyboard-engine', 'sd-script-engine']) {
       const k = SE.loadSkill(name);
       assert.ok(k, name);
+      if (hasBook(name)) {
+        // 续轮7：本身是规则书的技能不再附 adapt-rules 全文（会超 40,000），地图第1条要求先 skill(adapt-rules)
+        assert.ok(k.body.includes('skill(adapt-rules)'), name + ' 地图指路 adapt-rules');
+        assert.ok(!k.body.includes('<ic_lessons'), name);
+        continue;
+      }
       if (adapt) {
         assert.match(k.body, /<adapt_rules version="[^"]*">/, name);
         assert.ok(!k.body.includes('<ic_lessons'), name + ' 不再附 ic-lessons');
@@ -82,8 +88,15 @@ describe('真实技能加载时附带的规则', () => {
         assert.ok(k.body.includes('<ic_lessons'), name);
       }
     }
-    for (const [name, stage] of [['sd-qc-engine', '审片'], ['sd-asset-engine', '资产'], ['novel-to-video', '总控']]) {
-      assert.ok(SE.loadSkill(name).body.includes('<ic_lessons stage="' + stage + '"'), name + ' → ' + stage);
+    const promptBook = hasBook('h3-prompt-writing');
+    for (const [name, stage, want] of [['sd-qc-engine', '审片', 'Q 审片'], ['sd-asset-engine', '资产', 'J 资产'], ['novel-to-video', '总控', '地图']]) {
+      const body = SE.loadSkill(name).body;
+      if (promptBook) {
+        assert.ok(body.includes('<rule_pointers>') && body.includes(want) && /skill_lines\(name="[^"]+", from=\d+, to=\d+\)/.test(body), name + ' → ' + stage + ' 规则书指路');
+        assert.ok(!body.includes('<ic_lessons'), name + ' 不再附 ic-lessons 原文');
+      } else {
+        assert.ok(body.includes('<ic_lessons stage="' + stage + '"'), name + ' → ' + stage);
+      }
     }
   });
   test('提示词阶段的其它技能（规则书存在时）不附', () => {
