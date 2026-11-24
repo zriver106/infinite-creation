@@ -1,10 +1,11 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Pencil, Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film } from 'lucide-react';
+import { MessageCircle, Pencil, Activity, BookCheck, ClipboardList, Cpu, Database, FileSearch, Gauge, MessagesSquare, RefreshCw, ScrollText, Send, Film } from 'lucide-react';
 
 // 指挥系统 第一期：只读预览。本页没有任何写操作按钮。
 const SUBS = [
   { id: 'overview', label: '总览', icon: Activity, phase: 1 },
   { id: 'issues', label: '问题描述（可编辑）', icon: Pencil, phase: 1 },
+  { id: 'chat', label: '聊天', icon: MessageCircle, phase: 1 },
   { id: 'episodes', label: '按集返修看板', icon: ClipboardList, phase: 1, jump: 'issues' },
   { id: 'writes', label: '写库与回读核对', icon: Database, phase: 2 },
   { id: 'gpu', label: 'GPU 排链', icon: Cpu, phase: 2 },
@@ -15,7 +16,7 @@ const SUBS = [
   { id: 'dispatch', label: '派工', icon: Send, phase: 1 },
   { id: 'evidence', label: '证据与日志', icon: ScrollText, phase: 1 },
 ];
-const READY = new Set(['overview', 'issues', 'episodes', 'sessions', 'evidence', 'dispatch']);
+const READY = new Set(['overview', 'issues', 'chat', 'episodes', 'sessions', 'evidence', 'dispatch']);
 
 const PLACEHOLDER = {
   writes: { phase: '第二期', desc: '写库包 before/after_expected 逐字段 diff、非目标镜漂移检查、回读 md5 对比。第三期才加「确认写库」（人点）。' },
@@ -615,6 +616,156 @@ function Placeholder({ sub }) {
   );
 }
 
+// ======================= 聊天（主会话 + 辅助会话） =======================
+const MAX_OPEN = 2; // 同时展开的会话不超过 2 个（§8.2）
+const KEEP_MSGS = 120; // 每个展开的会话内存里最多留 120 条，超出就卸载另一头
+const ROLE_LABEL = { user: '指令', assistant: '回复', system: '系统' };
+function ChatPanel({ sid, summary, onClose }) {
+  const [msgs, setMsgs] = useState([]);
+  const [info, setInfo] = useState({ total: 0, hasMore: false, hasNewer: false });
+  const [text, setText] = useState('');
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [timing, setTiming] = useState(null);
+  const ctrl = useRef(null);
+  const boxRef = useRef(null);
+  const msgsRef = useRef([]);
+  msgsRef.current = msgs;
+  const req = useCallback(async (url, opts = {}) => {
+    const ac = new AbortController(); ctrl.current = ac;
+    const r = await fetch(url, { ...opts, signal: ac.signal });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok && r.status !== 202) throw new Error(j.error || 'HTTP ' + r.status);
+    return j;
+  }, []);
+  const loadLatest = useCallback(async () => {
+    const t0 = performance.now(); setLoading(true);
+    try {
+      const j = await req(`/api/chat/sessions/${sid}/messages`);
+      setMsgs(j.messages); setInfo({ total: j.total, hasMore: j.hasMore, hasNewer: false, from: j.from });
+      setTiming({ kind: '首屏', ms: Math.round(performance.now() - t0), n: j.messages.length });
+      requestAnimationFrame(() => { if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight; });
+    } catch (e) { if (e.name !== 'AbortError') setErr(String(e.message)); } finally { setLoading(false); }
+  }, [sid, req]);
+  const loadOlder = useCallback(async () => {
+    const cur = msgsRef.current; if (!cur.length || loading) return;
+    const t0 = performance.now(); setLoading(true);
+    try {
+      const j = await req(`/api/chat/sessions/${sid}/messages?before=${cur[0].seq}&limit=30`);
+      const prevH = boxRef.current ? boxRef.current.scrollHeight : 0;
+      let next = [...j.messages, ...cur]; let trimmed = false;
+      if (next.length > KEEP_MSGS) { next = next.slice(0, KEEP_MSGS); trimmed = true; }
+      setMsgs(next); setInfo((i) => ({ ...i, hasMore: j.hasMore, hasNewer: i.hasNewer || trimmed }));
+      setTiming({ kind: '上翻', ms: Math.round(performance.now() - t0), n: j.messages.length });
+      requestAnimationFrame(() => { if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight - prevH; });
+    } catch (e) { if (e.name !== 'AbortError') setErr(String(e.message)); } finally { setLoading(false); }
+  }, [sid, req, loading]);
+  const pollNew = useCallback(async () => {
+    const cur = msgsRef.current; if (info.hasNewer) return;
+    const last = cur.length ? cur[cur.length - 1].seq : -1;
+    try {
+      const j = await req(`/api/chat/sessions/${sid}/messages?after=${last}&limit=30`);
+      if (j.messages.length) {
+        let next = [...cur, ...j.messages]; if (next.length > KEEP_MSGS) next = next.slice(next.length - KEEP_MSGS);
+        setMsgs(next); setInfo((i) => ({ ...i, total: j.total, hasMore: i.hasMore || next[0].seq > 0 }));
+        requestAnimationFrame(() => { if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight; });
+      }
+    } catch {}
+  }, [sid, req, info.hasNewer]);
+  useEffect(() => { loadLatest(); return () => { ctrl.current?.abort(); setMsgs([]); }; }, [loadLatest]); // 折叠/离开时卸载
+  useEffect(() => { const t = setInterval(pollNew, summary?.status === 'busy' ? 2500 : 6000); return () => clearInterval(t); }, [pollNew, summary?.status]);
+  const expand = async (m) => {
+    try { const full = await req(`/api/chat/sessions/${sid}/messages/${m.seq}`); setMsgs((cur) => cur.map((x) => (x.seq === m.seq ? { ...full, expanded: true } : x))); } catch (e) { setErr(String(e.message)); }
+  };
+  const sendMsg = async () => {
+    setErr(null);
+    try { await req(`/api/chat/sessions/${sid}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); setText(''); setTimeout(pollNew, 300); }
+    catch (e) { setErr(String(e.message)); }
+  };
+  const stop = async () => { try { await req(`/api/chat/sessions/${sid}/stop`, { method: 'POST' }); } catch (e) { setErr(String(e.message)); } };
+  const busy = summary?.status === 'busy'; const stopped = summary?.status === 'stopped';
+  return (
+    <section className="panel flex min-w-0 flex-1 flex-col p-3 text-xs" data-chat-panel={sid}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <b className="text-sm">{summary?.title || sid}</b>
+        <Pill tone={summary?.role === 'main' ? 'blue' : 'gray'}>{summary?.role === 'main' ? '主会话' : '辅助'}</Pill>
+        <Pill tone="gray">{summary?.provider}</Pill>
+        <Pill tone={busy ? 'yellow' : stopped ? 'red' : 'green'}>{busy ? '回复中' : stopped ? '已停' : '空闲'}</Pill>
+        <span className="text-[10px] text-[var(--fg-4)]">共 {info.total} 条 · 内存里 {msgs.length} 条{timing ? ` · ${timing.kind} ${timing.ms}ms` : ''}</span>
+        <span className="flex-1" />
+        {summary?.role === 'aux' && !stopped ? <button type="button" className="rounded border border-[var(--line)] px-2" onClick={stop}>停止</button> : null}
+        <button type="button" className="rounded border border-[var(--line)] px-2" onClick={onClose}>折叠（卸载）</button>
+      </div>
+      <div ref={boxRef} className="flex h-[460px] flex-col gap-1.5 overflow-auto rounded-lg border border-[var(--line)] p-2" onScroll={(e) => { if (e.currentTarget.scrollTop < 40 && info.hasMore) loadOlder(); }}>
+        {info.hasMore ? <button type="button" className="self-center text-[10px] text-[var(--accent)]" onClick={loadOlder}>{loading ? '加载中…' : '↑ 加载更早的 30 条'}</button> : <span className="self-center text-[10px] text-[var(--fg-4)]">— 会话开头 —</span>}
+        {msgs.map((m) => (
+          <div key={m.seq} data-seq={m.seq} className={'rounded-lg p-1.5 ' + (m.role === 'user' ? 'self-end bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]' : m.role === 'system' ? 'self-center text-[10px] text-[var(--fg-3)]' : 'self-start bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]')} style={{ maxWidth: '92%' }}>
+            {m.role !== 'system' ? <div className="mb-0.5 text-[9px] text-[var(--fg-4)]">#{m.seq} {ROLE_LABEL[m.role] || m.role}{m.from ? ' · ' + m.from : ''} · {fmtTime(m.ts)}{m.ms ? ` · ${Math.round(m.ms / 1000)}s` : ''}</div> : null}
+            <div className="whitespace-pre-wrap break-all">{m.text}</div>
+            {m.truncated ? <button type="button" className="text-[10px] text-[var(--accent)]" onClick={() => expand(m)}>展开全文（{m.fullLength} 字，点开才加载）</button> : null}
+          </div>
+        ))}
+        {info.hasNewer ? <button type="button" className="self-center text-[10px] text-[var(--accent)]" onClick={loadLatest}>↓ 回到最新（较新的消息已卸载）</button> : null}
+      </div>
+      <Err e={err} />
+      <div className="mt-2 flex gap-2">
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} disabled={busy || stopped} placeholder={stopped ? '会话已停' : busy ? '等它答完' : summary?.role === 'main' ? '给主会话发指令（只读问答、写派工单草稿）' : '直接给这个辅助会话发指令（同时抄送主会话记录）'} className="flex-1 rounded-lg border border-[var(--line)] bg-transparent p-2" />
+        <button type="button" disabled={busy || stopped || !text.trim()} onClick={sendMsg} className="rounded-lg border border-[var(--accent)] px-3 text-[var(--accent)] disabled:opacity-40">发送</button>
+      </div>
+    </section>
+  );
+}
+function Chat() {
+  const list = useJson('/api/chat/sessions');
+  const [open, setOpen] = useState(['main']);
+  const [form, setForm] = useState({ title: '', provider: 'claude', instruction: '' });
+  const [msg, setMsg] = useState(null);
+  useEffect(() => { const t = setInterval(list.reload, 5000); return () => clearInterval(t); }, [list.reload]);
+  const byId = Object.fromEntries((list.data?.sessions || []).map((s) => [s.id, s]));
+  const toggle = (id) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id].slice(-MAX_OPEN)));
+  const openAux = async () => {
+    setMsg(null);
+    const r = await fetch('/api/chat/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, parent: 'Andy（手动）' }) });
+    const j = await r.json().catch(() => ({}));
+    setMsg(r.ok ? (j.queued ? `已排队：${j.reason}` : `已开启 ${j.id}`) : j.error); list.reload();
+    if (r.ok && j.id) setOpen((o) => [...o, j.id].slice(-MAX_OPEN));
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="panel p-3 text-xs">
+        <b>聊天（预览）</b>：一个固定主会话统一接收 Andy 的指令；辅助会话由主会话按需开启（回复里写 [[开辅助:标题:指令]]），用完停。
+        辅助会话上限 <b>{list.data?.maxAux ?? '—'}</b> 个（现开 {list.data?.activeAux ?? '—'}），空闲 <b>{list.data?.idleMinutes ?? '—'}</b> 分钟自动停；同时最多展开 {MAX_OPEN} 个会话，折叠即卸载。
+        会话只有只读工具（Read/Grep/Glob），工作目录限在聊天沙箱；不写库、不提交 GPU。各方分工照旧，真实工作不切到这里。
+      </div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="panel p-2 lg:w-[250px] lg:shrink-0">
+          <p className="section-label px-1 pb-1">会话（只拉摘要）</p>
+          {(list.data?.sessions || []).map((s) => (
+            <button key={s.id} type="button" onClick={() => toggle(s.id)} data-session={s.id} className={'mb-1 w-full rounded-lg border p-1.5 text-left text-[11px] ' + (open.includes(s.id) ? 'border-[var(--accent)]' : 'border-[var(--line)]')}>
+              <div className="flex items-center gap-1"><b className="flex-1 truncate">{s.title}</b><span className="text-[9px]">{s.role === 'main' ? '主' : '辅'}·{s.provider}</span></div>
+              <div className="text-[9px] text-[var(--fg-4)]">{s.status === 'busy' ? '回复中' : s.status === 'stopped' ? '已停' : '空闲'} · {s.msgCount} 条 · {fmtTime(s.lastActivity)}</div>
+              <div className="truncate text-[10px] text-[var(--fg-3)]">{s.lastSnippet}</div>
+            </button>
+          ))}
+          {list.data?.pending?.length ? <div className="mt-1 text-[10px] text-[#d97706]">排队中：{list.data.pending.map((q) => `「${q.title}」${q.reason}`).join('；')}</div> : null}
+          <div className="mt-2 border-t border-[var(--line)] pt-2 text-[11px]">
+            <p className="section-label pb-1">手动开辅助会话（演示用）</p>
+            <input className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" placeholder="标题" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <select className="mb-1 w-full rounded border border-[var(--line)] bg-transparent" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option value="claude">Claude</option><option value="codex">Codex</option><option value="kimi">Kimi（未启用）</option></select>
+            <textarea className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" rows={2} placeholder="第一条指令（可空）" value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
+            <button type="button" className="rounded border border-[var(--line)] px-2" onClick={openAux}>开启</button>
+            {msg ? <p className="mt-1 text-[10px]">{msg}</p> : null}
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3 xl:flex-row">
+          {open.map((id) => <ChatPanel key={id} sid={id} summary={byId[id]} onClose={() => toggle(id)} />)}
+          {!open.length ? <p className="text-xs text-[var(--fg-3)]">点左边的会话展开。</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommandPage() {
   const init = new URLSearchParams(window.location.search).get('sub');
   const [sub, setSub] = useState(init === 'episodes' ? 'issues' : SUBS.some((s) => s.id === init) ? init : 'overview');
@@ -630,7 +781,7 @@ export default function CommandPage() {
       <div className="panel flex flex-wrap items-center gap-2 p-3 text-xs">
         <FileSearch size={14} className="text-[var(--accent)]" />
         <b>指挥系统 · 预览</b>
-        <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本</Pill>
+        <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本；聊天只写聊天沙箱、AI 只有只读工具</Pill>
         <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 启用 · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -649,6 +800,7 @@ export default function CommandPage() {
         <div className="min-w-0 flex-1">
           {sub === 'overview' ? <Overview go={go} /> : null}
           {sub === 'issues' ? <Issues /> : null}
+          {sub === 'chat' ? <Chat /> : null}
           {sub === 'sessions' ? <Sessions /> : null}
           {sub === 'evidence' ? <Evidence /> : null}
           {sub === 'dispatch' ? <Dispatch /> : null}

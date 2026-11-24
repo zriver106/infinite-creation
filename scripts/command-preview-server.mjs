@@ -12,6 +12,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { handleIssues } from './command-issues.mjs';
+import { handleChat } from './command-chat.mjs';
 import { handleOverview, overviewInit } from './command-overview.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
@@ -494,6 +495,8 @@ const server = http.createServer(async (req, res) => {
     const p = url.pathname;
     // 问题描述编辑走自己独立的接口（只写配置的目标文件=测试副本、备份、记录、建议队列）；其余写请求照旧一律 403
     if (p === '/api/issues' || p.startsWith('/api/issues/')) return handleIssues(req, res, url);
+    // 聊天走自己独立的接口（只写聊天沙箱目录 CMD_CHAT_ROOT）
+    if (p === '/api/chat' || p.startsWith('/api/chat/')) return handleChat(req, res, url);
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return send(res, 403, { error: '指挥系统预览为只读：拒绝 ' + req.method + ' ' + p + '（不提交任何任务、不写任何数据）' });
     }
