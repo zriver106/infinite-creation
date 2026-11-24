@@ -83,6 +83,17 @@ describe('画外台词识别', () => {
     assert.ok(!note.includes('不进本段'));
     assert.equal(off.offscreenPromptNote('江澈：好。'), '');
   });
+  test('写提示词说明：系统音完整写进 <d>、光幕短字；旁白后期（Andy 11-23 17:27）', () => {
+    const note = off.offscreenPromptNote('系统：叮，交易完成，获得灵气十点。' + String.fromCharCode(10) + '旁白：三天后。');
+    assert.match(note, /系统音把这句的完整原文写进 <d>/);
+    assert.match(note, /An unseen synthetic system voice/);
+    assert.match(note, /1–2 行短字/);
+    assert.match(note, /旁白（三天后。）不写进 <d>，后期配音/);
+    assert.ok(!/画外台词（[^）]*旁白/.test(note), '旁白不列进写 <d> 的画外台词');
+    const onlyNar = off.offscreenPromptNote('旁白：三天后。');
+    assert.ok(!onlyNar.includes('也写进 <d>'));
+    assert.ok(!off.offscreenPromptNote('江澈（OS）：稳住。').includes('系统音'));
+  });
   test('offscreenCheckMode：旧开关默认 off（出片前不再检查）', () => {
     assert.equal(off.offscreenCheckMode(null), 'off');
     assert.equal(off.offscreenCheckMode({ generation: { offscreenCheck: 'x' } }), 'off');
