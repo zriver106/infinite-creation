@@ -28,7 +28,9 @@ const DEFAULT_CFG = {
   ais: ['AI-Claude', 'AI-Codex'],
   gpuOrder: ['style6_a1', 'rr1230d', 'rr1310', 'rr1500', 'ch19_21', 'rr1200e', 'rr1540', 'rr1550', 'rr1600'],
   // 还没审过的新链（Claude 审过放行后从这里去掉）；只影响显示「待审」
-  reviewPending: ['rr1630'],
+  reviewPending: [],
+  // 放行记录（Claude 审过放行、还没被进程或等待器接手的链）：key -> { by, at, note }
+  approvals: {},
 };
 let cfg = { ...DEFAULT_CFG };
 async function loadCfg() {
@@ -316,6 +318,7 @@ export async function gpuQueue() {
   const cfgRef = cfg.gpuOrder.filter((k) => !/待建/.test(k));
   const wkeys = aw ? aw.steps.map((x) => x.key) : [];
   const pend = Array.isArray(cfg.reviewPending) ? cfg.reviewPending : [];
+  const appr = cfg.approvals && typeof cfg.approvals === 'object' ? cfg.approvals : {};
   let ref = cfgRef;
   // 候选链：参考顺序 + 进程里的 + 今天改过的链脚本
   const keys = [...ref];
@@ -327,7 +330,7 @@ export async function gpuQueue() {
     found.sort((a, b) => a.mtime - b.mtime); for (const x of found) keys.push(x.key);
   } catch {}
   const info = new Map();
-  for (const k of wkeys.concat(pend)) if (!keys.includes(k)) keys.push(k);
+  for (const k of wkeys.concat(pend, Object.keys(appr))) if (!keys.includes(k)) keys.push(k);
   for (const k of keys) info.set(k, await chainInfo(k, procs));
   // 参考顺序以实际等待器为准：已跑完/在跑的按原口述顺序在前，之后接等待器的执行顺序，未审的新链放最后
   if (aw) {
@@ -335,10 +338,11 @@ export async function gpuQueue() {
     const tail = cfgRef.filter((k) => !wkeys.includes(k) && !head.includes(k) && !pend.includes(k));
     ref = [...head, ...wkeys, ...tail];
   }
-  for (const k of pend) if (!ref.includes(k) && info.get(k)?.script) ref = [...ref, k];
+  for (const k of [...pend, ...Object.keys(appr)]) if (!ref.includes(k) && info.get(k)?.script) ref = [...ref, k];
   // 等待器每一步落到链上
   if (aw) for (const st of aw.steps) { const c = info.get(st.key); if (!c) continue; c.waiter = { name: aw.name, pid: aw.pid, kind: st.kind, status: st.status, after: st.after, at: st.at }; if (st.kind === 'launch' && st.status === 'armed' && !c.pid && c.state !== 'done') c.waiterArmed = true; }
   for (const k of pend) { const c = info.get(k); if (c && c.state !== 'done' && !c.pid) c.reviewPending = true; }
+  for (const [k, v] of Object.entries(appr)) { const c = info.get(k); if (!c) continue; c.approval = v; if (c.state !== 'done' && !c.pid && !c.waiterArmed) { c.reviewPending = false; c.approvedWaiting = true; } }
   // 每条链的实际上游：在跑的进程看命令行 --after，否则看脚本默认 --after；内部名经 UPSTREAM_PY 映射到脚本名
   const nameToKey = (name, c) => { if (!name || name === 'none') return null; if (c.upPy && c.upPy[name]) return c.upPy[name]; return name; };
   for (const c of info.values()) {

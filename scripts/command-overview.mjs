@@ -110,7 +110,7 @@ async function computeTop() {
   const runRemainMin = run && perShot ? (run.remaining * perShot) / 60 : null;
   // 后面队列：按推出的链序逐条累加
   let tcur = Date.now() + (runRemainMin || 0) * 60e3;
-  const queue = gpu.queue.filter((c) => c.state !== 'missing').map((c) => { const mins = perShot ? (c.remaining * perShot) / 60 : null; const start = tcur; if (mins != null) tcur += mins * 60e3; return { label: c.label, key: c.key, state: c.state, remaining: c.remaining, total: c.total, estMin: r1(mins), estStart: mins != null ? new Date(start).toISOString() : null, estEnd: mins != null ? new Date(tcur).toISOString() : null, armed: !!(c.pid && c.state === 'waiting') || !!c.waiterArmed, armedBy: c.pid && c.state === 'waiting' ? '进程已挂起在等上游' : c.waiterArmed ? `已由等待器挂好（${c.waiter.name}，PID ${c.waiter.pid}）` : null, reviewPending: !!c.reviewPending, upstreamLabel: c.upstreamLabel, upstreamSrc: c.upstreamSrc, mismatch: c.mismatch }; });
+  const queue = gpu.queue.filter((c) => c.state !== 'missing').map((c) => { const mins = perShot ? (c.remaining * perShot) / 60 : null; const start = tcur; if (mins != null) tcur += mins * 60e3; return { label: c.label, key: c.key, state: c.state, remaining: c.remaining, total: c.total, estMin: r1(mins), estStart: mins != null ? new Date(start).toISOString() : null, estEnd: mins != null ? new Date(tcur).toISOString() : null, armed: !!(c.pid && c.state === 'waiting') || !!c.waiterArmed, armedBy: c.pid && c.state === 'waiting' ? '进程已挂起在等上游' : c.waiterArmed ? `已由等待器挂好（${c.waiter.name}，PID ${c.waiter.pid}）` : null, reviewPending: !!c.reviewPending, approvedWaiting: !!c.approvedWaiting, approval: c.approval || null, upstreamLabel: c.upstreamLabel, upstreamSrc: c.upstreamSrc, mismatch: c.mismatch }; });
   const blocks = []; for (const c of gpu.chains) for (const b of c.blocks || []) blocks.push({ chain: c.label, line: b });
   blocks.sort((a, b) => b.line.localeCompare(a.line));
   const g = db.gpuToday || {};
@@ -143,7 +143,7 @@ async function computeTop() {
     },
     gpu: {
       running: run ? { label: run.label, key: run.key, pid: run.pid, done: run.done, total: run.total, current: run.current ? `第${run.current.ch.replace(/\D/g, '')}集 第${run.current.num}镜` : null, currentSince: run.current?.at || null, remainMin: runRemainMin != null ? est(r1(runRemainMin), perSrc.samples, perSrc.window, `剩余 ${run.remaining} 镜 × ${Math.round(perShot)} 秒（${perSrc.method}）`) : none('单镜耗时样本') } : null,
-      idleNow: !run, next: gpu.next ? { label: gpu.next.label, armed: gpu.nextArmed, armedBy: gpu.nextArmedBy === 'waiter' ? `已由等待器挂好（${gpu.next.waiter.name}，PID ${gpu.next.waiter.pid}，等「${gpu.running ? gpu.running.label : '上游'}」跑完后启动）` : gpu.nextArmedBy === 'process' ? '已挂好，进程在等上游' : null, reviewPending: !!gpu.next.reviewPending, state: gpu.next.state } : null,
+      idleNow: !run, next: gpu.next ? { label: gpu.next.label, armed: gpu.nextArmed, armedBy: gpu.nextArmedBy === 'waiter' ? `已由等待器挂好（${gpu.next.waiter.name}，PID ${gpu.next.waiter.pid}，等「${gpu.running ? gpu.running.label : '上游'}」跑完后启动）` : gpu.nextArmedBy === 'process' ? '已挂好，进程在等上游' : null, reviewPending: !!gpu.next.reviewPending, approvedWaiting: !!gpu.next.approvedWaiting, approval: gpu.next.approval || null, state: gpu.next.state } : null,
       waiters: gpu.waiters, referenceNote: gpu.referenceNote,
       cutoffWarn: run && runRemainMin != null && !gpu.nextArmed ? `下一条未见挂好（进程表里没有在等上游的下一条链，也没有在运行的等待器安排它），约 ${Math.round(runRemainMin)} 分钟后 GPU 可能空闲（估算，未核实是否另有安排）` : null,
       queue, conflicts: gpu.conflicts, derived: gpu.derived,
