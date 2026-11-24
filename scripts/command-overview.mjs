@@ -8,6 +8,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gpuQueue, issuesForOverview, writeLead, logCacheStats } from './command-issues.mjs';
+import { chatInit, chatRegistry, chatRegistryFile } from './command-chat.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB = process.env.CMD_IC_DB || 'C:/tmp_infinite_creation/infinite-creation/data/ic.db';
@@ -132,7 +133,7 @@ async function computeTop() {
       doneAndy: iss ? { n: epDone.length, list: epDone, note: '已导出 且 问题描述该集登记过问题、全部标「完成」；没登记问题的集不算；不含整集验收（验收记录还没接入）' } : none('问题描述.txt 读数'),
       accepted: none('整集验收记录（审片/验收功能上线后才有）'),
     },
-    issues: iss ? { raw: iss.raw, rawDone: iss.rawDone, rawOpen: iss.raw - iss.rawDone, heads: iss.heads, items: iss.eps.reduce((a, e) => a + e.items, 0), itemsDoing: iss.eps.reduce((a, e) => a + e.doing, 0), itemsTodo: iss.eps.reduce((a, e) => a + e.todo, 0), itemsDone: iss.eps.reduce((a, e) => a + e.done, 0), fixing: none('问题行↔镜头关联（可编辑问题页加「关联镜头」后才有）'), file: iss.file, md5: iss.md5 } : none('问题描述.txt 读数'),
+    issues: iss ? { raw: iss.raw, rawDone: iss.rawDone, rawOpen: iss.raw - iss.rawDone, heads: iss.heads, items: iss.eps.reduce((a, e) => a + e.items, 0), itemsDoing: iss.eps.reduce((a, e) => a + e.doing, 0), itemsTodo: iss.eps.reduce((a, e) => a + e.todo, 0), itemsDone: iss.eps.reduce((a, e) => a + e.done, 0), fixing: iss.fixing || none('问题行↔镜头关联（推算失败：' + (iss.linkError || '未知') + '）'), file: iss.file, md5: iss.md5 } : none('问题描述.txt 读数'),
     upscale: dl.error ? none('交付目录读数') : { hd: hd.map((f) => f.ep), sd: sd.map((f) => f.ep), hdStale, twoKSubdirFiles: dl.twoKSubdirFiles, note: '2K＝1440 行高的高清档；「疑似旧版」= 该集今天有链出过新片，2K 可能不是最新；确认要记录 2K 的来源版本（还没有）' },
     minutes: {
       exportedMin: dl.error ? none('交付目录读数') : { value: r1(exportedMin), eps: exported.length, note: 'ffprobe 实测，各集合计；不代表验收通过' },
@@ -166,7 +167,7 @@ async function computeTop() {
       jobSuccess: R.done != null ? { value: R.done / ((R.done + R.failed) || 1), done: R.done, failed: R.failed, note: '重生成任务没报错的比例，不代表画面合格' } : none('ic.db 读数'),
       firstPass: none('首轮审片结果（审片功能上线后按「首轮审片通过 ÷ 有结果的镜」算）'),
     },
-    sessionsCount: ses?.data ? { active: ses.data.active.length, registered: ses.data.registered } : null,
+    sessionsCount: ses?.data ? { active: ses.data.active.length, registered: ses.data.registered, working: ses.data.working, unregistered: ses.data.unregistered } : null,
     writeLead: lead && !lead.error ? { value: lead.count, byChapter: lead.byChapter, note: 'IC 里 video_prompt 已改、晚于最新视频、且不在任何未跑完链的镜单里' } : none('IC 镜头读数' + (lead?.error ? `（${lead.error}）` : '')),
     andy,
     errors: errs,
@@ -187,25 +188,29 @@ async function pendingAndy() {
 
 async function computeIssues() {
   const iss = await issuesForOverview();
-  return { at: new Date().toISOString(), file: iss.file, md5: iss.md5, icReadAt: iss.icReadAt, icError: iss.icError, eps: iss.eps.map((e) => ({ no: e.no, items: e.items, done: e.done, doing: e.doing, todo: e.todo, stage: e.stage?.stage || '未知', chain: e.stage?.chain || null, eta: e.stage?.eta || null, shots: e.stage?.shots || [] })) };
+  const lk = new Map((iss.linked || []).map((e) => [e.no, e])); return { at: new Date().toISOString(), file: iss.file, md5: iss.md5, icReadAt: iss.icReadAt, icError: iss.icError, fixing: iss.fixing, eps: iss.eps.map((e) => { const L = lk.get(e.no); const open = L ? L.items : []; return { no: e.no, items: e.items, done: e.done, doing: e.doing, todo: e.todo, stage: e.stage?.stage || '未知', chain: e.stage?.chain || null, eta: e.stage?.eta || null, shots: e.stage?.shots || [], open: open.length, fixingN: open.filter((i) => i.links?.fixing).length, linkedN: open.filter((i) => i.links?.shots?.length).length, linkedShots: [...new Set(open.flatMap((i) => (i.links?.shots || []).map((x) => x.idx)))].sort((a, b) => a - b), drift: L?.timeline?.drift ?? null }; }) };
 }
 
 let deps = {};
 export function overviewInit(d) { deps = d; }
 async function computeSessions() {
-  // 会话登记表（聊天上线时建）；没有就只给「最近 10 分钟有动静」的参考数
-  let reg = null; try { reg = JSON.parse(await fsp.readFile(CHAT_REG, 'utf8')); } catch {}
+  // 会话登记表：聊天里的主会话/辅助会话（身份确定）；另外列出没登记、但最近 10 分钟会话文件有新内容的 Claude/Codex 会话（参考）
+  await chatInit();
+  const reg = chatRegistry();
+  const regCli = new Set(reg.map((r) => r.cliSessionId).filter(Boolean));
+  const registered = reg.filter((r) => r.status !== 'stopped').map((r) => ({ kind: 'chat', id: r.id, role: r.role, provider: r.provider, title: r.title, status: r.status, lastActivity: r.lastActivity, last: r.lastSnippet ? { text: r.lastSnippet.replace(/\s+/g, ' ').slice(0, 40) } : null, state: ({ idle: '空闲', busy: '正在回复' })[r.status] || r.status }));
   const since = Date.now() - 10 * 60e3;
-  const active = [];
+  const others = [];
   for (const provider of ['claude', 'codex']) {
     const l = await deps.listSessions(provider, 1).catch(() => null);
-    for (const s of (l?.sessions || []).filter((x) => new Date(x.mtime).getTime() >= since).slice(0, 8)) {
+    for (const s of (l?.sessions || []).filter((x) => new Date(x.mtime).getTime() >= since && ![...regCli].some((c) => String(x.id).includes(c))).slice(0, 8)) {
       let last = null;
       if (s.size < 40 * 1024 * 1024) { try { const r = await deps.readSession(provider, s.id, -1, 5); const m = (r.messages || []).filter((x) => x.role === 'assistant' || x.role === 'user').pop(); if (m) last = { role: m.role, text: String(m.text || '').replace(/\s+/g, ' ').slice(0, 40), ts: m.ts }; } catch {} }
-      active.push({ provider, id: s.id, project: s.project, mtime: s.mtime, size: s.size, last, state: '最近 10 分钟有动静' });
+      others.push({ kind: 'file', provider, id: s.id, project: s.project, mtime: s.mtime, size: s.size, last, state: '最近 10 分钟有动静（未登记）' });
     }
   }
-  return { registered: reg ? (Array.isArray(reg) ? reg.length : Object.keys(reg).length) : null, registryMissing: !reg, active, note: '「最近 10 分钟有动静」= 会话文件 10 分钟内有新内容，不等于正在执行；会话登记表（聊天功能上线时建）还没有，所以这是未登记的参考数' };
+  const working = registered.filter((r) => r.status === 'busy' || r.role === 'aux');
+  return { registered: reg.length, registeredOpen: registered.length, registryFile: chatRegistryFile, registryMissing: false, chat: registered, active: [...working, ...others], working: working.length, unregistered: others.length, note: '「在工作」= 登记表里正在回复或开着的辅助会话 + 没登记但 10 分钟内会话文件有新内容的会话（后者不等于正在执行）。登记表只覆盖指挥系统聊天里开的会话；外部的 Claude/Codex 会话（如各 Bot 自己的）还没登记' };
 }
 
 async function computeTrends() {

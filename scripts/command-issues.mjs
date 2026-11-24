@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { waiterStatus } from './command-waiter.mjs';
+import { linkEpisodes, linksInit, setManual } from './command-links.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -474,7 +475,7 @@ async function autoSuggest(by) {
 }
 
 // ---------- HTTP ----------
-let readyP = null; const ready = () => (readyP ||= loadCfg());
+let readyP = null; const ready = () => (readyP ||= loadCfg().then(() => linksInit(path.join(TEST_DIR, '问题镜头关联.json'))));
 async function readBody(req) { let n = 0; const c = []; for await (const x of req) { n += x.length; if (n > 64 * 1024) throw new Error('请求体过大'); c.push(x); } const s = Buffer.concat(c).toString('utf8'); return s ? JSON.parse(s) : {}; }
 function send(res, code, obj) { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); }
 const isHuman = (op) => cfg.humans.includes(op);
@@ -495,7 +496,15 @@ export async function issuesForOverview() {
   }
   const gpu = await gpuQueue();
   const st = await episodeStages(eps, gpu);
-  return { file, md5: doc.md5, mtime: (await fsp.stat(file)).mtime.toISOString(), heads, raw, rawDone, eps: eps.map((e) => ({ no: e.no, items: e.items.length, done: e.items.filter((i) => i.status === 'done').length, doing: e.items.filter((i) => i.status === 'doing').length, todo: e.items.filter((i) => i.status === 'todo').length, stage: st.byEpisode[e.no] })), icReadAt: st.icReadAt, icError: st.icError, gpu };
+  const linked = await linkEpisodes(eps, { gpu, ic: await icShots(), deliveryDir: path.join(P, '交付'), onlyOpen: true }).catch((e) => ({ error: String(e.message || e) }));
+  let fixing = null;
+  if (Array.isArray(linked)) {
+    const open = linked.flatMap((e) => e.items.filter((i) => i.status !== 'done').map((i) => ({ ep: e.no, text: i.text, status: i.status, links: i.links })));
+    const by = {}; let lk = 0, fx = 0, man = 0; const unl = [];
+    for (const o of open) { if (o.links?.shots?.length) { lk++; if (o.links.src === 'manual') man++; } else unl.push({ ep: o.ep, text: o.text.slice(0, 40), why: o.links?.why }); if (o.links?.fixing) fx++; const steps = [...new Set((o.links?.shots || []).map((x) => x.step))]; const k = !o.links?.shots?.length ? '未关联' : steps.find((x) => x !== '没在修') || '没在修'; by[k] = (by[k] || 0) + 1; }
+    fixing = { value: fx, open: open.length, linked: lk, manual: man, unlinked: unl.length, unlinkedList: unl.slice(0, 20), byStep: by, estimate: true, method: '问题行的时间点 → 本集当前选用镜头按顺序拼成的时间轴（ffprobe 实测时长）→ 落在哪一镜；人工关联优先。镜头在未跑完的链里、已写库待排链、或导出后有新片，都算「正在修」', drift: linked.filter((e) => e.timeline && e.timeline.drift != null && Math.abs(e.timeline.drift) > 3).map((e) => ({ ep: e.no, drift: e.timeline.drift, epDur: e.timeline.epDur, total: e.timeline.total })) };
+  }
+  return { fixing, linked: Array.isArray(linked) ? linked.map((e) => ({ no: e.no, timeline: e.timeline, items: e.items.filter((i) => i.status !== 'done').map((i) => ({ text: i.text, status: i.status, links: i.links })) })) : null, linkError: Array.isArray(linked) ? null : linked.error, file, md5: doc.md5, mtime: (await fsp.stat(file)).mtime.toISOString(), heads, raw, rawDone, eps: eps.map((e) => ({ no: e.no, items: e.items.length, done: e.items.filter((i) => i.status === 'done').length, doing: e.items.filter((i) => i.status === 'doing').length, todo: e.items.filter((i) => i.status === 'todo').length, stage: st.byEpisode[e.no] })), icReadAt: st.icReadAt, icError: st.icError, gpu };
 }
 // 写库领先量：IC 里 video_prompt 已改、晚于最新视频、且不在任何未跑完链的镜单里
 export async function writeLead(gpu) {
@@ -516,7 +525,10 @@ export async function handleIssues(req, res, url) {
     if (req.method === 'GET' && parts.length === 0) {
       const doc = await readDoc(); const eps = parse(doc.lines); const gpu = await gpuQueue(); const st = await episodeStages(eps, gpu);
       const sugs = (await loadSugs()).filter((s) => s.state === 'pending');
-      return send(res, 200, { config: { target: cfg.target, realFile: cfg.realFile, allowRealFile: cfg.allowRealFile, isTestCopy: path.resolve(cfg.target).toLowerCase() !== path.resolve(cfg.realFile).toLowerCase(), backupDir: cfg.backupDir, logFile: cfg.logFile, humans: cfg.humans, ais: cfg.ais }, file: { md5: doc.md5, bom: doc.bom, eol: doc.eol === '\r\n' ? 'CRLF' : 'LF', lines: doc.lines.length }, stages: STAGES, episodes: eps.map((e) => ({ no: e.no, note: e.note, items: e.items.map(({ start, end, text, tag, status, orig, key }) => ({ start, end, text, tag, status, orig, key })), stage: st.byEpisode[e.no] })), icReadAt: st.icReadAt, icError: st.icError, gpu, suggestions: sugs, authNote: '预览里的「操作人」只是演示切换，不是真正的身份认证' });
+      const linked = await linkEpisodes(eps, { gpu, ic: await icShots(), deliveryDir: path.join(P, '交付'), onlyOpen: true }).catch(() => null);
+      const lmap = new Map(); for (const e of linked || []) for (const it of e.items) if (it.links) lmap.set(`${e.no}|${it.start}`, it.links);
+      const tmap = new Map(); for (const e of linked || []) tmap.set(e.no, e.timeline);
+      return send(res, 200, { config: { target: cfg.target, realFile: cfg.realFile, allowRealFile: cfg.allowRealFile, isTestCopy: path.resolve(cfg.target).toLowerCase() !== path.resolve(cfg.realFile).toLowerCase(), backupDir: cfg.backupDir, logFile: cfg.logFile, humans: cfg.humans, ais: cfg.ais }, file: { md5: doc.md5, bom: doc.bom, eol: doc.eol === '\r\n' ? 'CRLF' : 'LF', lines: doc.lines.length }, stages: STAGES, episodes: eps.map((e) => ({ no: e.no, note: e.note, items: e.items.map(({ start, end, text, tag, status, orig, key }) => ({ start, end, text, tag, status, orig, key, links: lmap.get(`${e.no}|${start}`) || null })), stage: st.byEpisode[e.no], timeline: tmap.get(e.no) || null })), icReadAt: st.icReadAt, icError: st.icError, gpu, suggestions: sugs, authNote: '预览里的「操作人」只是演示切换，不是真正的身份认证' });
     }
     if (req.method === 'GET' && parts[0] === 'gpu') return send(res, 200, await gpuQueue());
     if (req.method === 'GET' && parts[0] === 'log') {
@@ -542,6 +554,11 @@ export async function handleIssues(req, res, url) {
       const r = await commit(s.op, operator, b.baseMd5 || null, `confirm ${s.id} (by ${s.by})`);
       s.state = 'applied'; s.decidedBy = operator; s.decidedAt = nowIso(); s.result = { afterMd5: r.afterMd5, backup: r.backup }; await saveSugs(a);
       return send(res, 200, { ...r, suggestion: s });
+    }
+    if (parts[0] === 'links') { // 问题行↔镜头的人工关联：只写预览目录里的 问题镜头关联.json
+      const r = await setManual(Number(b.episode), String(b.text || ''), b.shots, operator, b.note);
+      await appendLog({ operator, result: 'link_set', episode: b.episode, itemText: String(b.text || '').slice(0, 200), shots: r.value ? r.value.shots : [] });
+      return send(res, 200, r);
     }
     if (parts[0] === 'suggest-auto') { const made = await autoSuggest(operator.startsWith('AI') ? operator : '指挥系统（自动）'); return send(res, 200, { made: made.length, suggestions: made }); }
     return send(res, 404, { error: 'unknown' });

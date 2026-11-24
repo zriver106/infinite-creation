@@ -47,7 +47,13 @@ async function loadConfig() {
 }
 const metaFile = (id) => path.join(SESS_DIR, id, 'meta.json');
 const msgFile = (id) => path.join(SESS_DIR, id, 'messages.jsonl');
-async function saveMeta(m) { await fsp.writeFile(metaFile(m.id), JSON.stringify(m, null, 2)); }
+async function saveMeta(m) { await fsp.writeFile(metaFile(m.id), JSON.stringify(m, null, 2)); scheduleRegistry(); }
+// 会话登记表：聊天里所有会话（主会话 + 辅助会话）的身份和状态，写在聊天沙箱里，供总览和其他工具只读
+const REG_FILE = path.join(CHAT_ROOT, '会话登记表.json');
+let regTimer = null;
+function scheduleRegistry() { if (regTimer) return; regTimer = setTimeout(async () => { regTimer = null; try { await fsp.writeFile(REG_FILE, JSON.stringify({ updatedAt: now(), note: '指挥系统聊天的会话登记表（预览版）；status: idle=空闲 busy=正在回复 stopped=已停', sessions: chatRegistry() }, null, 2)); } catch {} }, 300); }
+export function chatRegistry() { return [...sessions.values()].map((m) => ({ id: m.id, role: m.role, provider: m.provider, title: m.title, parent: m.parent, status: m.status, created: m.created, lastActivity: m.lastActivity, cliSessionId: m.cliSessionId, turns: m.turns, msgCount: m.msgCount, lastSnippet: String(m.lastSnippet || '').slice(0, 60), stoppedReason: m.stoppedReason || null })); }
+export const chatRegistryFile = REG_FILE;
 
 async function loadSessions() {
   const ents = await fsp.readdir(SESS_DIR, { withFileTypes: true }).catch(() => []);
@@ -251,7 +257,7 @@ async function readBody(req, max = 64 * 1024) {
 function send(res, code, obj) { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); }
 
 let ready = null;
-export function chatInit() { if (!ready) ready = loadConfig().then(loadSessions); return ready; }
+export function chatInit() { if (!ready) ready = loadConfig().then(loadSessions).then(() => scheduleRegistry()); return ready; }
 export async function handleChat(req, res, url) {
   await chatInit();
   const p = url.pathname.replace(/^\/api\/chat\/?/, '');

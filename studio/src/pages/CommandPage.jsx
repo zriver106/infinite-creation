@@ -149,7 +149,7 @@ function Overview({ go }) {
           {d.films.allShotsDone.value === null ? <Missing m={d.films.allShotsDone} /> : <><div className="text-xl font-semibold">{d.films.allShotsDone.n} <span className="text-xs font-normal">/ {T}</span></div><Bar v={d.films.allShotsDone.n / T} /><div className="mt-1 text-[10px] text-[var(--fg-4)]">已出分镜 {d.films.chaptersWithShots} 集 · 已导出交付 {d.films.exported.n} 集{d.films.exported.missing.length ? `（缺 EP${d.films.exported.missing.join('、EP')}）` : ''}</div></>}
         </Tile>
         <Tile title="问题（原文行）">
-          {d.issues.value === null ? <Missing m={d.issues} /> : <><div className="text-xl font-semibold">{d.issues.raw} <span className="text-xs font-normal">行</span></div><div className="text-[11px]">已修 {d.issues.rawDone} · 未完成 {d.issues.rawOpen}</div><div className="text-[10px] text-[var(--fg-4)]">正在修复：<Missing m={d.issues.fixing} /><br />Andy 标「修改中」{d.issues.itemsDoing} 条 ·「待修改」{d.issues.itemsTodo} 条</div></>}
+          {d.issues.value === null ? <Missing m={d.issues} /> : <><div className="text-xl font-semibold">{d.issues.raw} <span className="text-xs font-normal">行</span></div><div className="text-[11px]">已修 {d.issues.rawDone} · 未完成 {d.issues.rawOpen}</div><div className="text-[10px] text-[var(--fg-4)]">正在修复：{d.issues.fixing?.value != null ? <><b>{d.issues.fixing.value}</b> 条（估算：未完成 {d.issues.fixing.open} 条里关联到镜头 {d.issues.fixing.linked} 条，未关联 {d.issues.fixing.unlinked} 条）</> : <Missing m={d.issues.fixing} />}<br />Andy 标「修改中」{d.issues.itemsDoing} 条 ·「待修改」{d.issues.itemsTodo} 条</div></>}
         </Tile>
         <Tile title="2K 高清档">
           {d.upscale.value === null ? <Missing m={d.upscale} /> : <><div className="text-xl font-semibold">{d.upscale.hd.length} <span className="text-xs font-normal">集</span></div><div className="text-[11px]">还有 {d.upscale.sd.length} 集是预览档</div><div className="text-[10px] text-[var(--fg-4)]" title={d.upscale.note}>2K：EP{d.upscale.hd.join('、')}{d.upscale.hdStale.length ? ` · 疑似旧版 EP${d.upscale.hdStale.join('、')}` : ''}</div></>}
@@ -161,7 +161,7 @@ function Overview({ go }) {
         </Tile>
         <Tile title="在工作的会话">
           <div className="text-xl font-semibold">{ses.data ? sesActive.length : '—'} <span className="text-xs font-normal">个</span></div>
-          <div className="text-[10px] text-[var(--fg-4)]">最近 10 分钟有动静（未登记的参考数；会话登记表：<Missing m={{ missing: '暂无数据：缺会话登记表（聊天上线时建）' }} />）</div>
+          <div className="text-[10px] text-[var(--fg-4)]">{ses.data ? <>登记表里在工作 {ses.data.working} 个（共登记 {ses.data.registered} 个）+ 没登记但 10 分钟内有动静 {ses.data.unregistered} 个（参考）</> : '读取中'}</div>
           <div className="mt-1 text-[11px]">剩余生成工作量 <Est e={d.times.remainWork} unit=" 天" /></div>
         </Tile>
       </div>
@@ -188,21 +188,22 @@ function Overview({ go }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="问题和返修（按集，点集跳到可编辑问题页）" right={<Stamp p={iss} sec={60} />}>
           {!iss.data ? <Missing m={{ missing: iss.error ? '暂时读不到：' + iss.error : '读取中…' }} /> : (
-            <div className="max-h-[420px] overflow-auto"><table className="w-full text-[11px]"><thead><tr className="text-[var(--fg-3)]"><th className="text-left">集</th><th>条目</th><th>已修</th><th>修改中</th><th>待修改</th><th className="text-left">卡在哪个环节（推算）</th><th className="text-left">预计完成</th></tr></thead><tbody>
+            <div className="max-h-[420px] overflow-auto"><table className="w-full text-[11px]"><thead><tr className="text-[var(--fg-3)]"><th className="text-left">集</th><th>条目</th><th>已修</th><th>修改中</th><th>待修改</th><th>正在修（估算）</th><th className="text-left">卡在哪个环节（推算）</th><th className="text-left">预计完成</th></tr></thead><tbody>
               {iss.data.eps.map((e) => (
                 <tr key={e.no} className="cursor-pointer border-t border-[var(--line)] hover:bg-[var(--line)]" onClick={() => go('issues')}>
-                  <td>第{e.no}集</td><td className="text-center">{e.items}</td><td className="text-center">{e.done}</td><td className="text-center">{e.doing}</td><td className="text-center">{e.todo}</td>
+                  <td>第{e.no}集</td><td className="text-center">{e.items}</td><td className="text-center">{e.done}</td><td className="text-center">{e.doing}</td><td className="text-center">{e.todo}</td><td className="text-center" title={e.linkedShots?.length ? '关联镜头：#' + e.linkedShots.join(' #') + (e.drift != null ? `；时间轴与交付文件相差 ${e.drift} 秒` : '') : ''}>{e.open ? `${e.fixingN}/${e.open}` : '—'}{e.open && e.linkedN < e.open ? <span className="text-[var(--fg-4)]">（{e.open - e.linkedN} 未关联）</span> : null}</td>
                   <td><Pill tone={STAGE_TONE[e.stage] || 'gray'}>{e.stage}</Pill> <span className="text-[var(--fg-4)]">{e.chain || ''}</span></td><td>{e.eta ? `${ptHM(e.eta)}（估算）` : e.stage === '已完成' ? '—' : '未知'}</td>
                 </tr>
               ))}
             </tbody></table></div>
           )}
-          <p className="mt-1 text-[10px] text-[var(--fg-4)]">来源：桌面 问题描述.txt（只读，md5 {iss.data?.md5?.slice(0, 8)}）+ 链镜单 + IC 镜头（只 GET）。条目还没关联镜头，环节是按集推算。</p>
+          <p className="mt-1 text-[10px] text-[var(--fg-4)]">来源：桌面 问题描述.txt（只读，md5 {iss.data?.md5?.slice(0, 8)}）+ 链镜单 + IC 镜头（只 GET）。「正在修」= 该条关联的镜头在未跑完的链里、已写库待排链、或导出后有新片（估算：按问题行时间点对到镜头；人工关联优先）。</p>
         </Card>
-        <Card title="会话（点一行跳到会话页）" right={<Stamp p={ses} sec={60} />}>
+        <Card title="会话（登记的点一行跳到聊天页）" right={<Stamp p={ses} sec={60} />}>
           <p className="mb-2 text-[11px]">在工作 <b>{sesActive.length}</b> 个（最近 10 分钟会话文件有新内容；不等于正在执行，长时间工具调用可能不写文件 → 状态「未知」）</p>
-          {ses.data?.registryMissing ? <p className="mb-2 text-[10px] text-[var(--fg-4)]">会话登记表还没有（聊天功能上线时建），主会话/辅助会话的身份暂时分不出来。</p> : null}
-          {sesActive.length ? sesActive.map((s) => (
+          {(ses.data?.chat || []).map((s) => <div key={'c' + s.id} className="cursor-pointer border-t border-[var(--line)] py-1 text-[11px] hover:bg-[var(--line)]" onClick={() => go('chat', { sid: s.id })}>{s.role === 'main' ? '★ 主会话' : '◆ 辅助'} · {s.title} · {s.provider === 'claude' ? 'Claude' : 'Codex'} · {s.state} · {ptHM(s.lastActivity)}{s.last ? ` · ${s.last.text}` : ''}</div>)}
+          {ses.data ? <p className="mt-1 text-[10px] text-[var(--fg-4)]">登记表：{ses.data.registryFile}（只覆盖指挥系统聊天里的会话）。下面是没登记、10 分钟内有动静的会话，点开到 AI 会话页：</p> : null}
+          {sesActive.filter((s) => s.kind !== 'chat').length ? sesActive.filter((s) => s.kind !== 'chat').map((s) => (
             <div key={s.provider + s.id} className="cursor-pointer border-t border-[var(--line)] py-1 text-[11px] hover:bg-[var(--line)]" onClick={() => go('sessions', { provider: s.provider, sid: s.id })}>
               ● {s.provider === 'claude' ? 'Claude' : 'Codex'} · {ptHM(s.mtime)} · {s.last ? `最近（${s.last.role === 'user' ? '收到' : '回复'}）：${s.last.text}` : '最近消息读不到'}
             </div>
@@ -509,7 +510,7 @@ function Issues() {
     const j = await r.json().catch(() => ({}));
     if (r.status === 409) setMsg({ tone: 'red', text: '拒写：' + j.error });
     else if (!r.ok && r.status !== 202) setMsg({ tone: 'red', text: j.error || 'HTTP ' + r.status });
-    else setMsg({ tone: 'green', text: j.suggested ? 'AI 不能直接改：已进待确认队列，等 Andy 或总导确认' : j.made != null ? `生成了 ${j.made} 条建议，已进待确认队列` : `已写入（备份 ${j.backup || '—'}，新 md5 ${j.afterMd5 || '—'}）` });
+    else setMsg({ tone: 'green', text: j.key ? `已保存关联（只写预览目录）：${j.value ? '#' + j.value.shots.join(' #') : '已清除，回到按时间点推算'}` : j.suggested ? 'AI 不能直接改：已进待确认队列，等 Andy 或总导确认' : j.made != null ? `生成了 ${j.made} 条建议，已进待确认队列` : `已写入（备份 ${j.backup || '—'}，新 md5 ${j.afterMd5 || '—'}）` });
     reload(); log.reload();
   };
   const op = (o, extra = {}) => post('/api/issues/op', { op: o, ...extra });
@@ -572,7 +573,8 @@ function Issues() {
                         ) : (
                           <>
                             <span className="flex-1">{it.text}</span>
-                            <span className="text-[10px] text-[var(--fg-4)]">环节：{it.status === 'done' ? '已完成' : '未知（条目未对应到镜头）'} · 预计：{it.status === 'done' ? '—' : e.stage.eta ? '按本集 ' + fmtEta(e.stage.eta) + '（估算）' : '未知'} · L{it.start + 1}</span>
+                            <span className="text-[10px] text-[var(--fg-4)]">{it.status === 'done' ? '已完成' : it.links?.shots?.length ? <>镜头 {it.links.shots.map((x) => <span key={x.idx} className={x.fixing ? 'text-sky-400' : ''} title={x.chain || ''}>#{x.idx}·{x.step}{x.how ? `（${x.how}）` : ''} </span>)}{it.links.src === 'auto' ? <span title={'按时间点 ' + it.links.times.join('、') + ' 对到镜头'}>（估算）</span> : <span>（人工关联 {it.links.manual?.by}）</span>}</> : <span className="text-amber-400">未关联：{it.links?.why || '—'}</span>} · 预计：{it.status === 'done' ? '—' : e.stage.eta ? '按本集 ' + fmtEta(e.stage.eta) + '（估算）' : '未知'} · L{it.start + 1}</span>
+                            {it.status !== 'done' ? <button type="button" className="rounded border border-[var(--line)] px-1.5 text-[10px]" onClick={() => { const v = window.prompt(`第${e.no}集：输入关联镜号（如 3 5 12），留空 = 清除人工关联、回到按时间点推算`, it.links?.src === 'manual' ? it.links.manual.shots.join(' ') : (it.links?.shots || []).map((x) => x.idx).join(' ')); if (v === null) return; post('/api/issues/links', { episode: e.no, text: it.text, shots: v }); }}>关联镜头</button> : null}
                             <button type="button" className="rounded border border-[var(--line)] px-1.5 text-[10px]" onClick={() => setEdit({ key: it.key, text: it.text })}>改</button>
                           </>
                         )}
@@ -717,7 +719,7 @@ function ChatPanel({ sid, summary, onClose }) {
 }
 function Chat() {
   const list = useJson('/api/chat/sessions');
-  const [open, setOpen] = useState(['main']);
+  const [open, setOpen] = useState(() => { const sid = new URLSearchParams(window.location.search).get('sid'); return sid && sid !== 'main' ? ['main', sid] : ['main']; });
   const [form, setForm] = useState({ title: '', provider: 'claude', instruction: '' });
   const [msg, setMsg] = useState(null);
   useEffect(() => { const t = setInterval(list.reload, 5000); return () => clearInterval(t); }, [list.reload]);
