@@ -272,7 +272,7 @@ export function diffAlerts(state, found, nowIso, resolveAfter = 3) {
     const cur = state.alerts[a.key];
     if (!cur) { state.alerts[a.key] = { ...a, since: nowIso, lastSeen: nowIso, missing: 0 }; events.push({ type: 'new', ...a, at: nowIso }); }
     else if (cur.sig !== a.sig || cur.level !== a.level) { Object.assign(cur, a, { lastSeen: nowIso, missing: 0 }); events.push({ type: 'changed', ...a, at: nowIso }); }
-    else { cur.lastSeen = nowIso; cur.missing = 0; cur.text = a.text; } // 文字里的分钟数可以刷新，但不推送
+    else { cur.lastSeen = nowIso; cur.missing = 0; cur.text = a.text; cur.title = a.title; } // 标题和文字里的分钟数可以刷新，但不推送
   }
   for (const k of Object.keys(state.alerts)) {
     if (seen.has(k)) continue;

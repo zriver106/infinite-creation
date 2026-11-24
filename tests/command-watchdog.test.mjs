@@ -346,3 +346,9 @@ test('第三轮集成：只读 fixture ic.db；首轮只定起点，之后新 PA
   const st = JSON.parse(fs.readFileSync(path.join(WDx, 'state.json'), 'utf8')); assert.deepEqual(Object.keys(st.patch.seen).sort(), ['n1', 'n2']);
   assert.equal(w.prepare('select count(*) n from change_logs').get().n, 4, '看门狗没写库');
 });
+
+test('第三轮：同签名时标题和正文都刷新（分钟数），但不推送', () => {
+  const st = {}; L.diffAlerts(st, [{ key: 'gpu_idle', level: 'ERROR', title: 'GPU 空闲 3 分钟', text: 'a', sig: 's' }], new Date(NOW).toISOString());
+  const ev = L.diffAlerts(st, [{ key: 'gpu_idle', level: 'ERROR', title: 'GPU 空闲 21 分钟', text: 'b', sig: 's' }], new Date(NOW + 1000).toISOString());
+  assert.deepEqual(ev, []); assert.equal(st.alerts.gpu_idle.title, 'GPU 空闲 21 分钟'); assert.equal(st.alerts.gpu_idle.text, 'b');
+});
