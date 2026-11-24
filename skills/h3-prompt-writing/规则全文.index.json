@@ -1,0 +1,198 @@
+{
+ "skill": "h3-prompt-writing",
+ "set": "写视频提示词",
+ "version": "rules-2026.11.23-2244",
+ "file": "规则全文.md",
+ "file_md5": "C5FD47D8AC74E6FCF5316FF25953D99D",
+ "total_lines": 547,
+ "base_end_line": 227,
+ "base_chars": 39651,
+ "base_budget_chars": 40000,
+ "budget_chars": 80000,
+ "section_max_chars": 20000,
+ "sections": [
+  {
+   "id": "MAP",
+   "title": "地图",
+   "tier": "map",
+   "start": 1,
+   "end": 35,
+   "when": [
+    "always"
+   ],
+   "chars": 2331,
+   "checksum": "B8C30152"
+  },
+  {
+   "id": "A",
+   "title": "A 铁律与流程",
+   "tier": "base",
+   "start": 37,
+   "end": 62,
+   "when": [
+    "always"
+   ],
+   "chars": 1746,
+   "checksum": "9B8EBBC1"
+  },
+  {
+   "id": "B",
+   "title": "B 提示词格式与标签",
+   "tier": "base",
+   "start": 64,
+   "end": 119,
+   "when": [
+    "always"
+   ],
+   "chars": 8811,
+   "checksum": "B8834DC5"
+  },
+  {
+   "id": "C",
+   "title": "C 心声",
+   "tier": "base",
+   "start": 121,
+   "end": 169,
+   "when": [
+    "always"
+   ],
+   "chars": 11562,
+   "checksum": "BA68CA5D"
+  },
+  {
+   "id": "D",
+   "title": "D 系统声与光幕",
+   "tier": "base",
+   "start": 171,
+   "end": 188,
+   "when": [
+    "always"
+   ],
+   "chars": 4389,
+   "checksum": "9FB7378A"
+  },
+  {
+   "id": "F",
+   "title": "F 一致性（人物、服装、场景、道具、站位、人数）",
+   "tier": "base",
+   "start": 190,
+   "end": 226,
+   "when": [
+    "always"
+   ],
+   "chars": 10806,
+   "checksum": "F711D06E"
+  },
+  {
+   "id": "E",
+   "title": "E 人声与台词",
+   "tier": "volume",
+   "start": 231,
+   "end": 279,
+   "when": [
+    "dialogue"
+   ],
+   "chars": 10612,
+   "checksum": "52EE40D2"
+  },
+  {
+   "id": "FX",
+   "title": "F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具）",
+   "tier": "volume",
+   "start": 281,
+   "end": 316,
+   "when": [
+    "multi",
+    "prop",
+    "scene"
+   ],
+   "chars": 1567,
+   "checksum": "36F85012"
+  },
+  {
+   "id": "F5V",
+   "title": "F5 多人同场多视角定义图（_MV）",
+   "tier": "volume",
+   "start": 318,
+   "end": 332,
+   "when": [
+    "multi"
+   ],
+   "chars": 2551,
+   "checksum": "385FBE6C"
+  },
+  {
+   "id": "H1",
+   "title": "H1 镜头、运镜与打戏节奏",
+   "tier": "volume",
+   "start": 334,
+   "end": 361,
+   "when": [
+    "motion"
+   ],
+   "chars": 4546,
+   "checksum": "43B06BC3"
+  },
+  {
+   "id": "H2",
+   "title": "H2 Q 版、特效、流行语与谐音（冷门）",
+   "tier": "volume",
+   "start": 363,
+   "end": 438,
+   "when": [
+    "expression"
+   ],
+   "chars": 17835,
+   "checksum": "907721FA"
+  },
+  {
+   "id": "J",
+   "title": "J 资产与绑定",
+   "tier": "volume",
+   "start": 440,
+   "end": 468,
+   "when": [
+    "binding",
+    "scene"
+   ],
+   "chars": 4649,
+   "checksum": "3A262539"
+  },
+  {
+   "id": "L",
+   "title": "L 现实逻辑与剧情",
+   "tier": "volume",
+   "start": 470,
+   "end": 481,
+   "when": [
+    "logic"
+   ],
+   "chars": 640,
+   "checksum": "424EF7A8"
+  },
+  {
+   "id": "B2",
+   "title": "B2 生成模式、全参考与多段（冷门）",
+   "tier": "volume",
+   "start": 483,
+   "end": 524,
+   "when": [
+    "rare"
+   ],
+   "chars": 3895,
+   "checksum": "6B722278"
+  },
+  {
+   "id": "Q",
+   "title": "Q 审片",
+   "tier": "volume",
+   "start": 526,
+   "end": 547,
+   "when": [
+    "rare"
+   ],
+   "chars": 902,
+   "checksum": "5ABFEC66"
+  }
+ ]
+}
