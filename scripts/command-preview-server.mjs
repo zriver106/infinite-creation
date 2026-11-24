@@ -471,7 +471,10 @@ async function serveStatic(req, res, pathname) {
   let st = await fsp.stat(file).catch(() => null);
   if (!st || st.isDirectory()) { file = path.join(DIST, 'index.html'); st = await fsp.stat(file).catch(() => null); }
   if (!st) { res.writeHead(404); return res.end('dist 不存在'); }
-  res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
+  // index.html 不缓存（每次都拿最新构建）；带 hash 的 assets 照常长期缓存
+  const isIndex = path.basename(file) === 'index.html';
+  const cc = isIndex ? 'no-cache, no-store, must-revalidate' : (/[\\/]assets[\\/]/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache');
+  res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': cc });
   if (req.method === 'HEAD') return res.end();
   fs.createReadStream(file).pipe(res);
 }
@@ -517,6 +520,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/ws' || p.startsWith('/ws/')) return send(res, 404, { error: '预览不代理 WebSocket' });
     if (p.startsWith('/api/') || p.startsWith('/files/') || p.startsWith('/samples/')) return proxyGet(req, res);
+    // 裸路径 / 默认进入指挥系统总览
+    if (p === '/' && !url.searchParams.get('mode')) { res.writeHead(302, { location: '/?mode=command&sub=overview', 'cache-control': 'no-store' }); return res.end(); }
     return serveStatic(req, res, p);
   } catch (e) {
     send(res, 500, { error: String(e.message || e) });
