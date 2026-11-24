@@ -3,6 +3,7 @@
 // 读：chain.log / progress.json / 链脚本 / 进程表（只读）；IC 只发 GET；不连 8188/8189；不碰 4610 进程。
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import { waiterStatus } from './command-waiter.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -26,6 +27,8 @@ const DEFAULT_CFG = {
   humans: ['Andy', '总导'],
   ais: ['AI-Claude', 'AI-Codex'],
   gpuOrder: ['style6_a1', 'rr1230d', 'rr1310', 'rr1500', 'ch19_21', 'rr1200e', 'rr1540', 'rr1550', 'rr1600'],
+  // 还没审过的新链（Claude 审过放行后从这里去掉）；只影响显示「待审」
+  reviewPending: ['rr1630'],
 };
 let cfg = { ...DEFAULT_CFG };
 async function loadCfg() {
@@ -182,16 +185,19 @@ async function addSuggestion(s) {
 }
 
 // ---------- GPU 链状态（只读） ----------
-let procCache = { at: 0, v: [] };
-function chainProcs() {
-  if (Date.now() - procCache.at < 5000) return Promise.resolve(procCache.v);
-  const cmd = "Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress";
+let procCache = { at: 0, v: [], ps: [] };
+function readProcs() {
+  if (Date.now() - procCache.at < 5000) return Promise.resolve(procCache);
+  const cmd = "Get-CimInstance Win32_Process -Filter \"Name like 'python%' or Name like 'powershell%' or Name like 'pwsh%'\" | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress";
   return new Promise((res) => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { timeout: 15000, windowsHide: true, maxBuffer: 8 << 20 }, (e, out) => {
     let a = []; try { a = JSON.parse(out || '[]'); } catch {} if (!Array.isArray(a)) a = [a];
-    const v = a.filter((p) => p && /gpu_[\w\-]+_chain\.py/i.test(p.CommandLine || '')).map((p) => ({ pid: p.ProcessId, key: (p.CommandLine.match(/gpu_([\w\-]+)_chain\.py/i) || [])[1], after: ((p.CommandLine.match(/--after=(\S+)/) || [])[1]) || '(默认)', dry: /--dry-run/.test(p.CommandLine) }));
-    procCache = { at: Date.now(), v }; res(v);
+    const py = a.filter((p) => p && /^python/i.test(p.Name || '') && /gpu_[\w\-]+_chain\.py/i.test(p.CommandLine || ''));
+    const v = py.map((p) => ({ pid: p.ProcessId, key: (p.CommandLine.match(/gpu_([\w\-]+)_chain\.py/i) || [])[1], after: ((p.CommandLine.match(/--after=(\S+)/) || [])[1]) || '(默认)', dry: /--dry-run/.test(p.CommandLine) }));
+    const ps = a.filter((p) => p && /^(powershell|pwsh)/i.test(p.Name || '') && /arm_waiter/i.test(p.CommandLine || '')).map((p) => ({ pid: p.ProcessId, cmd: p.CommandLine }));
+    procCache = { at: Date.now(), v, ps }; res(procCache);
   }));
 }
+async function chainProcs() { return (await readProcs()).v; }
 const ymd = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
 async function readLines(f) { try { return (await fsp.readFile(f, 'utf8')).replace(/^\uFEFF/, '').split(/\r?\n/); } catch { return null; } }
 // chain.log 增量读：第一次整读建缓存，之后只读新增字节；文件变小（截断/换文件）就重建
@@ -304,8 +310,13 @@ async function allTodaySamples() {
 }
 export async function gpuQueue() {
   await ready();
-  const procs = await chainProcs();
-  const ref = cfg.gpuOrder.filter((k) => !/待建/.test(k));
+  const { v: procs, ps } = await readProcs();
+  const waiters = await waiterStatus(ps, U);
+  const aw = waiters.find((w) => w.alive && w.state === 'alive') || null; // 正在起作用的等待器
+  const cfgRef = cfg.gpuOrder.filter((k) => !/待建/.test(k));
+  const wkeys = aw ? aw.steps.map((x) => x.key) : [];
+  const pend = Array.isArray(cfg.reviewPending) ? cfg.reviewPending : [];
+  let ref = cfgRef;
   // 候选链：参考顺序 + 进程里的 + 今天改过的链脚本
   const keys = [...ref];
   for (const p of procs) if (p.key && !keys.includes(p.key)) keys.push(p.key);
@@ -316,13 +327,26 @@ export async function gpuQueue() {
     found.sort((a, b) => a.mtime - b.mtime); for (const x of found) keys.push(x.key);
   } catch {}
   const info = new Map();
+  for (const k of wkeys.concat(pend)) if (!keys.includes(k)) keys.push(k);
   for (const k of keys) info.set(k, await chainInfo(k, procs));
+  // 参考顺序以实际等待器为准：已跑完/在跑的按原口述顺序在前，之后接等待器的执行顺序，未审的新链放最后
+  if (aw) {
+    const head = cfgRef.filter((k) => !wkeys.includes(k) && ['done', 'running'].includes(info.get(k)?.state));
+    const tail = cfgRef.filter((k) => !wkeys.includes(k) && !head.includes(k) && !pend.includes(k));
+    ref = [...head, ...wkeys, ...tail];
+  }
+  for (const k of pend) if (!ref.includes(k) && info.get(k)?.script) ref = [...ref, k];
+  // 等待器每一步落到链上
+  if (aw) for (const st of aw.steps) { const c = info.get(st.key); if (!c) continue; c.waiter = { name: aw.name, pid: aw.pid, kind: st.kind, status: st.status, after: st.after, at: st.at }; if (st.kind === 'launch' && st.status === 'armed' && !c.pid && c.state !== 'done') c.waiterArmed = true; }
+  for (const k of pend) { const c = info.get(k); if (c && c.state !== 'done' && !c.pid) c.reviewPending = true; }
   // 每条链的实际上游：在跑的进程看命令行 --after，否则看脚本默认 --after；内部名经 UPSTREAM_PY 映射到脚本名
   const nameToKey = (name, c) => { if (!name || name === 'none') return null; if (c.upPy && c.upPy[name]) return c.upPy[name]; return name; };
   for (const c of info.values()) {
-    const a = c.pid && c.after && c.after !== '(默认)' ? c.after : c.defaultAfter;
+    const byProc = c.pid && c.after && c.after !== '(默认)';
+    const byWaiter = !c.pid && c.waiterArmed && c.waiter.after;
+    const a = byProc ? c.after : byWaiter ? c.waiter.after : c.defaultAfter;
     c.upstreamName = a || null; c.upstream = nameToKey(a, c);
-    c.upstreamSrc = c.pid && c.after && c.after !== '(默认)' ? '进程命令行' : (a ? '脚本默认 --after' : (c.script ? '脚本没有默认上游（启动时手动指定）' : '无脚本'));
+    c.upstreamSrc = byProc ? '进程命令行' : byWaiter ? `等待器 ${c.waiter.name} 的启动参数 --after` : (a ? '脚本默认 --after' : (c.script ? '脚本没有默认上游（启动时手动指定）' : '无脚本'));
   }
   // 只保留有意义的：参考顺序里的、在跑/在等的、今天新出现且还没跑完的
   const keep = (c) => ref.includes(c.key) || c.pid || !['done', 'stopped'].includes(c.state);
@@ -365,11 +389,13 @@ export async function gpuQueue() {
     t += c.remaining * per * 1000; c.eta = new Date(t).toISOString();
   }
   const next = derived.map((d) => info.get(d.key)).find((c) => c !== running && c.state !== 'done') || null;
-  const nextArmed = !!(next && next.pid && next.state === 'waiting');
+  const nextArmed = !!(next && ((next.pid && next.state === 'waiting') || next.waiterArmed));
+  const nextArmedBy = next ? (next.pid && next.state === 'waiting' ? 'process' : next.waiterArmed ? 'waiter' : null) : null;
   return {
-    at: nowIso(), perShotSec: per, sampleCount: samples.length, running: running || null, next, nextArmed, queue: ordered.filter((c) => c.state !== 'done' && c !== running), chains: ordered, procs, idle: !procs.some((p) => !p.dry),
+    at: nowIso(), perShotSec: per, sampleCount: samples.length, running: running || null, next, nextArmed, nextArmedBy, queue: ordered.filter((c) => c.state !== 'done' && c !== running), chains: ordered, procs, idle: !procs.some((p) => !p.dry),
     derived: derived.map((d) => ({ ...d, label: info.get(d.key).label, state: info.get(d.key).state, upstream: info.get(d.key).upstream })), conflicts: conflicts.map((x) => ({ ...x, upstreamLabel: info.get(x.upstream)?.label, childLabels: x.children.map((k) => info.get(k)?.label) })),
-    superseded, reference: ref.map((k) => ({ key: k, label: info.get(k)?.label || k, state: info.get(k)?.state })), referenceNote: '参考顺序来自总导口述（配置 issues-config.json 的 gpuOrder），只作对照；实际链序以脚本默认 --after 和进程命令行为准',
+    superseded, reference: ref.map((k) => ({ key: k, label: info.get(k)?.label || k, state: info.get(k)?.state })), referenceNote: aw ? `参考顺序以正在运行的等待器 ${aw.name}（PID ${aw.pid}）为准：已跑完/在跑的链按原口述顺序在前，之后是等待器的执行顺序；未审的新链列在最后` : '没有在运行的等待器；参考顺序来自总导口述（配置 issues-config.json 的 gpuOrder），只作对照',
+    waiters: waiters.filter((w) => w.alive || w.logLines).map((w) => ({ name: w.name, file: w.file, pid: w.pid, alive: w.alive, state: w.state, log: w.log, firstLine: w.firstLine, lastLine: w.lastLine, aborted: w.aborted, finished: w.finished, stopPresent: w.stopPresent, steps: w.steps.map((x) => ({ kind: x.kind, key: x.key, label: info.get(x.key)?.label || x.key, after: x.after, status: x.status, at: x.at, pid: x.pidStarted })) })),
     note: '只读：链序由 M\\_\\gpu_*_chain.py 的默认 --after（在跑的看命令行）推出；状态来自 chain.log 和进程表；预计时间是估算',
   };
 }
