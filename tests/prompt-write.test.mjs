@@ -98,7 +98,7 @@ test('checkVideoPrompt：占位符全引用、不新造；<d> 成对；账目词
 test('MCP 受限工具集：只读工具 + 三个专用工具，无任何渲染/写分镜工具', async () => {
   const tools = await import('../lib/agent/tools.js');
   const names = pwm.promptWriteToolDefinitions(tools.TOOL_DEFINITIONS).map((t) => t.function.name).sort();
-  assert.deepEqual(names, ['get_chapter', 'get_project', 'get_shot_prompt_brief', 'list_assets', 'list_prompt_todo', 'report', 'report_rule_gap', 'save_shot_video_prompt', 'skill', 'skill_lines', 'skill_reference', 'view_asset', 'view_shot_references'].sort());
+  assert.deepEqual(names, ['get_chapter', 'get_project', 'get_shot_prompt_brief', 'list_assets', 'list_prompt_todo', 'report', 'report_rule_gap', 'save_shot_video_prompt', 'save_shot_visual', 'skill', 'skill_lines', 'skill_reference', 'view_asset', 'view_shot_references'].sort());
   for (const n of names) assert.ok(!tools.RENDER_TOOLS.has(n), n + ' 不能是渲染工具');
   for (const n of ['update_shot', 'set_storyboard', 'set_chapter_script', 'write_shot_video_prompt', 'regenerate_shot', 'generate_shot_video']) {
     assert.equal(pwm.isPromptWriteToolAllowed(n), false, n);
@@ -216,7 +216,7 @@ test('外部 Agent 端到端（假 CLI 经真实 MCP 服务）：受限工具集
   assert.equal(j.status, 'done', j.error || j.detail);
   const rep = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
   assert.equal(rep.done, true);
-  assert.deepEqual(rep.toolNames.slice().sort(), ['get_chapter', 'get_project', 'get_shot_prompt_brief', 'list_assets', 'list_prompt_todo', 'report', 'report_rule_gap', 'save_shot_video_prompt', 'skill', 'skill_lines', 'skill_reference', 'view_asset', 'view_shot_references'].sort());
+  assert.deepEqual(rep.toolNames.slice().sort(), ['get_chapter', 'get_project', 'get_shot_prompt_brief', 'list_assets', 'list_prompt_todo', 'report', 'report_rule_gap', 'save_shot_video_prompt', 'save_shot_visual', 'skill', 'skill_lines', 'skill_reference', 'view_asset', 'view_shot_references'].sort());
   for (const [k, v] of Object.entries(rep.forbidden)) assert.equal(v, 'rejected', k);
   assert.equal(rep.rejectedBeforeSkill, true);
   assert.equal(rep.skillLoaded, true);

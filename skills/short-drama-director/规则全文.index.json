@@ -1,12 +1,12 @@
 {
  "skill": "short-drama-director",
  "set": "short-drama-director",
- "version": "rules-dc40affeb4",
+ "version": "rules-70472483ca",
  "file": "规则全文.md",
- "file_md5": "D26A192922D3B473E1D508894D80B96C",
+ "file_md5": "0175748C30DC4E417C3938E6375AAE8D",
  "total_lines": 806,
  "base_end_line": 262,
- "base_chars": 23956,
+ "base_chars": 24126,
  "base_budget_chars": 40000,
  "budget_chars": 40000,
  "section_max_chars": 20000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 2309,
-   "checksum": "CCDD34EC"
+   "checksum": "0F421D6E"
   },
   {
    "id": "S01",
@@ -44,8 +44,8 @@
    "when": [
     "always"
    ],
-   "chars": 3881,
-   "checksum": "02AB6A07"
+   "chars": 3891,
+   "checksum": "4B4CA1DA"
   },
   {
    "id": "S03",
@@ -56,8 +56,8 @@
    "when": [
     "always"
    ],
-   "chars": 14909,
-   "checksum": "740BCAD9"
+   "chars": 15069,
+   "checksum": "F080AA78"
   },
   {
    "id": "S04",
@@ -68,8 +68,8 @@
    "when": [
     "rare"
    ],
-   "chars": 14665,
-   "checksum": "8706278D"
+   "chars": 14695,
+   "checksum": "29B46628"
   },
   {
    "id": "S05",
@@ -80,8 +80,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1625,
-   "checksum": "3D873853"
+   "chars": 1655,
+   "checksum": "9A4D1A90"
   },
   {
    "id": "S06",
@@ -92,8 +92,8 @@
    "when": [
     "rare"
    ],
-   "chars": 15075,
-   "checksum": "5CC65F9A"
+   "chars": 15085,
+   "checksum": "458B97C7"
   },
   {
    "id": "S07",
@@ -104,8 +104,8 @@
    "when": [
     "rare"
    ],
-   "chars": 12064,
-   "checksum": "E34B24F6"
+   "chars": 12074,
+   "checksum": "F1317DF4"
   },
   {
    "id": "S08",
@@ -116,8 +116,8 @@
    "when": [
     "rare"
    ],
-   "chars": 3894,
-   "checksum": "6A2961ED"
+   "chars": 3904,
+   "checksum": "D045CC4B"
   },
   {
    "id": "S09",
@@ -128,8 +128,8 @@
    "when": [
     "rare"
    ],
-   "chars": 558,
-   "checksum": "B5B42ED3"
+   "chars": 568,
+   "checksum": "CAC8400C"
   },
   {
    "id": "S10",
@@ -140,8 +140,8 @@
    "when": [
     "rare"
    ],
-   "chars": 693,
-   "checksum": "3685323B"
+   "chars": 703,
+   "checksum": "805DCA2F"
   },
   {
    "id": "S11",
@@ -152,8 +152,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1212,
-   "checksum": "0CAC6F5B"
+   "chars": 1222,
+   "checksum": "0CB129DB"
   },
   {
    "id": "S12",
@@ -164,8 +164,8 @@
    "when": [
     "rare"
    ],
-   "chars": 8937,
-   "checksum": "95EF9C95"
+   "chars": 8947,
+   "checksum": "0BDDC125"
   },
   {
    "id": "S13",
@@ -176,8 +176,8 @@
    "when": [
     "rare"
    ],
-   "chars": 5388,
-   "checksum": "EE1CB47C"
+   "chars": 5398,
+   "checksum": "E63CAF50"
   },
   {
    "id": "S14",
@@ -188,8 +188,8 @@
    "when": [
     "rare"
    ],
-   "chars": 3429,
-   "checksum": "D473F04B"
+   "chars": 3439,
+   "checksum": "0DA23C2B"
   },
   {
    "id": "S15",
@@ -200,8 +200,8 @@
    "when": [
     "rare"
    ],
-   "chars": 2994,
-   "checksum": "71B6F064"
+   "chars": 3004,
+   "checksum": "0D682689"
   },
   {
    "id": "S16",
@@ -212,8 +212,8 @@
    "when": [
     "rare"
    ],
-   "chars": 2405,
-   "checksum": "EAF52350"
+   "chars": 2415,
+   "checksum": "425C94E3"
   },
   {
    "id": "S17",
@@ -224,8 +224,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1039,
-   "checksum": "30A8F6B3"
+   "chars": 1049,
+   "checksum": "A2D133CF"
   }
  ]
 }
