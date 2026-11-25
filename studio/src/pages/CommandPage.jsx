@@ -185,7 +185,8 @@ function HourBars({ rows, h = 40 }) {
   return (
     <div className="flex items-end gap-[2px]" style={{ height: h + 12 }}>
       {rows.map((r) => { const t = new Date(r.at ?? r.from); const hh = t.toLocaleTimeString('zh-CN', { timeZone: 'America/Los_Angeles', hour12: false, hour: '2-digit' }); return (
-        <div key={String(r.at ?? r.from)} className="flex flex-1 flex-col items-center justify-end" title={`${hh} 点：${r.n} 条`}>
+        <div key={String(r.at ?? r.from)} className="flex flex-1 flex-col items-center justify-end" title={`${hh} 点：出片 ${r.n} 镜`}>
+          {r.n ? <span className="text-[9px] leading-3 text-[var(--fg-3)]">{r.n}</span> : null}
           <div className="w-full rounded-t" style={{ height: r.n ? Math.max(2, (r.n / m) * h) : 1, background: r.n ? 'var(--accent)' : 'var(--line)' }} />
           <span className="text-[8px] leading-3 text-[var(--fg-4)]">{hh}</span>
         </div>); })}
@@ -250,9 +251,9 @@ function Overview({ go }) {
             <div className="grid items-center gap-3 md:grid-cols-[1fr_auto]">
               <div><div className="mb-1 flex items-center gap-2 text-[11px] text-[var(--fg-3)]">今天忙闲 <Legend items={[['忙', C.green], ['闲', 'color-mix(in srgb, var(--fg) 14%, transparent)'], ['无数据', 'var(--line)']]} /></div><DayBar bar={cap.todayBar} /></div>
               <div className="flex gap-5">
-                <Big v={hm(today?.busyMs)} sub="忙" c={C.green} />
-                <Big v={hm(today?.idleMs)} sub="闲" />
-                <Big v={pct0(today?.util)} sub="利用率" />
+                <Big v={hm(today?.busyMs)} sub="今天 GPU 忙（时:分）" c={C.green} />
+                <Big v={hm(today?.idleMs)} sub="今天 GPU 闲（时:分）" />
+                <Big v={pct0(today?.util)} sub="利用率（忙÷总时长）" />
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -260,22 +261,22 @@ function Overview({ go }) {
                 <thead><tr className="text-[11px] text-[var(--fg-3)]"><th className="text-left font-normal" />{W.map((w) => <th key={w.id} className="px-2 text-right font-medium">{w.label}{w.noDataMs > 0 ? <span className="ml-0.5 text-[var(--fg-4)]" title={`前 ${hm(w.noDataMs)} 没有任务记录（无数据，不计入闲）`}>*</span> : null}</th>)}</tr></thead>
                 <tbody>
                   {[
-                    ['GPU 忙', (w) => hm(w.busyMs)],
-                    ['GPU 闲', (w) => hm(w.idleMs)],
-                    ['利用率', (w) => <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-10 rounded bg-[var(--line)] align-middle"><span className="block h-1.5 rounded" style={{ width: `${(w.util || 0) * 100}%`, background: C.green }} /></span>{pct0(w.util)}</span>],
-                    ['总共出片', (w) => <b>{w.total}</b>],
-                    ['有效（选用）', (w) => <b style={{ color: C.green }}>{w.selected}</b>],
-                    ['无效（未选用）', (w) => w.unselected],
-                    ['失败任务', (w) => (w.failedJobs ? <span style={{ color: C.red }}>{w.failedJobs}</span> : 0)],
-                    ['有效率', (w) => pct0(w.effRate)],
-                    ['有效分钟', (w) => (w.effMin == null ? '—' : w.effMin.toFixed(1))],
-                    ['平均每镜用时', (w) => (w.perShotSec == null ? <NoData /> : mmss(w.perShotSec))],
+                    ['GPU 忙（时长）', (w) => hm(w.busyMs)],
+                    ['GPU 闲（时长）', (w) => hm(w.idleMs)],
+                    ['利用率（忙÷总时长）', (w) => <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-10 rounded bg-[var(--line)] align-middle"><span className="block h-1.5 rounded" style={{ width: `${(w.util || 0) * 100}%`, background: C.green }} /></span>{pct0(w.util)}</span>],
+                    ['总共出片（镜头）', (w) => <b>{w.total} 镜</b>],
+                    ['有效（已选用的镜头）', (w) => <b style={{ color: C.green }}>{w.selected} 镜</b>],
+                    ['无效（出了没选用的镜头）', (w) => `${w.unselected} 镜`],
+                    ['失败任务（出片任务次数）', (w) => (w.failedJobs ? <span style={{ color: C.red }}>{w.failedJobs} 次</span> : '0 次')],
+                    ['有效率（选用÷出片）', (w) => pct0(w.effRate)],
+                    ['有效时长（选用镜头的成片时长）', (w) => (w.effMin == null ? '—' : `${w.effMin.toFixed(1)} 分钟`)],
+                    ['平均每镜出片用时（分:秒）', (w) => (w.perShotSec == null ? <NoData /> : mmss(w.perShotSec))],
                   ].map(([k, f]) => <tr key={k} className="border-t border-[var(--line)]"><td className="py-0.5 text-[11px] text-[var(--fg-3)]">{k}</td>{W.map((w) => <td key={w.id} className="px-2 text-right">{f(w)}</td>)}</tr>)}
-                  <tr className="border-t border-[var(--line)]"><td className="py-0.5 text-[11px] text-[var(--fg-3)]">进了交付的有效条数</td>{W.map((w) => <td key={w.id} className="px-2 text-right"><NoData /></td>)}</tr>
+                  <tr className="border-t border-[var(--line)]"><td className="py-0.5 text-[11px] text-[var(--fg-3)]">进了交付的有效镜头</td>{W.map((w) => <td key={w.id} className="px-2 text-right"><NoData /></td>)}</tr>
                 </tbody>
               </table>
             </div>
-            <div><div className="mb-1 text-[11px] text-[var(--fg-3)]">最近 12 小时每小时出片</div><HourBars rows={cap.hourly || []} /></div>
+            <div><div className="mb-1 text-[11px] text-[var(--fg-3)]">最近 12 小时每小时出片（镜头数，柱上是数量）</div><HourBars rows={cap.hourly || []} /></div>
           </div>
         )}
       </section>
@@ -810,7 +811,7 @@ function Issues() {
           {['Andy', '总导', 'AI-Claude', 'AI-Codex'].map((o) => <option key={o}>{o}</option>)}
         </select>
         <Refresh onClick={() => { reload(); log.reload(); }} loading={loading} />
-        <p className="w-full text-[10px] text-[var(--fg-4)]">「操作人」只是预览里的演示切换，不是真正的身份认证。只有 Andy、总导能直接改；AI 只能提交建议，进待确认队列。每次写之前自动备份到 {data?.config.backupDir}，并写只追加的修改记录。文件在你打开后被外部改过就拒写。桌面真文件 {data?.config.realFile} 在 Andy 点头前不写。</p>
+        <p className="w-full text-[10px] text-[var(--fg-4)]">「操作人」只是预览里的演示切换，不是真正的身份认证。只有 Andy、总导能直接改；AI 只能提交建议，进待确认队列。每次写之前自动备份到 {data?.config.backupDir}，并写只追加的修改记录。文件在你打开后被外部改过就拒写。{data?.config.isTestCopy ? <>现在写的是测试副本；桌面真文件 {data?.config.realFile} 不写。</> : <>现在直接写桌面正式文件 {data?.config.realFile}（Andy 2026-11-25 要求），每次改动另记一行到 指挥\问题描述修改记录.jsonl。</>}</p>
       </div>
       {msg ? <div className="panel p-2 text-xs" style={{ color: msg.tone === 'red' ? '#dc2626' : '#16a34a' }} data-msg>{msg.text}</div> : null}
       <Err e={error} />
@@ -1130,7 +1131,7 @@ export default function CommandPage() {
       <div className="panel flex flex-wrap items-center gap-2 p-3 text-xs">
         <FileSearch size={14} className="text-[var(--accent)]" />
         <b>指挥系统 · 预览</b>
-        <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑只写测试副本；聊天只写聊天沙箱、AI 只有只读工具</Pill>
+        <Pill tone="yellow">没有任何写库 / 放行 / 导出 / 提交 GPU 按钮；问题描述编辑写桌面正式文件（写前备份、打开后被改过就拒写）；聊天只写聊天沙箱、AI 只有只读工具</Pill>
         <span className="text-[var(--fg-3)]">AI：Claude 启用 · Codex 聊天里关着，只读巡视对账试用一天（设置页） · Muse 经资产管理 · Kimi 未启用 · 派工页只读（发单要 Andy 批上线）</span>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">

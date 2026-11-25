@@ -16,6 +16,7 @@ const G = path.join(M, '运行记录', 'gpu生产');
 const U = path.join(M, '_');
 const REAL_FILE = process.env.CMD_ISSUES_REAL_FILE || 'C:\\Users\\usazr\\Desktop\\问题描述.txt'; // 测试实例用环境变量指向副本
 const TEST_DIR = path.join(M, 'Claude工作区', '指挥预览测试');
+const CMD_ISSUE_LOG = process.env.CMD_ISSUES_CMD_LOG || path.join(M, 'Claude工作区', '指挥', '问题描述修改记录.jsonl');
 const CONFIG_FILE = process.env.CMD_ISSUES_CONFIG || path.join(TEST_DIR, 'issues-config.json');
 const LIVE = process.env.CMD_LIVE_BACKEND || 'http://127.0.0.1:4610';
 const PROJECT = '51ed8141-419f-4cf6-af96-406142970482';
@@ -177,6 +178,13 @@ async function commit(op, operator, baseMd5, via, reason) {
     const verifyOk = Object.values(verify).every(Boolean);
     await appendLog({ operator, op, via, reason: reason || null, result: verifyOk ? 'written' : 'written_verify_failed', target: cfg.target, beforeMd5: doc.md5, afterMd5: after, backup: bak, bom: re.bom, eol: re.eol === '\r\n' ? 'CRLF' : 'LF', verify, changedLines: diff.filter((d) => d.startsWith('+')).map((d) => Number(d.slice(1, d.indexOf(':')))), diff });
     if (!verifyOk) throw Object.assign(new Error('写后核对不过（BOM/换行/内容），备份在 ' + bak), { code: 500 });
+    // 2026-11-25 主会话 seq1734：写的是桌面正式文件时，另记一行到指挥的修改记录（和其他会话手改时同一格式），来源「指挥页（操作人）」
+    if (path.resolve(cfg.target).toLowerCase() === path.resolve(cfg.realFile).toLowerCase()) {
+      const plus = diff.filter((d) => d.startsWith('+'));
+      const what = op.op === 'status' ? `状态改为 ${STATUS_WORD[op.status] || op.status}` : op.op === 'edit' ? '改正文' : op.op === 'add' ? `新增第${op.episode}集问题（${STATUS_WORD[op.status] || op.status}）` : String(op.op || '');
+      const rec = { 时间: new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles', hour12: false }), 文件: cfg.target, 旧md5: doc.md5, 新md5: after, 行号: plus.map((d) => Number(d.slice(1, d.indexOf(':')))), 条目: plus.map((d) => d.slice(d.indexOf(':') + 2)), 改动: what, 来源: `指挥页（${operator}）`, 备份: bak };
+      await fsp.appendFile(CMD_ISSUE_LOG, JSON.stringify(rec) + '\n').catch((e) => appendLog({ operator, result: 'cmd_log_failed', error: String(e.message || e) }));
+    }
     return { ok: true, beforeMd5: doc.md5, afterMd5: after, backup: bak, diff, verify };
   } finally { writing = false; }
 }
