@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-3566048311",
+ "version": "rules-4768217899",
  "file": "规则全文.md",
- "file_md5": "B940B55EBA099244F3C3FED483108758",
+ "file_md5": "3273C34869007ACBBA440904F7C8455A",
  "total_lines": 1026,
  "base_end_line": 203,
- "base_chars": 29922,
+ "base_chars": 30079,
  "base_budget_chars": 40000,
  "budget_chars": 80000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 2557,
-   "checksum": "0E2F66C1"
+   "checksum": "0D4B460C"
   },
   {
    "id": "A",
@@ -69,8 +69,8 @@
    "when": [
     "always"
    ],
-   "chars": 11760,
-   "checksum": "5D986F02"
+   "chars": 11917,
+   "checksum": "E99E60EF"
   },
   {
    "id": "C",
@@ -119,8 +119,8 @@
     "prop",
     "scene"
    ],
-   "chars": 3063,
-   "checksum": "1E6E0F93"
+   "chars": 3080,
+   "checksum": "84B39F2F"
   },
   {
    "id": "F5V",
