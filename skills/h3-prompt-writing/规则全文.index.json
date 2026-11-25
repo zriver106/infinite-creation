@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-fdc5db48e9",
+ "version": "rules-2778af929c",
  "file": "规则全文.md",
- "file_md5": "BDAFBCF42C3E27F4D140AACF2D47E768",
- "total_lines": 1017,
+ "file_md5": "EB4A8C411A0C2B7FCC1DD4FB880F3EDA",
+ "total_lines": 1026,
  "base_end_line": 203,
- "base_chars": 29820,
+ "base_chars": 29922,
  "base_budget_chars": 40000,
  "budget_chars": 80000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 2557,
-   "checksum": "A8701293"
+   "checksum": "66E10838"
   },
   {
    "id": "A",
@@ -69,8 +69,8 @@
    "when": [
     "always"
    ],
-   "chars": 11658,
-   "checksum": "4867293B"
+   "chars": 11760,
+   "checksum": "5D986F02"
   },
   {
    "id": "C",
@@ -119,8 +119,8 @@
     "prop",
     "scene"
    ],
-   "chars": 2857,
-   "checksum": "463D27B8"
+   "chars": 3061,
+   "checksum": "72565235"
   },
   {
    "id": "F5V",
@@ -248,12 +248,12 @@
    "title": "X 导出、合成与交付",
    "tier": "volume",
    "start": 854,
-   "end": 1017,
+   "end": 1026,
    "when": [
     "rare"
    ],
-   "chars": 6949,
-   "checksum": "8310D081"
+   "chars": 7330,
+   "checksum": "1E082E2B"
   }
  ]
 }

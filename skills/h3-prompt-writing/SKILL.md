@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-fdc5db48e9 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-2778af929c 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -34,10 +34,10 @@ compatibility: Portable to any agent that can read local files — no external A
 | L | L 现实逻辑与剧情 | 分册 | L653–L681 | 有交易、冲突、回忆 |
 | B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L683–L724 | 用到时再查 |
 | Q | Q 审片 | 分册 | L726–L852 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L854–L1017 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L854–L1026 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：A8701293
+本段校验码：66E10838
 
 ## A 铁律与流程
 
@@ -161,7 +161,7 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 H3 only draws people who have a reference and are named in the prompt, and it freely swaps faces and clothes between references. For every shot with two or more people:
 
 1. **Everyone the storyboard places in frame is a reference and is named.** If the scene's blocking map / whiteboard puts a present character inside this framing (edge of frame, soft-focus foreground, back view included), that character must be in the shot's references and must be written into the 0s opening with screen side, facing and state (`lips closed` if silent; in a shot that overlaps an inner-voice window keep their lips closed as in C-001 rule 7, never other mouth words). Never drop a present character just because he has no line. If the framing really excludes him, say where he is (`off screen-left`).
-2. **Write a clothing ID for each person (R22 (2))** in `subject_definitions` and again in the 0s opening: colour + garment + hair, copied from the bound costume asset (`__MINIMAX_H3_REF_2__ is <A>: dark green long-sleeve shirt, slicked-back black hair`). A story state that the bound image does not show is added as words after the ID, see item 11. `fully_preserved` alone is not enough. Only the clothing ID: no faces, ages, materials or accessories. **Asset match (Andy 2026-11-24, 待测):** top, bottom, outerwear and shoes keep the asset's garment type and main colour (asset knee-length shorts → `knee-length shorts`, never `trousers`, `pants` or `jeans`); never add a garment the asset lacks. If the storyboard `visual` disagrees with the asset, write the asset and report the mismatch so `visual` is fixed too; gate COSTUME_ASSET_MISMATCH_PROMPT. **Colour from the image (待测):** the colour words come from what the bound reference image actually shows, not from the asset name or a loose label; a muted colour keeps a muted word with its tone (`muted dusty-rose red, matte`, `greyish olive`), never a stronger or more saturated word (`wine-red`, `crimson`, `bright red`) — close shots follow the words and drift to the stronger colour. If the asset text and the image disagree, write the image's colour and report the mismatch so the asset text is fixed. Same colour words, word for word, in every shot of the scene.
+2. **Write a clothing ID for each person (R22 (2))** in `subject_definitions` and again in the 0s opening: colour + garment + hair, copied from the bound costume asset (`__MINIMAX_H3_REF_2__ is <A>: dark green long-sleeve shirt, slicked-back black hair`). A story state that the bound image does not show is added as words after the ID, see item 11. `fully_preserved` alone is not enough. Only the clothing ID: no faces, ages, materials or accessories. **Asset match (Andy 2026-11-24, 待测):** top, bottom, outerwear and shoes keep the asset's garment type and main colour (asset knee-length shorts → `knee-length shorts`, never `trousers`, `pants` or `jeans`; when the legs are in frame also write `bare lower legs visible` so shorts do not drift into trousers); never add a garment the asset lacks. If the storyboard `visual` disagrees with the asset, write the asset and report the mismatch so `visual` is fixed too; gate COSTUME_ASSET_MISMATCH_PROMPT. **Colour from the image (待测):** the colour words come from what the bound reference image actually shows, not from the asset name or a loose label; a muted colour keeps a muted word with its tone (`muted dusty-rose red, matte`, `greyish olive`), never a stronger or more saturated word (`wine-red`, `crimson`, `bright red`) — close shots follow the words and drift to the stronger colour. If the asset text and the image disagree, write the image's colour and report the mismatch so the asset text is fixed. Same colour words, word for word, in every shot of the scene.
 3. **Add the lock sentence** whenever two people could be confused (same sex, similar age, strongly contrasting clothes): `Each person's face and clothing come only from his or her own reference; never move one person's clothing onto another person. Exactly one person in the frame wears <garment>.`
 4. **Costume inheritance.** Inside one scene and continuous time, a character keeps the costume reference he wore in the previous shots of that scene (same `costume_ids`) until the story shows a costume change (item 11). Write the same clothing ID, word for word, in every shot; a story state (injury, dirt) is added to it as words and does not by itself change `costume_ids`.
 5. **The speaker is already in place at 0s.** Do not make the speaking character "enter / squeeze in / push to the centre" to take his speaking position; put him there from the first frame and state `only <clothing ID> moves his mouth; <others> keep their lips closed` (in a shot that also has an inner-voice window, the silent people stay silent with a closed mouth as in C-001 rule 7).
@@ -199,5 +199,5 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 - 校验：缺这句，或写了 suit / tie / badge 而资产没有，门禁报警告（只报不拦）。
 - 正例：售车店里主角照资产穿灰 T 恤，加上面那句。
 - 反例：只写 formal setting，成片主角西装领带。
-本段校验码：4867293B
+本段校验码：5D986F02
 
