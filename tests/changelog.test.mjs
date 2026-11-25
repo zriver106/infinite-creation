@@ -585,6 +585,7 @@ test('update_shot：不得改写别的项目的分镜（归属校验）', async 
 
 test('自动换装：同章第二次换装事件不被首次结果误判为「已显式引用」', async () => {
   const p = mkProject('自动换装项目');
+  Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 测 IC 自带生图的自动换装（系统缺省已改为 Muse 出图）
   const mkImg = (rel) => {
     const abs = path.join(projectDir(p.id), rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -1118,6 +1119,7 @@ test('set_storyboard：对不上的资产名不再静默丢弃（随结果回报
 
 test('换装兜底：LLM 阶段（renderDisabled）不渲染，推迟到「资产图」阶段执行', async () => {
   const p = mkProject('换装兜底阶段项目');
+  Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 测 IC 自带生图的自动换装（系统缺省已改为 Muse 出图）
   const mkImg = (rel) => {
     const abs = path.join(projectDir(p.id), rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
