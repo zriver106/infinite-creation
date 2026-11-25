@@ -1,0 +1,99 @@
+{
+ "skill": "adapt-rules",
+ "set": "改编（原著→剧本、分镜）",
+ "version": "rules-6b627d818c",
+ "file": "规则全文.md",
+ "file_md5": "85C2B7E88D4A9DCE6E6629B280FF326E",
+ "total_lines": 319,
+ "base_end_line": 265,
+ "base_chars": 15125,
+ "base_budget_chars": 40000,
+ "budget_chars": 40000,
+ "section_max_chars": 20000,
+ "sections": [
+  {
+   "id": "MAP",
+   "title": "地图",
+   "tier": "map",
+   "start": 1,
+   "end": 24,
+   "when": [
+    "always"
+   ],
+   "chars": 875,
+   "checksum": "D21DE325"
+  },
+  {
+   "id": "A",
+   "title": "A 铁律与流程",
+   "tier": "base",
+   "start": 26,
+   "end": 58,
+   "when": [
+    "always"
+   ],
+   "chars": 1991,
+   "checksum": "8ACE90E9"
+  },
+  {
+   "id": "R",
+   "title": "R 剧本（台词读法、心声长短）",
+   "tier": "base",
+   "start": 60,
+   "end": 100,
+   "when": [
+    "always"
+   ],
+   "chars": 2065,
+   "checksum": "3457DDFC"
+  },
+  {
+   "id": "S",
+   "title": "S 分镜（同场锁、换装、站位、节奏、参考图）",
+   "tier": "base",
+   "start": 102,
+   "end": 248,
+   "when": [
+    "always"
+   ],
+   "chars": 8640,
+   "checksum": "A87BA3BA"
+  },
+  {
+   "id": "C",
+   "title": "C 分镜层心声",
+   "tier": "base",
+   "start": 250,
+   "end": 264,
+   "when": [
+    "always"
+   ],
+   "chars": 1549,
+   "checksum": "0DAE8765"
+  },
+  {
+   "id": "J",
+   "title": "J 资产（派图、场景图名副其实）",
+   "tier": "volume",
+   "start": 269,
+   "end": 293,
+   "when": [
+    "binding"
+   ],
+   "chars": 1307,
+   "checksum": "1DF08615"
+  },
+  {
+   "id": "H2",
+   "title": "H2 表现手段（Q 版、特效、谐音；冷门）",
+   "tier": "volume",
+   "start": 295,
+   "end": 319,
+   "when": [
+    "expression"
+   ],
+   "chars": 2356,
+   "checksum": "3FEF7989"
+  }
+ ]
+}

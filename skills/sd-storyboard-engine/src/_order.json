@@ -1,0 +1,142 @@
+[
+ {
+  "file": "S01_引言.md",
+  "id": "S01",
+  "title": "S01 引言",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 148
+ },
+ {
+  "file": "S02_一_角色定位.md",
+  "id": "S02",
+  "title": "S02 一、角色定位",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 485
+ },
+ {
+  "file": "S03_二_与总控的关系_套装契约_.md",
+  "id": "S03",
+  "title": "S03 二、与总控的关系（套装契约）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 3117
+ },
+ {
+  "file": "S04_三_术语口径.md",
+  "id": "S04",
+  "title": "S04 三、术语口径",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 408
+ },
+ {
+  "file": "S05_四_工作流程.md",
+  "id": "S05",
+  "title": "S05 四、工作流程",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 2084
+ },
+ {
+  "file": "S06_五_输出格式与总控投喂衔接.md",
+  "id": "S06",
+  "title": "S06 五、输出格式与总控投喂衔接",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 508
+ },
+ {
+  "file": "S07_台词精简建议清单_本稿承接_N_句_上游_M_句_.md",
+  "id": "S07",
+  "title": "S07 台词精简建议清单（本稿承接 N 句 / 上游 M 句）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 3281
+ },
+ {
+  "file": "S08_六_高频铁律速查.md",
+  "id": "S08",
+  "title": "S08 六、高频铁律速查",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1674
+ },
+ {
+  "file": "S09_心声_OS_镜铁律_2026_11_23_按手册_M33_M.md",
+  "id": "S09",
+  "title": "S09 心声（OS）镜铁律（2026-11-23 按手册 M33/M34 重写，与 h3-prompt-writing 心声节同",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1735
+ },
+ {
+  "file": "S10_夸张表演_特效与_Q_版_2026_11_16_新增_v3_.md",
+  "id": "S10",
+  "title": "S10 夸张表演、特效与 Q 版（2026-11-16 新增 · v3.1 补强 · v4 加入应用入口、选择表与用量台账 · ",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 10699
+ },
+ {
+  "file": "S11_七_故事板图_面板链_.md",
+  "id": "S11",
+  "title": "S11 七、故事板图（面板链）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 2131
+ },
+ {
+  "file": "S12_七_二_SHOT_TEXT_分镜线稿卡_可选产出_给人看_.md",
+  "id": "S12",
+  "title": "S12 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 599
+ },
+ {
+  "file": "S13_八_规则库索引.md",
+  "id": "S13",
+  "title": "S13 八、规则库索引",
+  "tier": "base",
+  "when": [
+   "always"
+  ],
+  "chars": 1616
+ },
+ {
+  "file": "S14_机位运镜与一镜到底_2026_11_16_新增_MiniMa.md",
+  "id": "S14",
+  "title": "S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 8006
+ }
+]

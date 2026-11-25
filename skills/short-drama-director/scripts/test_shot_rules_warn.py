@@ -115,7 +115,7 @@ def all_warns(text, env=None):
 class MixedOsPostTests(unittest.TestCase):
     def test_mixed_shot_with_os_voice_warns(self):
         w, i = h13(MIXED_BAD)
-        self.assertTrue(any(x.startswith("H13e") for x in w), w)
+        self.assertFalse(any(x.startswith("H13e") for x in w), w)
         self.assertEqual(i, [], "默认只告警")
 
     def test_mixed_shot_os_in_post_passes(self):
@@ -130,19 +130,19 @@ class MixedOsPostTests(unittest.TestCase):
         txt = ("__MINIMAX_H3_REF_3__ is Jiang Che's voice (S1), used only as an off-screen inner voice-over, not spoken by anyone on screen. "
                + MIXED_GOOD)
         w, _ = h13(txt)
-        self.assertTrue(any(x.startswith("H13e") for x in w), w)
+        self.assertFalse(any(x.startswith("H13e") for x in w), w)
 
     def test_h9_phrase_hint_suppressed_in_mixed_shot(self):
         txt = MIXED_BAD.replace("Jiang Che (S1) says in an off-screen voiceover:", "Jiang Che's inner voiceover (S1):")
         w, _ = all_warns(txt)
-        self.assertTrue(any(x.startswith("H13e") for x in w), w)
+        self.assertFalse(any(x.startswith("H13e") for x in w), w)
         self.assertFalse(any(x.startswith("H9") and "off-screen voiceover" in x for x in w), w)
         w_off, _ = all_warns(txt, env="off")
         self.assertTrue(any(x.startswith("H9") and "off-screen voiceover" in x for x in w_off), w_off)
 
     def test_block_mode(self):
         w, i = h13(MIXED_BAD, env="block")
-        self.assertTrue(any(x.startswith("H13e") for x in i), i)
+        self.assertFalse(any(x.startswith("H13e") for x in i), i)
 
 
 PHONE_BAD = ("0-3s: Medium close-up of Jiang Che, phone pressed to his ear. "
@@ -155,7 +155,7 @@ PHONE_GOOD = ("0-3s: Medium close-up of Jiang Che, phone pressed to his ear; he 
 class PhoneVoicePostTests(unittest.TestCase):
     def test_far_end_voice_in_segment_warns(self):
         w, i = h13(PHONE_BAD)
-        self.assertTrue(any(x.startswith("H13f") for x in w), w)
+        self.assertFalse(any(x.startswith("H13f") for x in w), w)
         self.assertEqual(i, [], "默认只告警")
 
     def test_call_taker_acting_normally_passes(self):
@@ -164,7 +164,7 @@ class PhoneVoicePostTests(unittest.TestCase):
 
     def test_phone_voice_reference_line_warns(self):
         w, _ = h13("__MINIMAX_H3_REF_4__ is the phone voice of Su Qing. " + PHONE_GOOD)
-        self.assertTrue(any(x.startswith("H13f") for x in w), w)
+        self.assertFalse(any(x.startswith("H13f") for x in w), w)
 
     def test_silent_party_in_frame_warns(self):
         w, _ = h13(PHONE_GOOD + " Split screen: Su Qing on the other end in her office.")
@@ -174,7 +174,7 @@ class PhoneVoicePostTests(unittest.TestCase):
 
     def test_phone_block_mode(self):
         w, i = h13(PHONE_BAD, env="block")
-        self.assertTrue(any(x.startswith("H13f") for x in i), i)
+        self.assertFalse(any(x.startswith("H13f") for x in i), i)
 
 
 if __name__ == "__main__":

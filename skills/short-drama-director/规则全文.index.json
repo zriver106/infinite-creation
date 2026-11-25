@@ -1,0 +1,231 @@
+{
+ "skill": "short-drama-director",
+ "set": "short-drama-director",
+ "version": "rules-dc40affeb4",
+ "file": "规则全文.md",
+ "file_md5": "D26A192922D3B473E1D508894D80B96C",
+ "total_lines": 806,
+ "base_end_line": 262,
+ "base_chars": 23956,
+ "base_budget_chars": 40000,
+ "budget_chars": 40000,
+ "section_max_chars": 20000,
+ "sections": [
+  {
+   "id": "MAP",
+   "title": "地图",
+   "tier": "map",
+   "start": 1,
+   "end": 36,
+   "when": [
+    "always"
+   ],
+   "chars": 2309,
+   "checksum": "CCDD34EC"
+  },
+  {
+   "id": "S01",
+   "title": "S01 引言",
+   "tier": "base",
+   "start": 38,
+   "end": 56,
+   "when": [
+    "always"
+   ],
+   "chars": 2853,
+   "checksum": "A2F19D05"
+  },
+  {
+   "id": "S02",
+   "title": "S02 ★ 使用入口（先读这条 · 用户视角）",
+   "tier": "base",
+   "start": 58,
+   "end": 98,
+   "when": [
+    "always"
+   ],
+   "chars": 3881,
+   "checksum": "02AB6A07"
+  },
+  {
+   "id": "S03",
+   "title": "S03 〇、 任务前置强制锁定：〇·0·赛道 / 〇·1·素材来源 / A·模型版本 / B·画幅 / C·交付形态 / D·段",
+   "tier": "base",
+   "start": 100,
+   "end": 261,
+   "when": [
+    "always"
+   ],
+   "chars": 14909,
+   "checksum": "740BCAD9"
+  },
+  {
+   "id": "S04",
+   "title": "S04 一、 系统架构与专业规则库索引",
+   "tier": "volume",
+   "start": 266,
+   "end": 414,
+   "when": [
+    "rare"
+   ],
+   "chars": 14665,
+   "checksum": "8706278D"
+  },
+  {
+   "id": "S05",
+   "title": "S05 二、 核心特性：多平台 Agent 与多模型深度兼容",
+   "tier": "volume",
+   "start": 416,
+   "end": 435,
+   "when": [
+    "rare"
+   ],
+   "chars": 1625,
+   "checksum": "3D873853"
+  },
+  {
+   "id": "S06",
+   "title": "S06 三、 核心工业法则一览",
+   "tier": "volume",
+   "start": 437,
+   "end": 479,
+   "when": [
+    "rare"
+   ],
+   "chars": 15075,
+   "checksum": "5CC65F9A"
+  },
+  {
+   "id": "S07",
+   "title": "S07 三、 核心工业法则一览 · 机检维度分组（C 规则多门制）与分级处置",
+   "tier": "volume",
+   "start": 481,
+   "end": 551,
+   "when": [
+    "rare"
+   ],
+   "chars": 12064,
+   "checksum": "E34B24F6"
+  },
+  {
+   "id": "S08",
+   "title": "S08 四、 快速指令路由与模式切换",
+   "tier": "volume",
+   "start": 553,
+   "end": 585,
+   "when": [
+    "rare"
+   ],
+   "chars": 3894,
+   "checksum": "6A2961ED"
+  },
+  {
+   "id": "S09",
+   "title": "S09 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构）",
+   "tier": "volume",
+   "start": 587,
+   "end": 596,
+   "when": [
+    "rare"
+   ],
+   "chars": 558,
+   "checksum": "B5B42ED3"
+  },
+  {
+   "id": "S10",
+   "title": "S10 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 四层纵深架构总览",
+   "tier": "volume",
+   "start": 598,
+   "end": 613,
+   "when": [
+    "rare"
+   ],
+   "chars": 693,
+   "checksum": "3685323B"
+  },
+  {
+   "id": "S11",
+   "title": "S11 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 套装成员与管线映射",
+   "tier": "volume",
+   "start": 615,
+   "end": 639,
+   "when": [
+    "rare"
+   ],
+   "chars": 1212,
+   "checksum": "0CAC6F5B"
+  },
+  {
+   "id": "S12",
+   "title": "S12 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · ★ 强制读取清单（每个阶段动手前必读 · 治「子",
+   "tier": "volume",
+   "start": 641,
+   "end": 678,
+   "when": [
+    "rare"
+   ],
+   "chars": 8937,
+   "checksum": "95EF9C95"
+  },
+  {
+   "id": "S13",
+   "title": "S13 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · ★ 按需规则文件 · 触发条件台账",
+   "tier": "volume",
+   "start": 680,
+   "end": 727,
+   "when": [
+    "rare"
+   ],
+   "chars": 5388,
+   "checksum": "EE1CB47C"
+  },
+  {
+   "id": "S14",
+   "title": "S14 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 子技能路由表",
+   "tier": "volume",
+   "start": 729,
+   "end": 752,
+   "when": [
+    "rare"
+   ],
+   "chars": 3429,
+   "checksum": "D473F04B"
+  },
+  {
+   "id": "S15",
+   "title": "S15 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 套装共享契约（子技能已内置）",
+   "tier": "volume",
+   "start": 754,
+   "end": 773,
+   "when": [
+    "rare"
+   ],
+   "chars": 2994,
+   "checksum": "71B6F064"
+  },
+  {
+   "id": "S16",
+   "title": "S16 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 极速直出模式的套装编排",
+   "tier": "volume",
+   "start": 775,
+   "end": 791,
+   "when": [
+    "rare"
+   ],
+   "chars": 2405,
+   "checksum": "EAF52350"
+  },
+  {
+   "id": "S17",
+   "title": "S17 五、多技能套装路由（1 总控 + 12 子技能 · 四层纵深架构） · 打戏三档分流判定（先定档再路由）",
+   "tier": "volume",
+   "start": 793,
+   "end": 806,
+   "when": [
+    "rare"
+   ],
+   "chars": 1039,
+   "checksum": "30A8F6B3"
+  }
+ ]
+}
