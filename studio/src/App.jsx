@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, Clapperboard, Feather, Github, Image as ImageIcon, LayoutGrid, Mic2, Music4, Repeat2, Sparkles, UserRound, Video } from 'lucide-react';
+import { BookOpen, Clapperboard, Feather, Github, Image as ImageIcon, LayoutGrid, Mic2, Music4, Radar, Repeat2, Sparkles, UserRound, Video } from 'lucide-react';
 import { ToastProvider } from './components/toast.jsx';
 import BackToTop from './components/BackToTop.jsx';
 import SurveyPrompt from './components/SurveyPrompt.jsx';
@@ -16,6 +16,7 @@ import VoiceClonePage from './pages/VoiceClonePage.jsx';
 import RankShadowPage from './pages/RankShadowPage.jsx';
 import NovelPage from './pages/NovelPage.jsx';
 import ManualPage from './pages/ManualPage.jsx';
+import CommandPage from './pages/CommandPage.jsx';
 import { useServerInfo } from './lib/hooks.js';
 
 // 左侧菜单：与经典界面保持一致，每种创作类型对应一个独立工作台。
@@ -23,6 +24,7 @@ const MENU = [
   { id: 'projects', label: '作品集', icon: LayoutGrid },
   { id: 'novel', label: '无限・卷轴', icon: Feather, beta: true },
   { id: 'agent', label: 'Agent无限创作', icon: Sparkles },
+  { id: 'command', label: '指挥系统', icon: Radar, beta: true },
   { id: 'opuscar', label: '无限・秩影', icon: Clapperboard },
   { id: 'digital_human', label: '数字人', icon: UserRound },
   { id: 'image', label: '图片生成', icon: ImageIcon },
@@ -213,6 +215,7 @@ export default function App() {
               {state.view.type !== 'settings' && state.mode === 'tts' ? <VoiceDesignPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'tts_clone' ? <VoiceClonePage /> : null}
               {state.view.type !== 'settings' && state.mode === 'manual' ? <ManualPage /> : null}
+              {state.view.type !== 'settings' && state.mode === 'command' ? <CommandPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'opuscar' ? <RankShadowPage /> : null}
               {state.view.type !== 'settings' && state.mode === 'novel' ? (
                 <NovelPage onOpenAgentProject={(id) => openProject(id)} />
