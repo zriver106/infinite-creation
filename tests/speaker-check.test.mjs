@@ -131,7 +131,7 @@ test('prepareShotForRender：显式 speakerCheck=block 且说话人名对不上 
   ctx.cfg.generation = { ...(ctx.cfg.generation || {}), speakerCheck: 'block' };
   const a = mkChar('C065_B 正式同学男', 'assets/voice/c065.flac');
   const shot = core.Shots.create(p.id, { chapter: '第17章', visual: '举杯', dialogue: '同学男：哈哈，恭喜韩总！' });
-  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts' });
+  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts and says <d>[Chinese] 哈哈，恭喜韩总！</d>' });
   await assert.rejects(() => tools.prepareShotForRender(ctx, shot.id, { render: true }), /同学男.*已拦截出片/);
 });
 
@@ -140,7 +140,7 @@ test('prepareShotForRender：未配置 speakerCheck（默认 warn）说话人名
   if (ctx.cfg.generation) delete ctx.cfg.generation.speakerCheck;
   const a = mkChar('C065_B 正式同学男', 'assets/voice/c065w.flac');
   const shot = core.Shots.create(p.id, { chapter: '第17章', visual: '举杯', dialogue: '同学男：哈哈，恭喜韩总！' });
-  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts' });
+  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts and says <d>[Chinese] 哈哈，恭喜韩总！</d>' });
   const prepared = await tools.prepareShotForRender(ctx, shot.id, { render: true });
   assert.ok(prepared.prompt);
   assert.ok(reports.some((r) => /仅告警/.test(r.detail || '') && /同学男/.test(r.detail || '')), '默认 warn 要上报未匹配说话人');
@@ -150,7 +150,7 @@ test('prepareShotForRender：名字对上 → 正常准备，音色挂上', asyn
   const { p, ctx, mkChar } = mk();
   const a = mkChar('同学男', 'assets/voice/tx.flac');
   const shot = core.Shots.create(p.id, { chapter: '第17章', visual: '举杯', dialogue: '同学男：哈哈，恭喜韩总！' });
-  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts' });
+  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts and says <d>[Chinese] 哈哈，恭喜韩总！</d>' });
   const prepared = await tools.prepareShotForRender(ctx, shot.id, { render: true });
   assert.equal(prepared.references.filter((r) => r.type === 'audio').length, 1);
 });
@@ -159,7 +159,7 @@ test('prepareShotForRender：开口角色挂占位音色 → 不拦但上报告�
   const { p, ctx, reports, mkChar } = mk();
   const a = mkChar('纸袋青年', 'assets/voice/纸袋青年音色_a1占位1118_x.wav');
   const shot = core.Shots.create(p.id, { chapter: '第17章', visual: '递袋', dialogue: '纸袋青年：给。' });
-  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a young man hands a bag' });
+  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a young man hands a bag and says <d>[Chinese] 给。</d>' });
   const prepared = await tools.prepareShotForRender(ctx, shot.id, { render: true });
   assert.ok(prepared.prompt);
   assert.ok(reports.some((r) => /占位/.test(r.detail || '')), '必须上报占位音色告警');
@@ -169,7 +169,7 @@ test('prepareShotForRender：render=false（仅改写提示词）不受说话人
   const { p, ctx, mkChar } = mk();
   const a = mkChar('C065_B 正式同学男', 'assets/voice/c065b.flac');
   const shot = core.Shots.create(p.id, { chapter: '第17章', visual: '举杯', dialogue: '同学男：哈哈！' });
-  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts' });
+  core.Shots.update(shot.id, { character_ids: [a.id], video_prompt: 'a man toasts and says <d>[Chinese] 哈哈！</d>' });
   // 无 feedback 时 render=false 按原逻辑报「需要反馈文字」，而不是说话人拦截
   await assert.rejects(() => tools.prepareShotForRender(ctx, shot.id, { render: false }), /反馈文字/);
 });

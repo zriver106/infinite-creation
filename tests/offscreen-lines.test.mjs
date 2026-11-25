@@ -70,9 +70,9 @@ describe('画外台词识别', () => {
     assert.match(p, /电话那头苏晴的声音/);
   });
   test('save 校验：画外台词进了 <d> 不再拒存（现行口径就该进 <d>）', () => {
-    const os1 = pwm.checkVideoPrompt('Jiang Che (S1) says: <d>[Chinese] 你点好了吗？</d> An off-screen voice narrates <d>[Chinese] 这菜单也太贵了。</d>', 0, DIALOGUE);
+    const os1 = pwm.checkVideoPrompt('Jiang Che (S1) says: <d>[Chinese] 你点好了吗？</d> An off-screen voice narrates <d>[Chinese] 这菜单也太贵了。</d> <d>[Chinese] 你到哪了？</d> <d>[Chinese] 各位旅客请注意，G101次列车开始检票。</d> <d>[Chinese] 我马上到。</d> <d>[Chinese] 稳住。</d> <d>[Chinese] 明天来公司。</d>', 0, DIALOGUE);
     assert.equal(os1.ok, true, os1.errors.join(' | '));
-    const phone = pwm.checkVideoPrompt('The voice on the phone says <d>[Chinese] 你到哪了？</d>', 0, DIALOGUE);
+    const phone = pwm.checkVideoPrompt('The voice on the phone says <d>[Chinese] 你到哪了？</d> <d>[Chinese] 你点好了吗？</d> <d>[Chinese] 这菜单也太贵了。</d> <d>[Chinese] 各位旅客请注意，G101次列车开始检票。</d> <d>[Chinese] 我马上到。</d> <d>[Chinese] 稳住。</d> <d>[Chinese] 明天来公司。</d>', 0, DIALOGUE);
     assert.equal(phone.ok, true, phone.errors.join(' | '));
     assert.equal(pwm.checkVideoPrompt('He says <d>[Chinese] 我的心声</d>', 0).ok, true, '不传台词时行为不变');
   });
