@@ -20,7 +20,7 @@ test('① 7#5、#11、#14：本镜没有表现手段 → 不加载 H2，分册 �
   for (const s of FX.too_dense_7) {
     assert.deepEqual(expressionMarkers(s), [], s.chapter + '#' + s.idx + ' 不应有标记');
     const rr = requiredRanges(idx, s, P, ON);
-    assert.ok(!ids(rr).includes('H2'), s.chapter + '#' + s.idx + ' 不应加载 H2');
+    assert.ok(!['H2', 'H2L', 'H2C'].some((x) => ids(rr).includes(x)), s.chapter + '#' + s.idx + ' 不应加载 H2/H2L/H2C');
     assert.ok(rr.volume_chars <= (idx.budget_chars || 40000), s.chapter + '#' + s.idx + ' 分册 ' + rr.volume_chars);
     assert.equal(rr.too_dense, false);
   }
@@ -31,7 +31,7 @@ test('② 第1–5集用了 Q版/特效/谐音/流行语/段子 的镜照样加�
   assert.deepEqual(kinds.sort(), ['Q版', '流行语', '特效', '段子', '谐音'].sort());
   for (const [k, s] of Object.entries(FX.expression_ep1_5)) {
     assert.ok(expressionMarkers(s).length, k + ' 镜要有标记');
-    assert.ok(ids(requiredRanges(idx, s, P, ON)).includes('H2'), k + '（' + s.chapter + '#' + s.idx + '）要加载 H2');
+    { const r = ids(requiredRanges(idx, s, P, ON)); assert.ok(r.includes('H2') || r.includes('H2L'), k + '（' + s.chapter + '#' + s.idx + '）要加载 H2 或 H2L（2026-11-25 拆卷）'); }
   }
 });
 
@@ -71,7 +71,7 @@ test('复查1 第1条回归：不带编号的【表现】行、「段子·」开
   assert.equal(FX.review1_missed.length, 8);
   for (const s of FX.review1_missed) {
     assert.ok(expressionMarkers(s).length, s.project + ' ' + s.chapter + '#' + s.idx + ' 要有标记');
-    assert.ok(ids(requiredRanges(idx, s, P, ON)).includes('H2'), s.project + ' ' + s.chapter + '#' + s.idx + ' 要加载 H2');
+    { const r = ids(requiredRanges(idx, s, P, ON)); assert.ok(r.includes('H2') || r.includes('H2L'), s.project + ' ' + s.chapter + '#' + s.idx + ' 要加载 H2 或 H2L（2026-11-25 拆卷）'); }
   }
 });
 
@@ -91,7 +91,7 @@ test('复查2 第1条回归：「避免…/已有镜N…/…未用/…放在下�
   assert.equal(FX.review2_false_pos.length, 4);
   for (const s of FX.review2_false_pos) {
     assert.deepEqual(expressionMarkers(s), [], s.chapter + '#' + s.idx);
-    assert.ok(!ids(requiredRanges(idx, s, P, ON)).includes('H2'), s.chapter + '#' + s.idx + ' 不应加载 H2');
+    assert.ok(!['H2', 'H2L', 'H2C'].some((x) => ids(requiredRanges(idx, s, P, ON)).includes(x)), s.chapter + '#' + s.idx + ' 不应加载 H2/H2L/H2C');
   }
   const m = (t) => expressionMarkers({ visual: t });
   assert.ok(m('画面无比夸张的金光眼特效').length, '「无比」不是否定');

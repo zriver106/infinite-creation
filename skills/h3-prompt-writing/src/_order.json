@@ -102,14 +102,34 @@
   "chars": 4578
  },
  {
-  "file": "H2_夸张表现.md",
-  "id": "H2",
-  "title": "H2 Q 版、特效、流行语与谐音（冷门）",
+  "file": "H2C_表现手段通用.md",
+  "id": "H2C",
+  "title": "H2C 表现通用",
   "tier": "volume",
   "when": [
-   "expression"
+   "expression_any"
   ],
-  "chars": 17871
+  "chars": 1627
+ },
+ {
+  "file": "H2_夸张表现.md",
+  "id": "H2",
+  "title": "H2 Q版与特效",
+  "tier": "volume",
+  "when": [
+   "expression_qv"
+  ],
+  "chars": 11042
+ },
+ {
+  "file": "H2L_流行语与谐音.md",
+  "id": "H2L",
+  "title": "H2L 流行语与谐音",
+  "tier": "volume",
+  "when": [
+   "expression_slang"
+  ],
+  "chars": 1909
  },
  {
   "file": "H2G_开场画面与光幕位置.md",
