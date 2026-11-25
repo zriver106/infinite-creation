@@ -1,12 +1,12 @@
 {
  "skill": "sd-storyboard-engine",
  "set": "sd-storyboard-engine",
- "version": "rules-38e022645e",
+ "version": "rules-548ff27782",
  "file": "规则全文.md",
- "file_md5": "79A511FC5051ACB71E22CF95C3EA7ADA",
- "total_lines": 583,
- "base_end_line": 480,
- "base_chars": 30802,
+ "file_md5": "C5220530CDCD6F30BE2714B690D53589",
+ "total_lines": 572,
+ "base_end_line": 469,
+ "base_chars": 29504,
  "base_budget_chars": 40000,
  "budget_chars": 40000,
  "section_max_chars": 20000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 2108,
-   "checksum": "7708D776"
+   "checksum": "99C9A213"
   },
   {
    "id": "S01",
@@ -44,8 +44,8 @@
    "when": [
     "always"
    ],
-   "chars": 500,
-   "checksum": "3626CEEA"
+   "chars": 510,
+   "checksum": "6BF2AFE8"
   },
   {
    "id": "S03",
@@ -56,8 +56,8 @@
    "when": [
     "always"
    ],
-   "chars": 3132,
-   "checksum": "9E0C3DF6"
+   "chars": 3142,
+   "checksum": "AC70EA57"
   },
   {
    "id": "S04",
@@ -68,8 +68,8 @@
    "when": [
     "always"
    ],
-   "chars": 423,
-   "checksum": "3E0938E7"
+   "chars": 433,
+   "checksum": "C8EB7571"
   },
   {
    "id": "S05",
@@ -80,8 +80,8 @@
    "when": [
     "always"
    ],
-   "chars": 2099,
-   "checksum": "672E23D4"
+   "chars": 2109,
+   "checksum": "4BB6B6B1"
   },
   {
    "id": "S06",
@@ -92,8 +92,8 @@
    "when": [
     "always"
    ],
-   "chars": 523,
-   "checksum": "81F147BD"
+   "chars": 543,
+   "checksum": "5E212BCB"
   },
   {
    "id": "S07",
@@ -104,8 +104,8 @@
    "when": [
     "always"
    ],
-   "chars": 3296,
-   "checksum": "250D07E9"
+   "chars": 3356,
+   "checksum": "648D5DCE"
   },
   {
    "id": "S08",
@@ -116,80 +116,80 @@
    "when": [
     "always"
    ],
-   "chars": 1689,
-   "checksum": "AB0B1619"
+   "chars": 1699,
+   "checksum": "5E9E5D8C"
   },
   {
    "id": "S09",
    "title": "S09 心声（OS）镜铁律（2026-11-23 按手册 M33/M34 重写，与 h3-prompt-writing 心声节同",
    "tier": "base",
    "start": 249,
-   "end": 263,
+   "end": 252,
    "when": [
     "always"
    ],
-   "chars": 1750,
-   "checksum": "EF7A11AE"
+   "chars": 212,
+   "checksum": "6DB874E0"
   },
   {
    "id": "S10",
    "title": "S10 夸张表演、特效与 Q 版（2026-11-16 新增 · v3.1 补强 · v4 加入应用入口、选择表与用量台账 · ",
    "tier": "base",
-   "start": 265,
-   "end": 388,
+   "start": 254,
+   "end": 377,
    "when": [
     "always"
    ],
-   "chars": 10714,
-   "checksum": "8ED924DB"
+   "chars": 10774,
+   "checksum": "A5A28431"
   },
   {
    "id": "S11",
    "title": "S11 七、故事板图（面板链）",
    "tier": "base",
-   "start": 390,
-   "end": 446,
+   "start": 379,
+   "end": 435,
    "when": [
     "always"
    ],
-   "chars": 2146,
-   "checksum": "9A3A905F"
+   "chars": 2176,
+   "checksum": "F98905D3"
   },
   {
    "id": "S12",
    "title": "S12 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）",
    "tier": "base",
-   "start": 448,
-   "end": 465,
+   "start": 437,
+   "end": 454,
    "when": [
     "always"
    ],
-   "chars": 614,
-   "checksum": "D24498AD"
+   "chars": 624,
+   "checksum": "360DA1E0"
   },
   {
    "id": "S13",
    "title": "S13 八、规则库索引",
    "tier": "base",
-   "start": 467,
-   "end": 479,
+   "start": 456,
+   "end": 468,
    "when": [
     "always"
    ],
-   "chars": 1631,
-   "checksum": "7DC88A2A"
+   "chars": 1641,
+   "checksum": "AF0BED6E"
   },
   {
    "id": "S14",
    "title": "S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切",
    "tier": "volume",
-   "start": 484,
-   "end": 583,
+   "start": 473,
+   "end": 572,
    "when": [
     "rare"
    ],
-   "chars": 8021,
-   "checksum": "25C07E2B"
+   "chars": 8031,
+   "checksum": "E62ED923"
   }
  ]
 }

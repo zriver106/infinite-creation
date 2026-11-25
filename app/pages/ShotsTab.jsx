@@ -402,7 +402,23 @@ export default function ShotsTab({ projectId, chapter: chapterProp = '', running
                   </div>
                 );
               })()}
-              {s.error && <p className="m-0 text-danger">错误：{s.error}</p>}
+              {/* T2 第3批 v3 草案（UI，可选）：台词门只在 error 末尾追加一行「［台词门］…」、不覆盖原 error；
+                  这里把那一行拆出来用警示色单独显示，done 的镜注明「旧片」，免得把已出片的镜看成出片失败、或把旧片当新片用。 */}
+              {s.error && (() => {
+                const errLines = String(s.error).split(/\r?\n/);
+                const gateLines = errLines.filter((l) => l.startsWith('［台词门］'));
+                const otherErr = errLines.filter((l) => !l.startsWith('［台词门］')).join('\n');
+                return (
+                  <>
+                    {otherErr && <p className="m-0 text-danger">错误：{otherErr}</p>}
+                    {gateLines.map((g, i) => (
+                      <p key={'dg' + i} className="m-0 text-warning">
+                        台词门：本批跳过{s.status === 'done' ? '（这里的视频是旧片，台词还没补进 <d>，不要当新片用）' : '（还没出片）'}：{g.slice('［台词门］'.length)}
+                      </p>
+                    ))}
+                  </>
+                );
+              })()}
               <div className="row" style={{ marginTop: 8 }}>
                 <Input size="sm" className="flex-1" placeholder="反馈（如：镜头拉近 / 让人物微笑），留空直接渲染；有内容会先问是否 LLM 改写" value={feedback[s.id] || ''} onChange={(e) => setFeedback({ ...feedback, [s.id]: e.target.value })} />
                 {(() => {

@@ -1,12 +1,12 @@
 {
  "skill": "script-master",
  "set": "script-master",
- "version": "rules-c7bad4d34a",
+ "version": "rules-d94b19dbac",
  "file": "规则全文.md",
- "file_md5": "14B241F1E29639DB03181770A3A4670A",
+ "file_md5": "665B780D758AEB99A400D63264433F4D",
  "total_lines": 2191,
  "base_end_line": 1779,
- "base_chars": 36139,
+ "base_chars": 36989,
  "base_budget_chars": 40000,
  "budget_chars": 40000,
  "section_max_chars": 20000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 5449,
-   "checksum": "4DCAC4E2"
+   "checksum": "DF5E1BE7"
   },
   {
    "id": "S01",
@@ -44,8 +44,8 @@
    "when": [
     "always"
    ],
-   "chars": 7497,
-   "checksum": "07F400DD"
+   "chars": 7507,
+   "checksum": "60BFDF1F"
   },
   {
    "id": "S03",
@@ -56,8 +56,8 @@
    "when": [
     "always"
    ],
-   "chars": 1664,
-   "checksum": "ED15290E"
+   "chars": 1684,
+   "checksum": "C1522E6E"
   },
   {
    "id": "S04",
@@ -68,8 +68,8 @@
    "when": [
     "always"
    ],
-   "chars": 159,
-   "checksum": "4B0B3E9E"
+   "chars": 169,
+   "checksum": "94977CFE"
   },
   {
    "id": "S05",
@@ -80,8 +80,8 @@
    "when": [
     "always"
    ],
-   "chars": 210,
-   "checksum": "B5A7D538"
+   "chars": 220,
+   "checksum": "28256343"
   },
   {
    "id": "S06",
@@ -92,8 +92,8 @@
    "when": [
     "always"
    ],
-   "chars": 241,
-   "checksum": "18CFF1F0"
+   "chars": 251,
+   "checksum": "D66CFF81"
   },
   {
    "id": "S07",
@@ -104,8 +104,8 @@
    "when": [
     "always"
    ],
-   "chars": 413,
-   "checksum": "C3EB339D"
+   "chars": 443,
+   "checksum": "C00FBA37"
   },
   {
    "id": "S08",
@@ -116,8 +116,8 @@
    "when": [
     "always"
    ],
-   "chars": 216,
-   "checksum": "7FAF44D4"
+   "chars": 226,
+   "checksum": "98C6059E"
   },
   {
    "id": "S09",
@@ -128,8 +128,8 @@
    "when": [
     "always"
    ],
-   "chars": 258,
-   "checksum": "C47AA4B4"
+   "chars": 268,
+   "checksum": "C885D8CC"
   },
   {
    "id": "S10",
@@ -140,8 +140,8 @@
    "when": [
     "always"
    ],
-   "chars": 511,
-   "checksum": "17304614"
+   "chars": 521,
+   "checksum": "1E7A12A9"
   },
   {
    "id": "S11",
@@ -152,8 +152,8 @@
    "when": [
     "always"
    ],
-   "chars": 160,
-   "checksum": "443AB296"
+   "chars": 170,
+   "checksum": "61ABB67A"
   },
   {
    "id": "S12",
@@ -164,8 +164,8 @@
    "when": [
     "always"
    ],
-   "chars": 381,
-   "checksum": "7122EEA2"
+   "chars": 391,
+   "checksum": "B9E63133"
   },
   {
    "id": "S13",
@@ -176,8 +176,8 @@
    "when": [
     "always"
    ],
-   "chars": 620,
-   "checksum": "0C404C9A"
+   "chars": 630,
+   "checksum": "067FFBC2"
   },
   {
    "id": "S14",
@@ -188,8 +188,8 @@
    "when": [
     "always"
    ],
-   "chars": 165,
-   "checksum": "C5012CEC"
+   "chars": 175,
+   "checksum": "53465CB8"
   },
   {
    "id": "S15",
@@ -200,8 +200,8 @@
    "when": [
     "always"
    ],
-   "chars": 337,
-   "checksum": "36AFBDFF"
+   "chars": 347,
+   "checksum": "42000537"
   },
   {
    "id": "S16",
@@ -212,8 +212,8 @@
    "when": [
     "always"
    ],
-   "chars": 190,
-   "checksum": "0F7850C0"
+   "chars": 200,
+   "checksum": "1770ED81"
   },
   {
    "id": "S17",
@@ -224,8 +224,8 @@
    "when": [
     "always"
    ],
-   "chars": 206,
-   "checksum": "E9BE4374"
+   "chars": 216,
+   "checksum": "4A5A3F07"
   },
   {
    "id": "S18",
@@ -236,8 +236,8 @@
    "when": [
     "always"
    ],
-   "chars": 430,
-   "checksum": "9854692E"
+   "chars": 470,
+   "checksum": "B9270B0D"
   },
   {
    "id": "S19",
@@ -248,8 +248,8 @@
    "when": [
     "always"
    ],
-   "chars": 167,
-   "checksum": "34262F09"
+   "chars": 177,
+   "checksum": "51961076"
   },
   {
    "id": "S20",
@@ -260,8 +260,8 @@
    "when": [
     "always"
    ],
-   "chars": 111,
-   "checksum": "91E03600"
+   "chars": 121,
+   "checksum": "F5E55ABB"
   },
   {
    "id": "S21",
@@ -272,8 +272,8 @@
    "when": [
     "always"
    ],
-   "chars": 134,
-   "checksum": "E55A0B27"
+   "chars": 144,
+   "checksum": "C801117B"
   },
   {
    "id": "S22",
@@ -284,8 +284,8 @@
    "when": [
     "always"
    ],
-   "chars": 103,
-   "checksum": "2E204B72"
+   "chars": 113,
+   "checksum": "101A9768"
   },
   {
    "id": "S23",
@@ -296,8 +296,8 @@
    "when": [
     "always"
    ],
-   "chars": 120,
-   "checksum": "10F9B623"
+   "chars": 130,
+   "checksum": "8823B32C"
   },
   {
    "id": "S24",
@@ -308,8 +308,8 @@
    "when": [
     "always"
    ],
-   "chars": 162,
-   "checksum": "69EFE780"
+   "chars": 172,
+   "checksum": "FC4FCE37"
   },
   {
    "id": "S25",
@@ -320,8 +320,8 @@
    "when": [
     "always"
    ],
-   "chars": 160,
-   "checksum": "7DC6C4E0"
+   "chars": 170,
+   "checksum": "B0F9F3BF"
   },
   {
    "id": "S26",
@@ -332,8 +332,8 @@
    "when": [
     "always"
    ],
-   "chars": 162,
-   "checksum": "4936664B"
+   "chars": 172,
+   "checksum": "86C92E6A"
   },
   {
    "id": "S27",
@@ -344,8 +344,8 @@
    "when": [
     "always"
    ],
-   "chars": 309,
-   "checksum": "B8615364"
+   "chars": 319,
+   "checksum": "3C5CA3F3"
   },
   {
    "id": "S28",
@@ -356,8 +356,8 @@
    "when": [
     "always"
    ],
-   "chars": 215,
-   "checksum": "E7DD97D0"
+   "chars": 225,
+   "checksum": "040B5E16"
   },
   {
    "id": "S29",
@@ -368,8 +368,8 @@
    "when": [
     "always"
    ],
-   "chars": 1522,
-   "checksum": "69AA5B23"
+   "chars": 1532,
+   "checksum": "5058A167"
   },
   {
    "id": "S30",
@@ -380,8 +380,8 @@
    "when": [
     "always"
    ],
-   "chars": 141,
-   "checksum": "6F811850"
+   "chars": 151,
+   "checksum": "53C018F1"
   },
   {
    "id": "S31",
@@ -392,8 +392,8 @@
    "when": [
     "always"
    ],
-   "chars": 180,
-   "checksum": "D0E00A08"
+   "chars": 190,
+   "checksum": "1F8DEBDF"
   },
   {
    "id": "S32",
@@ -404,8 +404,8 @@
    "when": [
     "always"
    ],
-   "chars": 126,
-   "checksum": "368DB846"
+   "chars": 136,
+   "checksum": "D4D0DC97"
   },
   {
    "id": "S33",
@@ -416,8 +416,8 @@
    "when": [
     "always"
    ],
-   "chars": 249,
-   "checksum": "DFF96DD4"
+   "chars": 259,
+   "checksum": "AC225D8E"
   },
   {
    "id": "S34",
@@ -428,8 +428,8 @@
    "when": [
     "always"
    ],
-   "chars": 958,
-   "checksum": "DE6B5DCB"
+   "chars": 998,
+   "checksum": "0606ED16"
   },
   {
    "id": "S35",
@@ -440,8 +440,8 @@
    "when": [
     "always"
    ],
-   "chars": 206,
-   "checksum": "9AB1E123"
+   "chars": 216,
+   "checksum": "96C5AF15"
   },
   {
    "id": "S36",
@@ -452,8 +452,8 @@
    "when": [
     "always"
    ],
-   "chars": 358,
-   "checksum": "46E0CE27"
+   "chars": 368,
+   "checksum": "5D5ACBB5"
   },
   {
    "id": "S37",
@@ -464,8 +464,8 @@
    "when": [
     "always"
    ],
-   "chars": 178,
-   "checksum": "90323ED8"
+   "chars": 188,
+   "checksum": "82D9A17E"
   },
   {
    "id": "S38",
@@ -476,8 +476,8 @@
    "when": [
     "always"
    ],
-   "chars": 616,
-   "checksum": "B3B924D7"
+   "chars": 626,
+   "checksum": "1C8602C1"
   },
   {
    "id": "S39",
@@ -488,8 +488,8 @@
    "when": [
     "always"
    ],
-   "chars": 287,
-   "checksum": "0F5F0C54"
+   "chars": 297,
+   "checksum": "B28D4962"
   },
   {
    "id": "S40",
@@ -500,8 +500,8 @@
    "when": [
     "always"
    ],
-   "chars": 241,
-   "checksum": "71AC7368"
+   "chars": 251,
+   "checksum": "9A65C867"
   },
   {
    "id": "S41",
@@ -512,8 +512,8 @@
    "when": [
     "always"
    ],
-   "chars": 1744,
-   "checksum": "62E3AF2E"
+   "chars": 1794,
+   "checksum": "D40A739B"
   },
   {
    "id": "S42",
@@ -524,8 +524,8 @@
    "when": [
     "always"
    ],
-   "chars": 235,
-   "checksum": "0270DF11"
+   "chars": 245,
+   "checksum": "AFF45FD4"
   },
   {
    "id": "S43",
@@ -536,8 +536,8 @@
    "when": [
     "always"
    ],
-   "chars": 553,
-   "checksum": "9484E33A"
+   "chars": 563,
+   "checksum": "A680CD21"
   },
   {
    "id": "S44",
@@ -548,8 +548,8 @@
    "when": [
     "always"
    ],
-   "chars": 314,
-   "checksum": "837EF615"
+   "chars": 324,
+   "checksum": "A18114A2"
   },
   {
    "id": "S45",
@@ -560,8 +560,8 @@
    "when": [
     "always"
    ],
-   "chars": 329,
-   "checksum": "DC39AB3A"
+   "chars": 339,
+   "checksum": "89E88D04"
   },
   {
    "id": "S46",
@@ -572,8 +572,8 @@
    "when": [
     "always"
    ],
-   "chars": 337,
-   "checksum": "0991579C"
+   "chars": 347,
+   "checksum": "10674F55"
   },
   {
    "id": "S47",
@@ -584,8 +584,8 @@
    "when": [
     "always"
    ],
-   "chars": 313,
-   "checksum": "54FDA442"
+   "chars": 323,
+   "checksum": "FC425C8B"
   },
   {
    "id": "S48",
@@ -596,8 +596,8 @@
    "when": [
     "always"
    ],
-   "chars": 408,
-   "checksum": "4F8F1C29"
+   "chars": 418,
+   "checksum": "D65F63C1"
   },
   {
    "id": "S49",
@@ -608,8 +608,8 @@
    "when": [
     "always"
    ],
-   "chars": 630,
-   "checksum": "312E239E"
+   "chars": 650,
+   "checksum": "19C8D14F"
   },
   {
    "id": "S50",
@@ -620,8 +620,8 @@
    "when": [
     "always"
    ],
-   "chars": 243,
-   "checksum": "B093CA0F"
+   "chars": 253,
+   "checksum": "C96C69C8"
   },
   {
    "id": "S51",
@@ -632,8 +632,8 @@
    "when": [
     "always"
    ],
-   "chars": 592,
-   "checksum": "E2C51A12"
+   "chars": 602,
+   "checksum": "448F4203"
   },
   {
    "id": "S52",
@@ -644,8 +644,8 @@
    "when": [
     "always"
    ],
-   "chars": 267,
-   "checksum": "71E7AE80"
+   "chars": 277,
+   "checksum": "92CBA191"
   },
   {
    "id": "S53",
@@ -656,8 +656,8 @@
    "when": [
     "always"
    ],
-   "chars": 216,
-   "checksum": "ACD3952E"
+   "chars": 226,
+   "checksum": "461CD2B1"
   },
   {
    "id": "S54",
@@ -668,8 +668,8 @@
    "when": [
     "always"
    ],
-   "chars": 742,
-   "checksum": "0669598A"
+   "chars": 762,
+   "checksum": "02F3CB97"
   },
   {
    "id": "S55",
@@ -680,8 +680,8 @@
    "when": [
     "always"
    ],
-   "chars": 1357,
-   "checksum": "F359E131"
+   "chars": 1397,
+   "checksum": "F68BA77C"
   },
   {
    "id": "S56",
@@ -692,8 +692,8 @@
    "when": [
     "always"
    ],
-   "chars": 77,
-   "checksum": "3EADEE65"
+   "chars": 87,
+   "checksum": "AB903639"
   },
   {
    "id": "S57",
@@ -704,8 +704,8 @@
    "when": [
     "always"
    ],
-   "chars": 66,
-   "checksum": "A8C23934"
+   "chars": 76,
+   "checksum": "000A660B"
   },
   {
    "id": "S58",
@@ -716,8 +716,8 @@
    "when": [
     "always"
    ],
-   "chars": 74,
-   "checksum": "9E156BF1"
+   "chars": 84,
+   "checksum": "6BE3BCBF"
   },
   {
    "id": "S59",
@@ -728,8 +728,8 @@
    "when": [
     "always"
    ],
-   "chars": 73,
-   "checksum": "7761D6AC"
+   "chars": 83,
+   "checksum": "CD52F54C"
   },
   {
    "id": "S60",
@@ -740,8 +740,8 @@
    "when": [
     "always"
    ],
-   "chars": 83,
-   "checksum": "7662FD15"
+   "chars": 93,
+   "checksum": "EC0975CC"
   },
   {
    "id": "S61",
@@ -752,8 +752,8 @@
    "when": [
     "always"
    ],
-   "chars": 62,
-   "checksum": "59CB3961"
+   "chars": 72,
+   "checksum": "38FBBF90"
   },
   {
    "id": "S62",
@@ -764,8 +764,8 @@
    "when": [
     "always"
    ],
-   "chars": 60,
-   "checksum": "D007E044"
+   "chars": 70,
+   "checksum": "721408F8"
   },
   {
    "id": "S63",
@@ -776,8 +776,8 @@
    "when": [
     "always"
    ],
-   "chars": 661,
-   "checksum": "6A59CED7"
+   "chars": 701,
+   "checksum": "53340719"
   },
   {
    "id": "S64",
@@ -788,8 +788,8 @@
    "when": [
     "always"
    ],
-   "chars": 291,
-   "checksum": "DF1F7A46"
+   "chars": 301,
+   "checksum": "11AD39D5"
   },
   {
    "id": "S65",
@@ -800,8 +800,8 @@
    "when": [
     "always"
    ],
-   "chars": 160,
-   "checksum": "93CB688D"
+   "chars": 170,
+   "checksum": "5AEB350B"
   },
   {
    "id": "S66",
@@ -812,8 +812,8 @@
    "when": [
     "rare"
    ],
-   "chars": 635,
-   "checksum": "EC818B1C"
+   "chars": 655,
+   "checksum": "518CCB0B"
   },
   {
    "id": "S67",
@@ -824,8 +824,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1119,
-   "checksum": "458A028D"
+   "chars": 1159,
+   "checksum": "F3131B37"
   },
   {
    "id": "S68",
@@ -836,8 +836,8 @@
    "when": [
     "rare"
    ],
-   "chars": 425,
-   "checksum": "30E9B476"
+   "chars": 435,
+   "checksum": "3CAF64B7"
   },
   {
    "id": "S69",
@@ -848,8 +848,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1520,
-   "checksum": "F420E836"
+   "chars": 1540,
+   "checksum": "EEFD8F6D"
   },
   {
    "id": "S70",
@@ -860,8 +860,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1174,
-   "checksum": "3274B790"
+   "chars": 1184,
+   "checksum": "FAB6895B"
   },
   {
    "id": "S71",
@@ -872,8 +872,8 @@
    "when": [
     "rare"
    ],
-   "chars": 838,
-   "checksum": "D2E4BDD8"
+   "chars": 848,
+   "checksum": "232C6B8D"
   },
   {
    "id": "S72",
@@ -884,8 +884,8 @@
    "when": [
     "rare"
    ],
-   "chars": 405,
-   "checksum": "687ACCF7"
+   "chars": 415,
+   "checksum": "292AC188"
   },
   {
    "id": "S73",
@@ -896,8 +896,8 @@
    "when": [
     "rare"
    ],
-   "chars": 450,
-   "checksum": "AC28B737"
+   "chars": 460,
+   "checksum": "089A15AD"
   },
   {
    "id": "S74",
@@ -908,8 +908,8 @@
    "when": [
     "rare"
    ],
-   "chars": 372,
-   "checksum": "A765AB13"
+   "chars": 382,
+   "checksum": "264A9127"
   },
   {
    "id": "S75",
@@ -920,8 +920,8 @@
    "when": [
     "rare"
    ],
-   "chars": 745,
-   "checksum": "A36327E4"
+   "chars": 755,
+   "checksum": "E939EE91"
   },
   {
    "id": "S76",
@@ -932,8 +932,8 @@
    "when": [
     "rare"
    ],
-   "chars": 1150,
-   "checksum": "92BD7DD3"
+   "chars": 1160,
+   "checksum": "D8555351"
   },
   {
    "id": "S77",
@@ -944,8 +944,8 @@
    "when": [
     "rare"
    ],
-   "chars": 421,
-   "checksum": "0BA264B2"
+   "chars": 431,
+   "checksum": "A0B66C72"
   },
   {
    "id": "S78",
@@ -956,8 +956,8 @@
    "when": [
     "rare"
    ],
-   "chars": 314,
-   "checksum": "ADC9EB6B"
+   "chars": 324,
+   "checksum": "D565155A"
   },
   {
    "id": "S79",
@@ -968,8 +968,8 @@
    "when": [
     "rare"
    ],
-   "chars": 110,
-   "checksum": "38FAA3F2"
+   "chars": 120,
+   "checksum": "6E01A85D"
   },
   {
    "id": "S80",
@@ -980,8 +980,8 @@
    "when": [
     "rare"
    ],
-   "chars": 515,
-   "checksum": "80B0A3F0"
+   "chars": 525,
+   "checksum": "9C3571AC"
   }
  ]
 }

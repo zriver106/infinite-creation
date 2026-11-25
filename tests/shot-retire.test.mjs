@@ -8,6 +8,8 @@ import path from 'node:path';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'ic-shot-retire-'));
 process.env.IC_DATA_DIR = TMP;
+// 续轮12快：本文件只测作废逻辑，关掉剧本/分镜阶段读规则/服装/台词硬检（那些在 stage-guards.test.mjs 测）
+process.env.IC_STAGE_GUARDS = '0';
 
 const core = await import('../lib/core/index.js');
 const { createToolRuntime, runTool } = await import('../lib/agent/tools.js');

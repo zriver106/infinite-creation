@@ -1,7 +1,7 @@
 <!-- rulebook: id=S12 tier=base when=always -->
 ## S12 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）
 
-### 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）
+### 〔S12-001〕 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看）
 
 > ★ **唯一权威版式**：`references/storyboard-sheet-template.md` §十一。
 

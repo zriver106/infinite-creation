@@ -147,6 +147,59 @@ function serveFile(res, req, abs) {
   }
 }
 
+// ---- IC 接口调用日志（Andy 22:13；主会话 seq1210/1214）：只记不拦 ----
+const IC_API_LOG = path.join(__dirname, 'data', 'logs', 'ic_api_calls.jsonl');
+// 覆盖 app/api/projects/[id] 下写稿、改稿、建镜、出片、选用类路由（按现有 route.js 列出）
+const IC_API_LOG_RE = /^\/api\/projects\/[^/]+\/(?:chapters(?:\/[^/]+(?:\/(?:write-prompts|regenerate|storyboard|script|clear))?)?|shots(?:\/[^/]+(?:\/(?:regenerate|retire|videos\/[^/]+(?:\/select)?))?)?|run|video|assets\/[^/]+\/generate)\/?$/;
+function icApiLogTap(req, res, url) {
+  const method = (req.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return;
+  if (!IC_API_LOG_RE.test(url.pathname)) return;
+  const started = Date.now();
+  const reqChunks = []; let reqLen = 0; const REQ_MAX = 256 * 1024;
+  const origPush = req.push;
+  req.push = function (chunk, ...rest) {
+    try { if (chunk && reqLen < REQ_MAX) { const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); reqChunks.push(b); reqLen += b.length; } } catch { /* ignore */ }
+    return origPush.call(this, chunk, ...rest);
+  };
+  const resChunks = []; let resLen = 0; const RES_MAX = 64 * 1024;
+  const keep = (chunk, enc) => {
+    try { if (chunk && typeof chunk !== 'function' && resLen < RES_MAX) { const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, typeof enc === 'string' ? enc : 'utf8'); resChunks.push(b); resLen += b.length; } } catch { /* ignore */ }
+  };
+  const origWrite = res.write; const origEnd = res.end;
+  res.write = function (chunk, enc, cb) { keep(chunk, enc); return origWrite.call(this, chunk, enc, cb); };
+  res.end = function (chunk, enc, cb) { keep(chunk, enc); return origEnd.call(this, chunk, enc, cb); };
+  res.on('finish', () => {
+    try {
+      let body = Buffer.concat(reqChunks).toString('utf8'); let bodyJson = null;
+      try { bodyJson = JSON.parse(body); } catch { /* not json */ }
+      let out = Buffer.concat(resChunks).toString('utf8'); let outJson = null;
+      try { outJson = JSON.parse(out); } catch { /* not json */ }
+      const jobId = (outJson && ((outJson.job && outJson.job.id) || outJson.jobId || (outJson.id && outJson.status ? outJson.id : null))) || null;
+      const h = req.headers || {};
+      const rec = {
+        time_pst: new Date(started).toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }),
+        ts: started,
+        caller: h['x-ic-caller'] || '未标注',
+        ip: h['x-ic-remote-ip'] || '',
+        user_agent: h['user-agent'] || '',
+        method,
+        path: url.pathname,
+        query: url.search || '',
+        requirements: bodyJson && bodyJson.requirements !== undefined ? bodyJson.requirements : undefined,
+        shot_ids: bodyJson && bodyJson.shot_ids !== undefined ? bodyJson.shot_ids : undefined,
+        target: bodyJson && bodyJson.target !== undefined ? bodyJson.target : undefined,
+        body: bodyJson !== null ? bodyJson : (body.length > 4000 ? body.slice(0, 4000) + '…' : body),
+        status: res.statusCode,
+        job_id: jobId,
+        ms: Date.now() - started,
+      };
+      fs.mkdirSync(path.dirname(IC_API_LOG), { recursive: true });
+      fs.appendFile(IC_API_LOG, JSON.stringify(rec) + '\n', () => {});
+    } catch { /* 日志出错不影响请求 */ }
+  });
+}
+
 app.prepare().then(() => {
   const server = http.createServer((req, res) => {
     // 客户端自带的 x-ic-* 身份头一律丢弃：这些头只能由下面的认证结果写入。
@@ -174,6 +227,10 @@ app.prepare().then(() => {
       res.writeHead(400).end();
       return;
     }
+    // Andy 22:13「Ic工作流相关调用接口加个日志. 调用时间 内容」（主会话 seq1210/1214）：只记不拦。
+    // 写稿/改稿/建镜/出片类接口每次调用追加一行到 data/logs/ic_api_calls.jsonl。只旁听请求体（拦 req.push，不改流）
+    // 和响应（拦 res.write/res.end，原样转交），任何异常都吞掉，不影响接口本身。
+    try { icApiLogTap(req, res, url); } catch { /* 日志出错不影响请求 */ }
     const proceed = () => {
       if (url.pathname.startsWith('/files/')) {
       // 相对路径 -> data/ 下的绝对路径，并做路径穿越防护。
