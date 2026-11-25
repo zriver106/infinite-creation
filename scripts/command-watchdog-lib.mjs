@@ -17,6 +17,8 @@ export function ptParts(d) {
 }
 export function ptStr(d = new Date()) { const o = ptParts(d instanceof Date ? d : new Date(d)); return `${o.year}-${o.month}-${o.day} ${o.hour}:${o.minute}:${o.second}`; }
 export function ptHM(d) { const o = ptParts(d instanceof Date ? d : new Date(d)); return `${o.hour}:${o.minute}`; }
+// 带日期的短时间：11-25 09:55（太平洋时间）。看门狗消息里统一用它（Andy 11-25：时间要加上）
+export function ptMDHM(d) { const o = ptParts(d instanceof Date ? d : new Date(d)); return `${o.month}-${o.day} ${o.hour}:${o.minute}`; }
 // '2026-11-23T20:30' 当作太平洋时间 → Date
 export function ptToDate(s) {
   const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/);
@@ -156,7 +158,7 @@ export function evaluate(snap) {
     const pend = live.filter((c) => ['running', 'waiting', 'dead'].includes(c.state) && c.shots && c.shots.unsubmitted.length);
     if (idleSec >= cfg.gpuIdleGraceSec && pend.length) {
       add('gpu_stall', 'ERROR', 1, 'GPU 空着，但链计划里还有没提交的镜头',
-        `8189 队列已空约 ${Math.round(idleSec / 60)} 分钟（宽限 ${cfg.gpuIdleGraceSec} 秒）。还有没提交的：` + pend.map((c) => `${c.name}（${stateZh(c.state)}，${c.shots.unsubmitted.length} 镜：${c.shots.unsubmitted.slice(0, 6).join('、')}${c.shots.unsubmitted.length > 6 ? '…' : ''}；最后一行「${trim(stripTs(c.last), 80)}」）`).join('；'),
+        `显卡（8189）队列已经空了约 ${Math.round(idleSec / 60)} 分钟（从 ${ptMDHM(new Date(snap.gpuEmptySinceMs))} 起），可出片脚本里还有镜头没交上去：` + pend.map((c) => `${c.name}（${stateZh(c.state)}，${c.shots.unsubmitted.length} 镜：${c.shots.unsubmitted.slice(0, 6).join('、')}${c.shots.unsubmitted.length > 6 ? '…' : ''}；最后一行「${trim(stripTs(c.last), 80)}」）`).join('；'),
         { chains: pend.map((c) => [c.name, c.state, c.shots.unsubmitted.length]) });
     }
   }
@@ -177,7 +179,7 @@ export function evaluate(snap) {
       const prepTxt = fresh.length ? `最近 ${recentH} 小时内准备好、还没起的链：` + fresh.map((c) => `${c.name}（脚本 ${ptHM(new Date(c.scriptMtimeMs))} 改，待出 ${c.shots.unsubmitted.length} 镜${(c.plan || []).some((p) => p.ch > (cfg.gateMaxChapter ?? 10)) ? '，含第11章以后' : ''}${voidM.has(c.name) ? `；**已作废（外部稿），不应起**${voidM.get(c.name) ? '：' + trim(voidM.get(c.name), 80) : ''}` : ''}）`).join('、') + '。' + (fresh.every((c) => voidM.has(c.name)) ? '这些都已作废，没有可起的链。' : '') : `最近 ${recentH} 小时内没有准备好的新链。`;
       const gateTxt = snap.gateFlag ? '' : ' 注意：第1–10集闸门生效（Andy 19:00：EP1–10 没做完前第11章以后不上 GPU）——若是闸门要求的空闲，请主会话确认。';
       add('gpu_idle', lv, 1, lv === 'ERROR' ? `GPU 空闲 ${Math.round(sec / 60)} 分钟，没有链在跑` : 'GPU 空闲，没有链在跑',
-        `8189 队列空、4610 无 running/queued、没有活着的 gpu_*chain/gpu_submit 进程，已持续 ${sec >= 120 ? Math.round(sec / 60) + ' 分钟' : sec + ' 秒'}（看门狗从 ${ptHM(new Date(snap.idle.sinceMs))} 起看到）。空闲起点：${startTxt}。${prepTxt}${old ? `更早准备的链 ${old} 条（多半已作废，不列）。` : ''}${lv === 'ERROR' ? gateTxt || ' 若是有意的空闲，请主会话确认。' : ''}`,
+        `显卡（8189）队列是空的，IC 里没有在跑或排队的出片任务，也没有出片脚本在跑，已经空了 ${sec >= 120 ? Math.round(sec / 60) + ' 分钟' : sec + ' 秒'}（从 ${ptMDHM(new Date(snap.idle.sinceMs))} 起）。上一次出片：${startTxt}。${prepTxt}${old ? `更早准备的链 ${old} 条（多半已作废，不列）。` : ''}${lv === 'ERROR' ? gateTxt || ' 若是有意的空闲，请主会话确认。' : ''}`,
         { lv }); // 只在 WARN→ERROR、出现、恢复时推送
     }
   }
@@ -224,20 +226,35 @@ export function evaluate(snap) {
     const at = ptToDate(d.at); if (!at || d.done) continue;
     const left = (at.getTime() - now) / 60000;
     let stage = null;
+    if (left <= -(cfg.deadlineStaleHours ?? 12) * 60) continue; // 过点超过 12 小时的旧截止不再挂着（Andy 11-25：旧告警看不懂）
     if (left <= 0) stage = 'over'; else if (left <= 10) stage = 't10'; else if (left <= 30) stage = 't30';
     if (!stage) continue;
     const lv = stage === 'over' ? 'ERROR' : 'WARN';
-    const txt = stage === 'over' ? `「${d.name}」截止 ${ptHM(at)} 已过，还没标记完成。` : `「${d.name}」${ptHM(at)} 截止，还剩不到 ${stage === 't10' ? 10 : 30} 分钟，还没标记完成。`;
+    const txt = stage === 'over' ? `「${d.name}」截止 ${ptMDHM(at)} 已过，还没标记完成。` : `「${d.name}」${ptHM(at)} 截止，还剩不到 ${stage === 't10' ? 10 : 30} 分钟，还没标记完成。`;
     add(`deadline:${d.id}`, lv, 5, stage === 'over' ? `过点：${d.name}` : `快到点：${d.name}`, txt, { stage });
   }
 
-  // 8. 外部 PATCH 写稿（Andy 20:20–20:27 铁律：写稿改稿只走 IC 工作流）。snap.extPatches: [{group, rows:[{id,ts,ch,idx,shot,fields}]}]
-  for (const g of snap.extPatches || []) {
-    const rows = [...g.rows].sort((a, b) => a.ts - b.ts);
-    const head = rows.slice(0, 12).map((r) => `${r.ch || '?'}#${r.idx ?? '?'}（${String(r.shot).slice(0, 8)}，${ptHM(new Date(r.ts))}，改了 ${r.fields.length ? r.fields.slice(0, 6).join('/') : '（无字段差异）'}）`).join('；');
-    add(`ext_patch:${g.group}`, 'ERROR', 8, `有外部会话用 PATCH 直接改了镜头（${rows.length} 条）`,
-      `ic.db change_logs 里出现 source='PATCH /api/projects/:id/shots/:sid' 的新记录 ${rows.length} 条（${ptHM(new Date(rows[0].ts))}–${ptHM(new Date(rows.at(-1).ts))}）：${head}${rows.length > 12 ? `；另 ${rows.length - 12} 条见 alerts.jsonl` : ''}。按 Andy 20:20–20:27 铁律，写稿改稿只走 IC 工作流，外部手写后 PATCH 写库的稿作废，没走 IC 的片一律作废。看门狗只读，不回滚。`,
-      { ids: rows.map((r) => r.id).sort() });
+  // 8. 外部 PATCH 改镜头（Andy 20:20–20:27 铁律：写稿改稿只走 IC 工作流）。snap.extPatches: [{group, rows:[{id,ts,ch,idx,shot,fields}]}]
+  // 2026-11-25（Andy：报错看不懂）：只改绑定（人物/场景/道具/服装…）的是我方 Agent 补绑，合成一条「信息」；动了台词/画面/提示词的才算外部改稿，报「严重」。
+  {
+    const rows = (snap.extPatches || []).flatMap((g) => g.rows).sort((a, b) => a.ts - b.ts);
+    const bind = rows.filter((r) => r.fields.length && r.fields.every((f) => BIND_FIELDS.has(f)));
+    const content = rows.filter((r) => !bind.includes(r));
+    const span = (rs) => rs.length ? `${ptMDHM(new Date(rs[0].ts))}${rs.length > 1 && ptHM(new Date(rs.at(-1).ts)) !== ptHM(new Date(rs[0].ts)) ? '–' + ptHM(new Date(rs.at(-1).ts)) : ''}` : '';
+    if (bind.length) {
+      const byCh = {}; for (const r of bind) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
+      const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} ${set.size} 镜`).join('、');
+      const kinds = [...new Set(bind.flatMap((r) => r.fields))].map(fieldZh).join('、');
+      add('ext_bind', 'INFO', 8, `Agent 补了 ${new Set(bind.map((r) => r.shot)).size} 镜的绑定（不算改稿）`,
+        `${span(bind)}：${chTxt}。只改了${kinds}，台词、画面、提示词都没动，属于我方 Agent 正常补绑。`,
+        { n: bind.length, last: bind.at(-1).ts });
+    }
+    if (content.length) {
+      const head = content.slice(0, 12).map((r) => `${r.ch || '?'}#${r.idx ?? '?'} 改了${r.fields.length ? r.fields.slice(0, 4).map(fieldZh).join('、') : '（看不出改了什么）'}（${ptHM(new Date(r.ts))}）`).join('；');
+      add('ext_patch_content', 'ERROR', 8, `有 ${new Set(content.map((r) => r.shot)).size} 镜的台词/画面/提示词被直接改了，没走 IC 写稿`,
+        `${span(content)}：${head}${content.length > 12 ? `；另 ${content.length - 12} 条见 alerts.jsonl` : ''}。照规矩（Andy 20:20 定）写稿改稿只能走 IC；这几镜的稿算外部手写，出片前先查清是谁改的、依据是什么，再让 IC 重写。看门狗只报不改。`,
+        { ids: content.map((r) => r.id).sort() });
+    }
   }
 
   // 6. 第1–10集闸门
@@ -368,17 +385,25 @@ export function renderCurrentMd(alerts, hb, footer) {
   const L = ['# 看门狗：当前未解决的问题', '', `更新：${ptStr(new Date(hb.at))}（太平洋时间） · 第 ${hb.round} 轮 · 本轮 ${hb.ms} 毫秒`, ''];
   const arr = Object.entries(alerts).map(([key, a]) => ({ key, ...a })).sort((a, b) => (a.level === b.level ? 0 : a.level === 'ERROR' ? -1 : 1));
   if (!arr.length) L.push('现在没有问题。');
-  for (const a of arr) L.push(`- **${a.level === 'ERROR' ? '严重' : '注意'}** ${a.title}（从 ${ptHM(new Date(a.since))} 起）`, `  ${a.text}`, `  \`${a.key}\``);
+  for (const a of arr) L.push(`- **${a.level === 'ERROR' ? '严重' : a.level === 'INFO' ? '信息' : '注意'}** ${a.title}（从 ${ptMDHM(new Date(a.since))} 起）`, `  ${a.text}`, `  \`${a.key}\``);
   L.push('', footer || '看门狗：告警变化记录见 alerts.jsonl。');
   return L.join('\n') + '\n';
 }
 export function eventText(e) {
-  if (e.type === 'resolved' && e.key === 'gpu_idle') return `【看门狗·已恢复·信息】GPU 已恢复：有任务或链在跑了（${ptHM(new Date(e.at))}，gpu_idle）`;
+  const t = ptMDHM(new Date(e.at));
+  if (e.type === 'resolved' && e.key === 'gpu_idle') return `【看门狗 ${t}·已恢复】GPU 又开始出片了。`;
   const tag = e.type === 'resolved' ? '已解决' : e.type === 'changed' ? '有变化' : e.type === 'recovery' ? '自动恢复' : '新问题';
   const lv = e.level === 'ERROR' ? '严重' : e.level === 'INFO' ? '信息' : '注意';
-  return `【看门狗·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}（${ptHM(new Date(e.at))}，${e.key}）`;
+  return `【看门狗 ${t}·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}`;
 }
+// 不推到聊天的事件：补绑定（信息级，只在看门狗卡片里显示，避免刷屏）
+export function quietEvent(e) { return e.key === 'ext_bind'; }
 
+// 镜头字段 → 中文（看门狗消息用）
+const FIELD_ZH = { character_ids: '人物绑定', scene_ids: '场景绑定', prop_ids: '道具绑定', costume_ids: '服装绑定', age_ids: '年龄绑定', voice_ids: '音色绑定', media_ids: '素材绑定', dialogue: '台词', visual: '画面描述', video_prompt: '提示词', sub_shots: '分镜细节', camera: '运镜', duration: '时长', status: '状态', mode: '出片方式', idx: '镜号', chapter: '章节' };
+export function fieldZh(f) { return FIELD_ZH[f] || f; }
+// 只算「补绑定」的字段：只动这些的 PATCH 不当改稿
+export const BIND_FIELDS = new Set(['character_ids', 'scene_ids', 'prop_ids', 'costume_ids', 'age_ids', 'voice_ids', 'media_ids']);
 // 外部 PATCH：比较 change_logs 的 before/after，列出改了哪些字段（忽略 updated_at 等系统字段）
 const PATCH_IGNORE = new Set(['updated_at', 'created_at']);
 export function changedFields(before, after) {

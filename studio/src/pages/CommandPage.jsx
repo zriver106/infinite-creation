@@ -135,7 +135,7 @@ function WatchdogCard() {
   const age = d?.heartbeat?.at ? Math.round((Date.now() - new Date(d.heartbeat.at).getTime()) / 1000) : null;
   const stale = !d || age == null || age > (d.staleAfterSec || 25) || w.ok === false;
   const errs = (d?.alerts || []).filter((a) => a.level === 'ERROR');
-  const tone = stale || errs.length ? 'red' : (d?.alerts || []).length ? 'yellow' : 'green';
+  const tone = stale || errs.length ? 'red' : (d?.alerts || []).some((a) => a.level !== 'INFO') ? 'yellow' : 'green';
   const label = stale ? '看门狗停了' : errs.length ? `${errs.length} 个严重告警` : (d?.alerts || []).length ? `${d.alerts.length} 个注意` : '正常';
   const alerts = d?.alerts || [];
   const hb = d?.heartbeat ? `心跳 ${ptHM(d.heartbeat.at)}（${age} 秒前）· 第 ${d.heartbeat.round} 轮 · ${d.heartbeat.ms} 毫秒 · 每 ${d.heartbeat.intervalSec} 秒一轮 · 自动恢复 ${d.config?.recoveryMode === 'live' ? '开' : 'dry'}` : '没有心跳';
@@ -143,12 +143,12 @@ function WatchdogCard() {
     <section data-watchdog={tone} className="panel px-3 py-2" style={{ borderColor: tone === 'red' ? '#dc2626' : tone === 'green' ? '#16a34a' : undefined }}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <b className="text-sm">看门狗</b><Info t={hb + (w.error ? ` · 接口读不到：${w.error}` : '') + (stale ? ' · 心跳超过 2 个周期没更新，保活任务每分钟会拉起它' : '')} />
-        <Pill tone={tone}>{stale ? '看门狗停了' : alerts.length ? `${alerts.length} 告警` : '正常'}</Pill>
+        <Pill tone={tone}>{stale ? '看门狗停了' : errs.length ? `${errs.length} 个严重` : alerts.some((a) => a.level !== 'INFO') ? `${alerts.filter((a) => a.level !== 'INFO').length} 个注意` : '正常'}</Pill>{d?.heartbeat?.at ? <span className="text-[10px] text-[var(--fg-4)]">最近检查 {ptMDHM(d.heartbeat.at)}</span> : null}
         {/* 同类告警合并成一个标签 + ×N（例如补绑定的几十条「外部 PATCH 改镜头」），首屏不铺满 */}
-        {Object.values(alerts.reduce((g, a) => { const k = a.level + '|' + String(a.title || '').replace(/[（(][^）)]*[）)]\s*$/, '').replace(/\d+/g, 'N'); (g[k] = g[k] || { a, n: 0 }).n++; return g; }, {})).slice(0, 6).map(({ a, n }) => <span key={a.key} className={'rounded px-1.5 py-0.5 text-[11px] ' + (a.level === 'ERROR' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400')} title={`${a.text}（${ptHM(a.since)} 起）`}>{shortTxt(a.title, 26)}{n > 1 ? ` ×${n}` : ''}</span>)}
+        {Object.values(alerts.reduce((g, a) => { const k = a.level + '|' + String(a.title || '').replace(/[（(][^）)]*[）)]\s*$/, '').replace(/\d+/g, 'N'); (g[k] = g[k] || { a, n: 0 }).n++; return g; }, {})).slice(0, 6).map(({ a, n }) => <span key={a.key} className={'rounded px-1.5 py-0.5 text-[11px] ' + (a.level === 'ERROR' ? 'bg-red-500/15 text-red-400' : a.level === 'INFO' ? 'bg-sky-500/15 text-sky-400' : 'bg-amber-500/15 text-amber-400')} title={`${a.text}（${ptMDHM(a.since)} 起）`}>{ptHM(a.since)} {shortTxt(a.title, 26)}{n > 1 ? ` ×${n}` : ''}</span>)}
         <button type="button" className="ml-auto rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '原文'}</button>
       </div>
-      {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px]">{alerts.map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : 'text-amber-400'} title={a.key}>● {a.title}<span className="ml-1 text-[var(--fg-3)]">{a.text}（{ptHM(a.since)} 起）</span></div>)}</div> : null}
+      {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px]">{alerts.map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : a.level === 'INFO' ? 'text-sky-400' : 'text-amber-400'}><span className="mr-1 font-mono text-[var(--fg-3)]">{ptMDHM(a.since)}（{agoTxt(a.since)}）</span>{a.level === 'ERROR' ? '严重' : a.level === 'INFO' ? '信息' : '注意'} · {a.title}<div className="ml-4 text-[var(--fg-3)]">{a.text}</div></div>)}</div> : null}
       {open ? <div className="mt-2 flex flex-col gap-0.5 font-mono text-[10px] text-[var(--fg-3)]">
         {(d?.changes || []).map((c, i) => <div key={i}>{c.atPT} {c.msg}</div>)}
         <div className="mt-1 font-sans text-[11px]">自动恢复记录：</div>
@@ -159,6 +159,11 @@ function WatchdogCard() {
 }
 // ---------- 图形小件（总览 / GPU 面板共用） ----------
 const C = { green: '#16a34a', amber: '#d97706', red: '#dc2626', blue: '#2563eb', gray: '#6b7280' };
+// 「第N章#M」；没有镜号的任务（IC 生成新章节剧本分镜等）写任务名，不显示 null
+const JOB_ZH = { create: '生成剧本分镜', regenerate: '出片', 'prompt-write': '写提示词', export: '导出' };
+const shotLabel = (c) => { if (!c) return ''; const ch = c.ch != null ? `第${c.ch}章` : ''; if (c.num != null) return `${ch}#${c.num}`; return [ch, JOB_ZH[c.type] || c.type || 'IC 任务'].filter(Boolean).join(' · '); };
+const ptMDHM = (iso) => { if (!iso) return ''; const d = new Date(iso); const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value])); return `${p.month}-${p.day} ${p.hour}:${p.minute}`; };
+const agoTxt = (iso) => { if (!iso) return ''; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : m < 1440 ? `${Math.floor(m / 60)} 小时 ${m % 60} 分钟前` : `${Math.floor(m / 1440)} 天前`; };
 const shortTxt = (s, n) => { const t = String(s || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 const hm = (ms) => { if (ms == null) return '—'; const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
 const mmss = (sec) => { if (sec == null || !isFinite(sec)) return '—'; const s = Math.max(0, Math.round(sec)); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const r = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`; };
@@ -297,7 +302,7 @@ function Overview({ go }) {
         </section>
         <section className="panel p-3">
           <Head t="GPU" info="8189 队列 + ic.db 在跑任务 + 出片链进程" />
-          {g ? (g.busy ? <><div className="flex items-center gap-1.5"><Dot c={C.green} /><b className="text-lg">出片中</b></div><div className="text-sm">{g.current ? `第${g.current.ch}章#${g.current.num}` : ''}</div><div className="text-xs text-[var(--fg-3)]"><Ticker since={g.current?.startedAt} /></div></> : <><div className="flex items-center gap-1.5"><Dot c={C.gray} /><b className="text-lg">空闲</b></div><Big v={g.idleMin == null ? '—' : hm(g.idleMin * 60000)} /></>) : <NoData />}
+          {g ? (g.busy ? <><div className="flex items-center gap-1.5"><Dot c={C.green} /><b className="text-lg">出片中</b></div><div className="text-sm">{shotLabel(g.current)}</div><div className="text-xs text-[var(--fg-3)]"><Ticker since={g.current?.startedAt} /></div></> : <><div className="flex items-center gap-1.5"><Dot c={C.gray} /><b className="text-lg">空闲</b></div><Big v={g.idleMin == null ? '—' : hm(g.idleMin * 60000)} /></>) : <NoData />}
         </section>
       </div>
 
@@ -737,7 +742,7 @@ function GpuBar({ g }) {
           <div className="mb-1 text-[11px] text-[var(--fg-3)]">现在</div>
           {n.busy ? <>
             <div className="flex items-center gap-1.5"><Dot c={C.green} /><b className="text-base">出片中</b><span className="ml-auto text-sm"><Ticker since={cur?.startedAt} /></span></div>
-            {cur ? <div className="mt-0.5"><b className="text-lg">第{cur.ch}章#{cur.num}</b> <span className="text-[11px] text-[var(--fg-3)]" title={cur.job || ''}>{cur.label || cur.chain || (cur.job ? cur.job.slice(0, 8) : '')}</span></div> : null}
+            {cur ? <div className="mt-0.5"><b className="text-lg">{shotLabel(cur)}</b> <span className="text-[11px] text-[var(--fg-3)]" title={cur.job || ''}>{cur.label || cur.chain || (cur.job ? cur.job.slice(0, 8) : '')}</span></div> : null}
           </> : <div className="flex items-center gap-1.5"><Dot c={C.gray} /><b className="text-base">空闲</b><span className="ml-auto text-lg font-semibold" title={n.idleSince ? `上一条出片任务 ${ptHM(n.idleSince)} 结束` : ''}>{n.idleMin == null ? '—' : hm(n.idleMin * 60000)}</span></div>}
           <div className="mt-1.5 flex flex-wrap gap-1 text-[10px]">
             <span className="rounded bg-[var(--line)] px-1.5" title="8189 /queue：▶ running · ⏸ pending">8189 {n.comfy?.ok ? `▶${n.comfy.running} ⏸${n.comfy.pending}` : '查不到'}</span>
@@ -762,7 +767,7 @@ function GpuBar({ g }) {
       <div className="mt-2 rounded border border-[var(--line)] p-2" data-gpu-recent>
         <div className="mb-1 text-[11px] text-[var(--fg-3)]">最近出片</div>
         <div className="grid gap-x-4 sm:grid-cols-2">
-          {(g.recent || []).map((r, i) => <div key={i} className="flex items-center gap-2 border-t border-[var(--line)] py-0.5 tabular-nums"><span className="text-[var(--fg-3)]">{ptHM(r.at)}</span><b>第{r.ch}章#{r.num}</b><span>{r.dur != null ? `${r.dur}s` : '—'}</span><span style={{ color: r.selected ? C.green : 'var(--fg-4)' }}>{r.selected ? '✓' : '·'}</span><span className="ml-auto truncate text-[10px] text-[var(--fg-4)]" title={r.job ? `IC 任务 ${r.job}` : ''}>{r.source || ''}</span></div>)}
+          {(g.recent || []).map((r, i) => <div key={i} className="flex items-center gap-2 border-t border-[var(--line)] py-0.5 tabular-nums"><span className="text-[var(--fg-3)]">{ptHM(r.at)}</span><b>{shotLabel(r)}</b><span>{r.dur != null ? `${r.dur}s` : '—'}</span><span style={{ color: r.selected ? C.green : 'var(--fg-4)' }}>{r.selected ? '✓' : '·'}</span><span className="ml-auto truncate text-[10px] text-[var(--fg-4)]" title={r.job ? `IC 任务 ${r.job}` : ''}>{r.source || ''}</span></div>)}
           {!(g.recent || []).length ? <NoData /> : null}
         </div>
       </div>

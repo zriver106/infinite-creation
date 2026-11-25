@@ -430,7 +430,7 @@ async function computeMetrics() {
   // 正在做
   const doing = [];
   const nw = gpu?.now;
-  if (nw) doing.push(nw.busy && nw.current ? { kind: 'gpu', busy: true, text: `GPU：第${nw.current.ch}章#${nw.current.num} 出片中`, since: nw.current.startedAt, src: nw.current.label || nw.current.job } : { kind: 'gpu', busy: false, text: `GPU 空闲${nw.idleMin != null ? ` ${Math.round(nw.idleMin)} 分钟` : ''}`, since: nw.idleSince });
+  if (nw) doing.push(nw.busy && nw.current ? { kind: 'gpu', busy: true, text: `GPU：${shotLabel(nw.current)} 出片中`, since: nw.current.startedAt, src: nw.current.label || nw.current.job } : { kind: 'gpu', busy: false, text: `GPU 空闲${nw.idleMin != null ? ` ${Math.round(nw.idleMin)} 分钟` : ''}`, since: nw.idleSince });
   if (main && !main.error && main.lastLine) doing.push({ kind: 'main', text: `主会话：${main.lastLine}`, since: main.lastAt });
   return {
     capacity: cap.error ? { error: cap.error } : { windows: cap.windows, todayBar: cap.todayBar, hourly: cap.hourly, firstJobAt: cap.firstJobAt, note: '忙＝ic.db 重生成/新建任务 started_at–finished_at 并集（含所有项目，GPU 共用）；闲＝时段内其余时间；早于第一条任务记录的时段算「无数据」。出片＝shot_videos 新建条数（本项目）；有效＝当前 selected=1；无效＝未选用；失败＝本项目失败任务数；有效分钟＝选用视频对应镜头的计划时长（shots.duration，不是 ffprobe 实测）；每镜用时＝本项目重生成任务（结束−开始）中位数。灰片拦截、进了交付的有效条数库里没有字段 → 暂无数据' },
@@ -446,6 +446,9 @@ async function computeMetrics() {
   };
 }
 
+// 「第N章#M」；没有镜号/章号的任务（IC 生成新章节剧本分镜等）写成任务名，不再出现 null（Andy 11-25 截图）
+const JOB_ZH = { create: '生成剧本分镜', regenerate: '出片', 'prompt-write': '写提示词', export: '导出' };
+function shotLabel(c) { if (!c) return ''; const ch = c.ch != null ? `第${c.ch}章` : ''; if (c.num != null) return `${ch}#${c.num}`; return [ch, JOB_ZH[c.type] || c.type || 'IC 任务'].filter(Boolean).join(' · '); }
 export async function handleOverview(req, res, url, send) {
   const part = url.searchParams.get('part') || 'top';
   const fn = { top: computeTop, issues: computeIssues, sessions: computeSessions, trends: computeTrends, metrics: computeMetrics }[part];

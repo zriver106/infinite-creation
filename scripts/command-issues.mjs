@@ -389,7 +389,7 @@ async function gpuGlance({ info, procs, running, per, samples, superseded }) {
     current = { ch: chNum(running.current.ch), num: running.current.num, source: 'chain', chain: running.key, label: running.label, job: running.current.job || null, startedAt: at ? new Date(at).toISOString() : null, runMin: at ? Math.round((nowMs - at) / 6000) / 10 : null };
   } else if (icRun.length) {
     const j = icRun[0];
-    current = { ch: chNum(j.ch), num: j.idx, source: 'ic', chain: jmap.get(j.id) || null, label: jmap.get(j.id) || null, job: j.id, startedAt: j.startedAt ? new Date(j.startedAt).toISOString() : null, runMin: j.startedAt ? Math.round((nowMs - j.startedAt) / 6000) / 10 : null };
+    current = { ch: chNum(j.ch), num: j.idx, type: j.type, source: 'ic', chain: jmap.get(j.id) || null, label: jmap.get(j.id) || null, job: j.id, startedAt: j.startedAt ? new Date(j.startedAt).toISOString() : null, runMin: j.startedAt ? Math.round((nowMs - j.startedAt) / 6000) / 10 : null };
   }
   const busy = !!current || (comfy.ok && comfy.running > 0);
   const lastDone = dbOk ? db.lastGenFinished : null;

@@ -287,7 +287,7 @@ test('第二轮集成回放：19:49:23 rr1925 done → 20:16 前 GPU 空 27 分�
   // 链起来了（进程活着）→ 3 轮后「已恢复」
   fs.writeFileSync(procsF, JSON.stringify([{ pid: 4, ppid: 0, name: 'WmiPrvSE.exe' }, { pid: 70, ppid: 4, name: 'python.exe', cmd: 'python -u gpu_rr1955_chain.py --after=none', created: new Date().toISOString() }]));
   for (let i = 0; i < 3; i++) await runOnce(env);
-  assert.match(fs.readFileSync(path.join(WDx, 'alerts.jsonl'), 'utf8'), /GPU 已恢复/);
+  assert.match(fs.readFileSync(path.join(WDx, 'alerts.jsonl'), 'utf8'), /已恢复】GPU 又开始出片了/);
   assert.equal(q.bad || 0, 0);
 });
 
@@ -304,11 +304,23 @@ test('第三轮：外部 PATCH 告警（列章/镜号/shot_id/时间/字段，�
   assert.deepEqual(L.changedFields('{"a":1,"visual":"x","updated_at":1}', '{"a":1,"visual":"y","updated_at":2,"dialogue":"d"}'), ['visual', 'dialogue']);
   const rows = [{ id: 'c1', ts: NOW - 60000, ch: '第6章', idx: 10, shot: 'c465fcc3-aaaa', fields: ['visual', 'dialogue'] }];
   const f = L.evaluate(snap({ extPatches: [{ group: 'b1', rows }] }));
-  assert.equal(f.length, 1); assert.equal(f[0].key, 'ext_patch:b1'); assert.equal(f[0].level, 'ERROR');
-  assert.match(f[0].text, /第6章#10（c465fcc3，18:56，改了 visual\/dialogue）/); assert.match(f[0].text, /铁律/);
+  assert.equal(f.length, 1); assert.equal(f[0].key, 'ext_patch_content'); assert.equal(f[0].level, 'ERROR');
+  assert.match(f[0].text, /第6章#10 改了画面描述、台词（\d\d:\d\d）/); assert.match(f[0].text, /只能走 IC/);
+  assert.match(f[0].text, /^\d\d-\d\d \d\d:\d\d/, '带日期时间');
   const f2 = L.evaluate(snap({ extPatches: [{ group: 'b1', rows: [...rows, { id: 'c2', ts: NOW, ch: '第6章', idx: 6, shot: 'ed266bb2', fields: ['sub_shots'] }] }] }));
   assert.notEqual(f2[0].sig, f[0].sig, '同批新增一条 → 变化推一次');
   assert.equal(L.evaluate(snap({ extPatches: [{ group: 'b1', rows: [...rows] }] }))[0].sig, f[0].sig, '同样的 id 集合 → 不重复推');
+});
+
+test('2026-11-25：只改绑定的 PATCH 合成一条「信息」，不推聊天；改台词的仍是严重；过点超 12 小时的截止不再报', () => {
+  const b = (id, idx, ch = '第41章') => ({ id, ts: NOW - 30000, ch, idx, shot: 'shot-' + id, fields: ['character_ids', 'costume_ids'] });
+  const f = L.evaluate(snap({ extPatches: [{ group: 'g1', rows: [b('a', 1), b('b', 2)] }, { group: 'g2', rows: [b('c', 3, '第43章')] }, { group: 'g3', rows: [{ id: 'd', ts: NOW, ch: '第30章', idx: 1, shot: 'shot-d', fields: ['dialogue'] }] }] }));
+  const bind = f.find((x) => x.key === 'ext_bind'); const cont = f.find((x) => x.key === 'ext_patch_content');
+  assert.equal(bind.level, 'INFO'); assert.match(bind.title, /补了 3 镜的绑定/); assert.match(bind.text, /第41章 2 镜、第43章 1 镜/); assert.match(bind.text, /人物绑定、服装绑定/);
+  assert.equal(cont.level, 'ERROR'); assert.match(cont.text, /第30章#1 改了台词/);
+  assert.equal(L.quietEvent({ key: 'ext_bind' }), true); assert.equal(L.quietEvent({ key: 'ext_patch_content' }), false);
+  const old = new Date(NOW - 13 * 3600000).toISOString();
+  assert.equal(L.evaluate(snap({ deadlines: [{ id: 'x', name: '旧事', at: old, done: false }] })).filter((x) => x.key.startsWith('deadline')).length, 0);
 });
 
 test('第三轮：gpu_idle / 闸门告警把作废链标「已作废（外部稿），不应起」', () => {
@@ -337,12 +349,12 @@ test('第三轮集成：只读 fixture ic.db；首轮只定起点，之后新 PA
   assert.deepEqual(await evs(), [], '首轮只定起点，不翻旧账（old 那条不报）');
   ins('n1', Date.now() + 1000, 'PATCH /api/projects/:id/shots/:sid', 'b1', 10);
   ins('x1', Date.now() + 1000, 'POST /api/projects/:id/shots', 'b1', 11);
-  const e1 = await evs(); assert.equal(e1.length, 1); assert.equal(e1[0].type, 'new'); assert.match(e1[0].text, /第6章#10（shot-n1，.*改了 visual）/); assert.ok(!/#11/.test(e1[0].text), '非 PATCH 不算');
+  const e1 = await evs(); assert.equal(e1.length, 1); assert.equal(e1[0].type, 'new'); assert.match(e1[0].text, /第6章#10 改了画面描述/); assert.ok(!/#11/.test(e1[0].text), '非 PATCH 不算');
   assert.deepEqual(await evs(), [], '同一条不重复推');
   ins('n2', Date.now() + 2000, 'PATCH /api/projects/:id/shots/:sid', 'b1', 12);
-  const e2 = await evs(); assert.equal(e2.length, 1); assert.equal(e2[0].type, 'changed'); assert.match(e2[0].text, /2 条/);
+  const e2 = await evs(); assert.equal(e2.length, 1); assert.equal(e2[0].type, 'changed'); assert.match(e2[0].title, /有 2 镜/); assert.match(e2[0].text, /第6章#12/);
   const md = fs.readFileSync(path.join(WDx, '当前告警.md'), 'utf8');
-  assert.match(md, /有外部会话用 PATCH 直接改了镜头/); assert.match(md, /^自动拉链：dry（只记录「将会执行的命令」，不起链）。白名单：空/m);
+  assert.match(md, /台词\/画面\/提示词被直接改了/); assert.match(md, /^自动拉链：dry（只记录「将会执行的命令」，不起链）。白名单：空/m);
   const st = JSON.parse(fs.readFileSync(path.join(WDx, 'state.json'), 'utf8')); assert.deepEqual(Object.keys(st.patch.seen).sort(), ['n1', 'n2']);
   assert.equal(w.prepare('select count(*) n from change_logs').get().n, 4, '看门狗没写库');
 });

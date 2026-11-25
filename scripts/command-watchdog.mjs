@@ -388,7 +388,7 @@ async function round() {
     }
   }
   state.recoveries = (state.recoveries || []).filter((h) => now - Date.parse(h.at) < 24 * 3600000);
-  for (const e of events) appendLine(path.join(WD, 'alerts.jsonl'), { ...e, atPT: L.ptStr(new Date(e.at)), msg: L.eventText(e) });
+  for (const e of events) appendLine(path.join(WD, L.quietEvent(e) ? 'alerts_quiet.jsonl' : 'alerts.jsonl'), { ...e, atPT: L.ptStr(new Date(e.at)), msg: L.eventText(e) });
   state.round = (state.round || 0) + 1;
   const ms = Date.now() - t0;
   const hb = { at: nowIso, atPT: L.ptStr(new Date(now)), pid: process.pid, round: state.round, ms, intervalSec: cfg.intervalSec, test: TEST, alerts: Object.keys(state.alerts).length, errorAlerts: Object.values(state.alerts).filter((a) => a.level === 'ERROR').length, events: events.length, recoveryMode: cfg.recovery.mode, summary, errors: errs };
