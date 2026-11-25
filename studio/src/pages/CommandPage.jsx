@@ -74,13 +74,15 @@ const Pre = ({ children, max = 360 }) => (
 );
 
 // ---------------- 总览（按 总览设计稿.md 46A57B04） ----------------
-function usePoll(url, sec) {
+function usePoll(url, sec, refreshKey = 0) {
   const [st, setSt] = useState({ data: null, at: null, error: null, ok: null, loading: true });
   useEffect(() => {
-    let alive = true, timer = null;
+    let alive = true, timer = null, first = refreshKey > 0;
     const tick = async () => {
       try {
-        const r = await fetch(url, { cache: 'no-store' }); const j = await r.json();
+        const u = first ? url + (url.includes('?') ? '&' : '?') + 'force=1' : url; first = false;
+        if (alive) setSt((s) => ({ ...s, loading: true }));
+        const r = await fetch(u, { cache: 'no-store' }); const j = await r.json();
         if (!alive) return;
         setSt((s) => ({ data: j.data ?? s.data, at: j.at, ok: j.ok, error: j.ok ? null : (j.error || '读取失败'), loading: false }));
       } catch (e) { if (alive) setSt((s) => ({ ...s, ok: false, error: String(e.message || e), loading: false })); }
@@ -88,8 +90,17 @@ function usePoll(url, sec) {
     };
     tick();
     return () => { alive = false; clearTimeout(timer); }; // 离开页面停止轮询
-  }, [url, sec]);
+  }, [url, sec, refreshKey]);
   return st;
+}
+// 总览选的项目（记在本机浏览器里）；默认是后台的默认项目
+function useOverviewProject() {
+  const list = usePoll('/api/command/ov?part=projects', 300);
+  const [pid, setPid] = useState(() => { try { return localStorage.getItem('cmd.overview.project') || ''; } catch { return ''; } });
+  const projects = list.data?.projects || [];
+  const cur = projects.find((x) => x.id === pid) || projects.find((x) => x.isDefault) || null;
+  const choose = (id) => { setPid(id); try { localStorage.setItem('cmd.overview.project', id); } catch {} };
+  return { projects, cur, id: cur?.id || '', choose };
 }
 const ptHM = (s) => (s ? new Date(s).toLocaleTimeString('zh-CN', { timeZone: 'America/Los_Angeles', hour12: false, hour: '2-digit', minute: '2-digit' }) : '—');
 const pctTxt = (x, d = 1) => (x == null ? '—' : (x * 100).toFixed(d) + '%');
@@ -233,8 +244,11 @@ function Legend({ items }) { return <div className="flex flex-wrap gap-2 text-[1
 
 // ---------- 总览（首屏：产能 → 大数字 → 正在做 → 看门狗 → 用量 / 规则 / 问题归类；其余折叠） ----------
 function Overview({ go }) {
-  const top = usePoll('/api/command/ov?part=top', 30);
-  const mt = usePoll('/api/command/ov?part=metrics', 30);
+  const proj = useOverviewProject();
+  const [rk, setRk] = useState(0);
+  const q = proj.id ? `&project=${proj.id}` : '';
+  const top = usePoll('/api/command/ov?part=top' + q, 30, rk);
+  const mt = usePoll('/api/command/ov?part=metrics' + q, 30, rk);
   const [more, setMore] = useState(false);
   const m = mt.data; const d = top.data;
   const cap = m?.capacity; const W = cap?.windows || [];
@@ -244,8 +258,18 @@ function Overview({ go }) {
   return (
     <div className="flex flex-col gap-3" data-overview="v2">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <h2 className="text-base font-semibold">我在城市用交易系统修仙 · 总览</h2>
-        <span className="flex items-center gap-2 text-[11px] text-[var(--fg-3)]">{ptHM(new Date().toISOString())} PT<Info t={`首屏数据采样 ${ptHM(mt.at)}，每 30 秒刷新${mt.error ? `；暂时读不到：${mt.error}（保留上次值）` : ''}${m?.errors?.length ? `；部分数据源失败：${m.errors.join('；')}` : ''}`} />{mt.error || m?.errors?.length ? <Dot c={C.red} /> : null}</span>
+        <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold">
+          <select value={proj.id} onChange={(e) => { proj.choose(e.target.value); setMore(false); }} className="max-w-[320px] rounded border border-[var(--line)] bg-transparent px-1 py-0.5 text-base font-semibold" title="选项目（记在这台电脑的浏览器里）" data-ov-project>
+            {proj.projects.length ? proj.projects.map((x) => <option key={x.id} value={x.id}>{x.name}{x.shots ? `（${x.shots} 镜）` : '（还没有镜头）'}</option>) : <option value="">{m?.project?.name || '我在城市用交易系统修仙V2'}</option>}
+          </select>
+          <span>· 总览</span>
+          {m?.project && !m.project.hasIssues ? <span className="text-[11px] font-normal text-[var(--fg-4)]">这个项目还没有问题表和交付目录统计，只显示 IC 里的出片数据</span> : null}
+        </h2>
+        <span className="flex items-center gap-2 text-[11px] text-[var(--fg-3)]">
+          <span title="页面每 30 秒自动取一次新数据，有新出片、新问题会自己更新">更新于 {mt.at ? ptHM(mt.at) : '—'} · 每 30 秒自动刷新</span>
+          <button type="button" onClick={() => setRk((x) => x + 1)} disabled={mt.loading || top.loading} className="rounded border border-[var(--line)] px-2 py-0.5 disabled:opacity-50" data-ov-refresh>{mt.loading || top.loading ? '刷新中…' : '刷新'}</button>
+          <Info t={`首屏数据采样 ${ptHM(mt.at)}，每 30 秒自动刷新；点「刷新」立刻重新计算${mt.error ? `；暂时读不到：${mt.error}（保留上次值）` : ''}${m?.errors?.length ? `；部分数据源失败：${m.errors.join('；')}` : ''}`} />{mt.error || m?.errors?.length ? <Dot c={C.red} /> : null}
+        </span>
       </div>
 
       {/* 产能 */}
@@ -289,12 +313,12 @@ function Overview({ go }) {
       {/* 大数字 */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <section className="panel col-span-2 p-3">
-          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span>{m.episodes.extra?.length ? <span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]" title={'交付目录里还有 30 集以外的文件：' + m.episodes.extra.map((n) => 'EP' + n).join('、')}>+{m.episodes.extra.map((n) => 'EP' + n).join(' ')}</span> : null}</span> : null} />
+          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span>{m.episodes.extra?.length ? <span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]" title={`交付目录里还有 ${m.episodes.total} 集以外的文件：` + m.episodes.extra.map((n) => 'EP' + n).join('、')}>+{m.episodes.extra.map((n) => 'EP' + n).join(' ')}</span> : null}</span> : null} />
           {m?.episodes ? <><EpGrid grid={m.episodes.grid} /><div className="mt-1.5"><Legend items={[['已交付', C.green], ['2K', C.blue], ['有未完成问题', C.amber], ['未交付', 'var(--line)']]} /></div></> : <NoData />}
         </section>
         <section className="panel p-3">
           <Head t="问题表" info="问题描述.txt（只读）逐条状态" />
-          {m?.issues && !m.issues.error ? <><Big v={m.issues.todo + m.issues.doing} unit={`/ ${m.issues.total} 未完成`} /><div className="mt-2"><Stack segs={ISS_SEG(m.issues)} h={14} /></div><div className="mt-1"><Legend items={[[`待修改 ${m.issues.todo}`, C.red], [`修改中 ${m.issues.doing}`, C.amber], [`完成 ${m.issues.done}`, C.green]]} /></div></> : <NoData />}
+          {m?.issues?.none ? <span className="text-[11px] text-[var(--fg-4)]">{m.issues.note}</span> : m?.issues && !m.issues.error ? <><Big v={m.issues.todo + m.issues.doing} unit={`/ ${m.issues.total} 未完成`} /><div className="mt-2"><Stack segs={ISS_SEG(m.issues)} h={14} /></div><div className="mt-1"><Legend items={[[`待修改 ${m.issues.todo}`, C.red], [`修改中 ${m.issues.doing}`, C.amber], [`完成 ${m.issues.done}`, C.green]]} /></div></> : <NoData />}
         </section>
         <section className="panel p-3">
           <Head t="今天出片" info="ic.db shot_videos 今天（太平洋时间）新建条数" />
@@ -350,7 +374,7 @@ function Overview({ go }) {
       </details>
       <details className="panel p-3" onToggle={(e) => setMore(e.currentTarget.open)}>
         <summary className="cursor-pointer text-sm font-semibold">更多明细（原总览各卡）</summary>
-        {more ? <div className="mt-3">{d ? <OverviewMore go={go} top={top} /> : <NoData />}</div> : null}
+        {more ? <div className="mt-3">{d ? <OverviewMore go={go} top={top} q={q} rk={rk} /> : <NoData />}</div> : null}
       </details>
     </div>
   );
@@ -378,10 +402,10 @@ function RulesCard({ d, go }) {
   );
 }
 // 原总览的明细卡（数据和写法不变），收进折叠、展开时才挂载
-function OverviewMore({ go, top }) {
-  const iss = usePoll('/api/command/ov?part=issues', 60);
-  const ses = usePoll('/api/command/ov?part=sessions', 60);
-  const tr = usePoll('/api/command/ov?part=trends', 600);
+function OverviewMore({ go, top, q = '', rk = 0 }) {
+  const iss = usePoll('/api/command/ov?part=issues' + q, 60, rk);
+  const ses = usePoll('/api/command/ov?part=sessions', 60, rk);
+  const tr = usePoll('/api/command/ov?part=trends' + q, 600, rk);
   const d = top.data;
   if (!d) return null;
   const T = d.films.totalChapters;

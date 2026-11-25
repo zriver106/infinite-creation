@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 import { gpuQueue, issuesForOverview, writeLead, logCacheStats, issuesCfg, issueItems, readLogLines } from './command-issues.mjs';
 import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE, DECISION_RULES, RELEASE_FIELDS, checkRelease, GATE_MD5 } from './command-rules.mjs';
 function releaseChecks() { const a = (issuesCfg() || {}).approvals || {}; return Object.entries(a).map(([key, r]) => ({ key, at: r && r.at || null, by: r && (r.decider || r.by) || null, ...checkRelease(r) })); }
@@ -21,10 +22,10 @@ const CHAT_REG = path.join(M, 'Claude工作区', '指挥聊天测试', 'sessions
 const DISPATCH_DIR = path.join(M, 'Claude工作区', '指挥', '派工');
 const TZ = 'America/Los_Angeles';
 
-function runDb(mode, timeoutMs) {
+function runDb(mode, timeoutMs, project = PROJECT) {
   return new Promise((resolve) => {
     const t0 = Date.now();
-    const w = new Worker(path.join(__dirname, 'command-overview-db.mjs'), { workerData: { dbPath: DB, project: PROJECT, mode, now: Date.now() } });
+    const w = new Worker(path.join(__dirname, 'command-overview-db.mjs'), { workerData: { dbPath: DB, project, mode, now: Date.now() } });
     const tm = setTimeout(() => { w.terminate(); resolve({ error: `ic.db 查询超时（>${timeoutMs / 1000} 秒）` }); }, timeoutMs);
     w.once('message', (m) => { clearTimeout(tm); m.elapsedMs = Date.now() - t0; resolve(m); w.terminate(); });
     w.once('error', (e) => { clearTimeout(tm); resolve({ error: String(e.message || e) }); });
@@ -64,20 +65,38 @@ const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y)
 const r1 = (x) => (x == null ? null : Math.round(x * 10) / 10);
 
 // 各区缓存（内存）：失败时保留上次值并标采样时间
-const cache = { top: null, issues: null, sessions: null, trends: null, metrics: null };
+// 2026-11-25（Andy：总览要能选项目）：缓存按「区 + 项目」分开；sessions 与项目无关
+const cache = {};
 const inflight = {};
 const TTL = { top: 30e3, issues: 60e3, sessions: 60e3, trends: 600e3, metrics: 30e3 };
-async function getPart(name, fn) {
-  const c = cache[name];
-  if (c && Date.now() - c.computedAt < TTL[name] - 2000) return c;
-  if (inflight[name]) return inflight[name]; // 轮询不重叠
-  inflight[name] = (async () => {
-    try { const data = await fn(); cache[name] = { ok: true, computedAt: Date.now(), at: new Date().toISOString(), data }; }
-    catch (e) { cache[name] = { ...(c || { data: null }), ok: false, error: String(e.message || e), failedAt: new Date().toISOString(), computedAt: Date.now() }; }
-    finally { delete inflight[name]; }
-    return cache[name];
+async function getPart(name, fn, project = PROJECT, force = false) {
+  const key = name === 'sessions' ? name : name + '|' + project;
+  const c = cache[key];
+  if (!force && c && Date.now() - c.computedAt < TTL[name] - 2000) return c;
+  if (force && c && Date.now() - c.computedAt < 5000) return c; // 手动刷新连点：5 秒内复用
+  if (inflight[key]) return inflight[key]; // 轮询不重叠
+  inflight[key] = (async () => {
+    try { const data = await fn(project); cache[key] = { ok: true, computedAt: Date.now(), at: new Date().toISOString(), data }; }
+    catch (e) { cache[key] = { ...(c || { data: null }), ok: false, error: String(e.message || e), failedAt: new Date().toISOString(), computedAt: Date.now() }; }
+    finally { delete inflight[key]; }
+    return cache[key];
   })();
-  return inflight[name];
+  return inflight[key];
+}
+// 项目列表与项目信息（只读打开 ic.db）；问题表、桌面交付目录目前只有默认项目有
+const openRo = () => new DatabaseSync('file:' + DB.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
+function projectList() {
+  let db; try { db = openRo();
+    return db.prepare("select p.id, p.name, (select count(*) from shots s where s.project_id = p.id) shots, (select count(distinct s2.chapter) from shots s2 where s2.project_id = p.id and coalesce(s2.chapter, '') <> '') chapters from projects p order by (p.id = ?) desc, p.updated_at desc").all(PROJECT).map((r) => ({ id: r.id, name: r.name, shots: r.shots, chapters: r.chapters, isDefault: r.id === PROJECT, hasIssues: r.id === PROJECT }));
+  } finally { try { db?.close(); } catch {} }
+}
+function projectInfo(project) {
+  let db; try { db = openRo();
+    const r = db.prepare('select name, context from projects where id = ?').get(project); if (!r) return null;
+    let dd = null; try { dd = JSON.parse(r.context || '{}').delivery_dir || null; } catch {}
+    const chapters = db.prepare("select count(distinct chapter) n from shots where project_id = ? and coalesce(chapter, '') <> ''").get(project).n; // chapters 表行数不等于集数，按镜头实际用到的章数
+    return { name: r.name, deliveryDir: project === PROJECT ? path.join(P, '交付') : dd, chapters };
+  } finally { try { db?.close(); } catch {} }
 }
 
 const est = (value, samples, window, method) => ({ value, estimate: true, samples, window, method });
@@ -131,15 +150,15 @@ function priorityCheck(gpu, iss, edits, missingEps, partial) {
   return { decisionRules: DECISION_RULES, releaseFields: RELEASE_FIELDS, gateMd5: GATE_MD5, releaseChecks: releaseChecks(), rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, activeChains: active.map((c) => ({ key: c.key, label: c.label, state: c.state, pid: c.pid || null, remaining: remOf(c).length })), ignoredChains: ignored, violations, ok: !violations.some((v) => v.level === 'red'), note: '只提醒，系统不改链、不改稿、不提交。判顺序只看在跑和已挂好的链' + (active.length ? `（${active.map((c) => c.label).join('、')}）` : '（现在没有）') + (ignored.length ? `；不参与判断：${ignored.join('、')}` : '') + (editNote ? `；${editNote}` : '') };
 }
 
-async function computeTop() {
-  const t0 = Date.now();
-  const [db, gpu] = await Promise.all([runDb('core', 12000), gpuQueue()]);
+async function computeTop(project = PROJECT) {
+  const t0 = Date.now(); const isMain = project === PROJECT;
+  const [db, gpu] = await Promise.all([runDb('core', 12000, project), gpuQueue()]);
   const errs = [];
   if (db.error) errs.push('ic.db：' + db.error);
   const dl = db.deliveryDir ? await deliveries(db.deliveryDir) : { error: '项目没有配置交付目录' };
   if (dl.error) errs.push(dl.error);
-  let iss = null; try { iss = await issuesForOverview(); } catch (e) { errs.push('问题描述：' + e.message); }
-  let lead = null; try { lead = await writeLead(gpu); } catch (e) { lead = { error: e.message }; }
+  let iss = null; if (isMain) { try { iss = await issuesForOverview(); } catch (e) { errs.push('问题描述：' + e.message); } }
+  let lead = null; if (isMain) { try { lead = await writeLead(gpu); } catch (e) { lead = { error: e.message }; } } else lead = { error: '只统计默认项目' };
   const total = db.totalChapters || null;
   const exported = (dl.files || []).filter((f) => !f.error);
   const exportedEps = exported.map((f) => f.ep);
@@ -175,7 +194,7 @@ async function computeTop() {
   const ses = await getPart('sessions', computeSessions).catch(() => null);
   const andy = await pendingAndy();
   return {
-    projectName: db.projectName || '我在城市用交易系统修仙V2', projectId: PROJECT,
+    projectName: db.projectName || (isMain ? '我在城市用交易系统修仙V2' : project), projectId: project, hasIssues: isMain,
     films: {
       totalChapters: total, chaptersWithShots: db.chaptersWithShots ?? null,
       allShotsDone: db.allDone ? { n: db.allDone.length, list: db.allDone, partial: db.partial } : none('ic.db 读数'),
@@ -237,7 +256,8 @@ async function pendingAndy() {
   return { items, real: items.filter((x) => !x.example).length, note: '来源：派工目录里「需要Andy点头」且未批的单；目前只有示例单，人工整理的待定事项还没录成派工单' };
 }
 
-async function computeIssues() {
+async function computeIssues(project = PROJECT) {
+  if (project !== PROJECT) return { none: true, note: '这个项目还没有问题表（问题描述.txt 目前只对应「我在城市用交易系统修仙V2」）', eps: [] };
   const iss = await issuesForOverview();
   const lk = new Map((iss.linked || []).map((e) => [e.no, e])); return { at: new Date().toISOString(), file: iss.file, md5: iss.md5, icReadAt: iss.icReadAt, icError: iss.icError, fixing: iss.fixing, eps: iss.eps.map((e) => { const L = lk.get(e.no); const open = L ? L.items : []; return { no: e.no, items: e.items, done: e.done, doing: e.doing, todo: e.todo, stage: e.stage?.stage || '未知', chain: e.stage?.chain || null, eta: e.stage?.eta || null, shots: e.stage?.shots || [], open: open.length, fixingN: open.filter((i) => i.links?.fixing).length, linkedN: open.filter((i) => i.links?.shots?.length).length, linkedShots: [...new Set(open.flatMap((i) => (i.links?.shots || []).map((x) => x.idx)))].sort((a, b) => a - b), drift: L?.timeline?.drift ?? null }; }) };
 }
@@ -264,8 +284,8 @@ async function computeSessions() {
   return { registered: reg.length, registeredOpen: registered.length, registryFile: chatRegistryFile, registryMissing: false, chat: registered, active: [...working, ...others], working: working.length, unregistered: others.length, note: '「在工作」= 登记表里正在回复或开着的辅助会话 + 没登记但 10 分钟内会话文件有新内容的会话（后者不等于正在执行）。登记表只覆盖指挥系统聊天里开的会话；外部的 Claude/Codex 会话（如各 Bot 自己的）还没登记' };
 }
 
-async function computeTrends() {
-  const db = await runDb('trends', 20000);
+async function computeTrends(project = PROJECT) {
+  const db = await runDb('trends', 20000, project);
   if (db.error) throw new Error(db.error);
   return { days: db.days, elapsedMs: db.elapsedMs };
 }
@@ -407,20 +427,20 @@ function classifyIssues(eps) {
   return rows;
 }
 
-async function computeMetrics() {
-  const errs = [];
+async function computeMetrics(project = PROJECT) {
+  const errs = []; const isMain = project === PROJECT;
+  const info = projectInfo(project) || { name: project, deliveryDir: null, chapters: 0 };
   const [cap, gpu, items, main, rules] = await Promise.all([
-    runDb('capacity', 20000),
+    runDb('capacity', 20000, project),
     gpuQueue().catch((e) => { errs.push('GPU：' + e.message); return null; }),
-    issueItems().catch((e) => { errs.push('问题描述：' + e.message); return null; }),
+    isMain ? issueItems().catch((e) => { errs.push('问题描述：' + e.message); return null; }) : Promise.resolve(null),
     mainSession(),
     rulesNow(),
   ]);
   if (cap.error) errs.push('ic.db：' + cap.error);
   // 章集进度：交付\EP*.mp4 + 问题描述各集状态；2K＝ffprobe 行高 ≥1440（总览 top 已探测过的缓存）
-  const delivDir = path.join(P, '交付');
-  const dl = await deliveries(delivDir);
-  const total = 30;
+  const dl = info.deliveryDir ? await deliveries(info.deliveryDir) : { files: [], error: '这个项目没有配置交付目录' };
+  const total = isMain ? 30 : (info.chapters || 0);
   const deliv = new Map((dl.files || []).filter((f) => !f.error).map((f) => [f.ep, f]));
   const openBy = new Map(); const anyBy = new Map();
   for (const e of items?.eps || []) { openBy.set(e.no, (openBy.get(e.no) || 0) + e.items.filter((i) => i.status !== 'done').length); anyBy.set(e.no, (anyBy.get(e.no) || 0) + e.items.length); }
@@ -433,10 +453,11 @@ async function computeMetrics() {
   if (nw) doing.push(nw.busy && nw.current ? { kind: 'gpu', busy: true, text: `GPU：${shotLabel(nw.current)} 出片中`, since: nw.current.startedAt, src: nw.current.label || nw.current.job } : { kind: 'gpu', busy: false, text: `GPU 空闲${nw.idleMin != null ? ` ${Math.round(nw.idleMin)} 分钟` : ''}`, since: nw.idleSince });
   if (main && !main.error && main.lastLine) doing.push({ kind: 'main', text: `主会话：${main.lastLine}`, since: main.lastAt });
   return {
+    project: { id: project, name: info.name, isMain, hasIssues: isMain, deliveryDir: info.deliveryDir },
     capacity: cap.error ? { error: cap.error } : { windows: cap.windows, todayBar: cap.todayBar, hourly: cap.hourly, firstJobAt: cap.firstJobAt, note: '忙＝ic.db 重生成/新建任务 started_at–finished_at 并集（含所有项目，GPU 共用）；闲＝时段内其余时间；早于第一条任务记录的时段算「无数据」。出片＝shot_videos 新建条数（本项目）；有效＝当前 selected=1；无效＝未选用；失败＝本项目失败任务数；有效分钟＝选用视频对应镜头的计划时长（shots.duration，不是 ffprobe 实测）；每镜用时＝本项目重生成任务（结束−开始）中位数。灰片拦截、进了交付的有效条数库里没有字段 → 暂无数据' },
     doing,
     episodes: { total, grid, delivered: [...deliv.keys()].filter((n) => n >= 1 && n <= total).length, extra: [...deliv.keys()].filter((n) => n < 1 || n > total).sort((a, b) => a - b), twoK: grid.filter((g) => g.twoK).length, note: '交付\\EP*.mp4 存在＝已交付；问题描述该集还有未完成条目＝有未完成问题（优先显示）；其余＝未开始/未交付。2K＝ffprobe 短边 ≥1440' },
-    issues: items ? { ...st, total: st.todo + st.doing + st.done, classes: classifyIssues(items.eps), md5: items.md5, note: '问题描述.txt（只读）逐条状态；归类是关键词归类（按顺序取第一个命中的类），不准确的会落到别的类或「其他」' } : { error: '问题描述读不到' },
+    issues: !isMain ? { none: true, note: '这个项目还没有问题表' } : items ? { ...st, total: st.todo + st.doing + st.done, classes: classifyIssues(items.eps), md5: items.md5, note: '问题描述.txt（只读）逐条状态；归类是关键词归类（按顺序取第一个命中的类），不准确的会落到别的类或「其他」' } : { error: '问题描述读不到' },
     todayVideos: gpu?.today?.ok ? gpu.today.videos : null,
     gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current } : null,
     tokens: tokensNow(),
@@ -451,8 +472,11 @@ const JOB_ZH = { create: '生成剧本分镜', regenerate: '出片', 'prompt-wri
 function shotLabel(c) { if (!c) return ''; const ch = c.ch != null ? `第${c.ch}章` : ''; if (c.num != null) return `${ch}#${c.num}`; return [ch, JOB_ZH[c.type] || c.type || 'IC 任务'].filter(Boolean).join(' · '); }
 export async function handleOverview(req, res, url, send) {
   const part = url.searchParams.get('part') || 'top';
+  if (part === 'projects') { try { return send(res, 200, { part, ok: true, at: new Date().toISOString(), data: { projects: projectList(), defaultId: PROJECT } }); } catch (e) { return send(res, 200, { part, ok: false, error: String(e.message || e), data: null }); } }
   const fn = { top: computeTop, issues: computeIssues, sessions: computeSessions, trends: computeTrends, metrics: computeMetrics }[part];
   if (!fn) return send(res, 404, { error: 'unknown part' });
-  const r = await getPart(part, fn);
+  const qp = url.searchParams.get('project');
+  const project = qp && /^[0-9a-f-]{36}$/i.test(qp) ? qp.toLowerCase() : PROJECT;
+  const r = await getPart(part, fn, project, url.searchParams.get('force') === '1');
   return send(res, 200, { part, ok: r.ok, at: r.at, failedAt: r.failedAt || null, error: r.error || null, refreshSec: TTL[part] / 1000, data: r.data });
 }
