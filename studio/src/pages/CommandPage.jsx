@@ -282,7 +282,7 @@ function Overview({ go }) {
       {/* 大数字 */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <section className="panel col-span-2 p-3">
-          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span></span> : null} />
+          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span>{m.episodes.extra?.length ? <span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]" title={'交付目录里还有 30 集以外的文件：' + m.episodes.extra.map((n) => 'EP' + n).join('、')}>+{m.episodes.extra.map((n) => 'EP' + n).join(' ')}</span> : null}</span> : null} />
           {m?.episodes ? <><EpGrid grid={m.episodes.grid} /><div className="mt-1.5"><Legend items={[['已交付', C.green], ['2K', C.blue], ['有未完成问题', C.amber], ['未交付', 'var(--line)']]} /></div></> : <NoData />}
         </section>
         <section className="panel p-3">

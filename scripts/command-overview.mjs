@@ -435,7 +435,7 @@ async function computeMetrics() {
   return {
     capacity: cap.error ? { error: cap.error } : { windows: cap.windows, todayBar: cap.todayBar, hourly: cap.hourly, firstJobAt: cap.firstJobAt, note: '忙＝ic.db 重生成/新建任务 started_at–finished_at 并集（含所有项目，GPU 共用）；闲＝时段内其余时间；早于第一条任务记录的时段算「无数据」。出片＝shot_videos 新建条数（本项目）；有效＝当前 selected=1；无效＝未选用；失败＝本项目失败任务数；有效分钟＝选用视频对应镜头的计划时长（shots.duration，不是 ffprobe 实测）；每镜用时＝本项目重生成任务（结束−开始）中位数。灰片拦截、进了交付的有效条数库里没有字段 → 暂无数据' },
     doing,
-    episodes: { total, grid, delivered: deliv.size, twoK: grid.filter((g) => g.twoK).length, note: '交付\\EP*.mp4 存在＝已交付；问题描述该集还有未完成条目＝有未完成问题（优先显示）；其余＝未开始/未交付。2K＝ffprobe 短边 ≥1440' },
+    episodes: { total, grid, delivered: [...deliv.keys()].filter((n) => n >= 1 && n <= total).length, extra: [...deliv.keys()].filter((n) => n < 1 || n > total).sort((a, b) => a - b), twoK: grid.filter((g) => g.twoK).length, note: '交付\\EP*.mp4 存在＝已交付；问题描述该集还有未完成条目＝有未完成问题（优先显示）；其余＝未开始/未交付。2K＝ffprobe 短边 ≥1440' },
     issues: items ? { ...st, total: st.todo + st.doing + st.done, classes: classifyIssues(items.eps), md5: items.md5, note: '问题描述.txt（只读）逐条状态；归类是关键词归类（按顺序取第一个命中的类），不准确的会落到别的类或「其他」' } : { error: '问题描述读不到' },
     todayVideos: gpu?.today?.ok ? gpu.today.videos : null,
     gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current } : null,
