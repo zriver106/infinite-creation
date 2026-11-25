@@ -144,7 +144,8 @@ function WatchdogCard() {
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <b className="text-sm">看门狗</b><Info t={hb + (w.error ? ` · 接口读不到：${w.error}` : '') + (stale ? ' · 心跳超过 2 个周期没更新，保活任务每分钟会拉起它' : '')} />
         <Pill tone={tone}>{stale ? '看门狗停了' : alerts.length ? `${alerts.length} 告警` : '正常'}</Pill>
-        {alerts.map((a) => <span key={a.key} className={'rounded px-1.5 py-0.5 text-[11px] ' + (a.level === 'ERROR' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400')} title={`${a.text}（${ptHM(a.since)} 起）`}>{shortTxt(a.title, 30)}</span>)}
+        {/* 同类告警合并成一个标签 + ×N（例如补绑定的几十条「外部 PATCH 改镜头」），首屏不铺满 */}
+        {Object.values(alerts.reduce((g, a) => { const k = a.level + '|' + String(a.title || '').replace(/[（(][^）)]*[）)]\s*$/, '').replace(/\d+/g, 'N'); (g[k] = g[k] || { a, n: 0 }).n++; return g; }, {})).slice(0, 6).map(({ a, n }) => <span key={a.key} className={'rounded px-1.5 py-0.5 text-[11px] ' + (a.level === 'ERROR' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400')} title={`${a.text}（${ptHM(a.since)} 起）`}>{shortTxt(a.title, 26)}{n > 1 ? ` ×${n}` : ''}</span>)}
         <button type="button" className="ml-auto rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '原文'}</button>
       </div>
       {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px]">{alerts.map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : 'text-amber-400'} title={a.key}>● {a.title}<span className="ml-1 text-[var(--fg-3)]">{a.text}（{ptHM(a.since)} 起）</span></div>)}</div> : null}
