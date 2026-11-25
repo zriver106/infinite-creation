@@ -1,10 +1,10 @@
 {
  "skill": "sd-storyboard-engine",
  "set": "sd-storyboard-engine",
- "version": "rules-548ff27782",
+ "version": "rules-3b637a3fba",
  "file": "规则全文.md",
- "file_md5": "C5220530CDCD6F30BE2714B690D53589",
- "total_lines": 572,
+ "file_md5": "2C083F57505F798CBA0F5CDA28E4B944",
+ "total_lines": 574,
  "base_end_line": 469,
  "base_chars": 29504,
  "base_budget_chars": 40000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 2108,
-   "checksum": "99C9A213"
+   "checksum": "AFE4D837"
   },
   {
    "id": "S01",
@@ -184,12 +184,12 @@
    "title": "S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切",
    "tier": "volume",
    "start": 473,
-   "end": 572,
+   "end": 574,
    "when": [
     "rare"
    ],
-   "chars": 8031,
-   "checksum": "E62ED923"
+   "chars": 8229,
+   "checksum": "83939D2E"
   }
  ]
 }

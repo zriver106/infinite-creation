@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-840124ec5b",
+ "version": "rules-6642009edd",
  "file": "规则全文.md",
- "file_md5": "A1C3E3B0E63A3E99617520139A07B249",
- "total_lines": 784,
+ "file_md5": "1B36FEADFE3EF4B489E5ABE2D4B62BB1",
+ "total_lines": 787,
  "base_end_line": 235,
- "base_chars": 39845,
+ "base_chars": 39913,
  "base_budget_chars": 40000,
  "budget_chars": 40000,
  "section_max_chars": 20000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 2444,
-   "checksum": "F3110E5F"
+   "checksum": "CC96DC89"
   },
   {
    "id": "A",
@@ -68,8 +68,8 @@
    "when": [
     "always"
    ],
-   "chars": 4344,
-   "checksum": "0C01EF81"
+   "chars": 4412,
+   "checksum": "CAA053AC"
   },
   {
    "id": "F",
@@ -126,31 +126,31 @@
    "title": "F5 多人同场多视角定义图（_MV）",
    "tier": "volume",
    "start": 395,
-   "end": 409,
+   "end": 410,
    "when": [
     "multi"
    ],
-   "chars": 2561,
-   "checksum": "43E00D3D"
+   "chars": 2959,
+   "checksum": "C8B30F55"
   },
   {
    "id": "H1",
    "title": "H1 镜头、运镜与打戏节奏",
    "tier": "volume",
-   "start": 411,
-   "end": 458,
+   "start": 412,
+   "end": 461,
    "when": [
     "motion"
    ],
-   "chars": 6235,
-   "checksum": "CB028CD4"
+   "chars": 6667,
+   "checksum": "70BC4226"
   },
   {
    "id": "H2",
    "title": "H2 Q 版、特效、流行语与谐音（冷门）",
    "tier": "volume",
-   "start": 460,
-   "end": 524,
+   "start": 463,
+   "end": 527,
    "when": [
     "expression"
    ],
@@ -161,8 +161,8 @@
    "id": "H2G",
    "title": "H2G 开场画面与光幕位置（每镜必读）",
    "tier": "volume",
-   "start": 526,
-   "end": 538,
+   "start": 529,
+   "end": 541,
    "when": [
     "always"
    ],
@@ -173,8 +173,8 @@
    "id": "J",
    "title": "J 资产与绑定",
    "tier": "volume",
-   "start": 540,
-   "end": 584,
+   "start": 543,
+   "end": 587,
    "when": [
     "binding",
     "scene"
@@ -186,8 +186,8 @@
    "id": "L",
    "title": "L 现实逻辑与剧情",
    "tier": "volume",
-   "start": 586,
-   "end": 614,
+   "start": 589,
+   "end": 617,
    "when": [
     "logic"
    ],
@@ -198,8 +198,8 @@
    "id": "B2",
    "title": "B2 生成模式、全参考与多段（冷门）",
    "tier": "volume",
-   "start": 616,
-   "end": 657,
+   "start": 619,
+   "end": 660,
    "when": [
     "rare"
    ],
@@ -210,8 +210,8 @@
    "id": "Q",
    "title": "Q 审片",
    "tier": "volume",
-   "start": 659,
-   "end": 784,
+   "start": 662,
+   "end": 787,
    "when": [
     "rare"
    ],

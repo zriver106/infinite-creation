@@ -4,7 +4,7 @@ description: "【套装内部技能 · 全流程用户通常无需直接调用�
 agent_created: true
 version: "7.4.26"
 ---
-<!-- rulebook:generated rules-548ff27782 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-3b637a3fba 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（sd-storyboard-engine）：使用方法
 
@@ -28,10 +28,10 @@ version: "7.4.26"
 | S11 | S11 七、故事板图（面板链） | 基础（已在上面，必读） | L379–L435 | 每次 |
 | S12 | S12 七·二、SHOT_TEXT 分镜线稿卡（可选产出 · 给人看） | 基础（已在上面，必读） | L437–L454 | 每次 |
 | S13 | S13 八、规则库索引 | 基础（已在上面，必读） | L456–L468 | 每次 |
-| S14 | S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切 | 分册 | L473–L572 | 用到时再查 |
+| S14 | S14 机位运镜与一镜到底（2026-11-16 新增 · MiniMax H3 / IC 分镜层 · 治「打斗看不清、运镜乱切 | 分册 | L473–L574 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：99C9A213
+本段校验码：AFE4D837
 
 ## S01 引言
 
