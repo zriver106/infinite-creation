@@ -241,9 +241,17 @@ export function evaluate(snap) {
     const bind = rows.filter((r) => r.fields.length && r.fields.every((f) => BIND_FIELDS.has(f)));
     const edited = rows.filter((r) => !bind.includes(r));
     // 改完紧接着交了 IC 重写的（r.ic）不算外部改稿：只记一条「信息」，红色只留给真没走 IC 的（Andy 11-25：红色的问题要重视，这个情况不是问题）
-    const viaIc = edited.filter((r) => r.ic);
+    const movedIc = edited.filter((r) => r.ic && r.moved);
+    const viaIc = edited.filter((r) => r.ic && !r.moved);
     const content = edited.filter((r) => !r.ic);
     const span = (rs) => rs.length ? `${ptMDHM(new Date(rs[0].ts))}${rs.length > 1 && ptHM(new Date(rs.at(-1).ts)) !== ptHM(new Date(rs[0].ts)) ? '–' + ptHM(new Date(rs.at(-1).ts)) : ''}` : '';
+    if (movedIc.length) {
+      const byCh = {}; for (const r of movedIc) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
+      const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} #${[...set].sort((x, y) => x - y).join('、#')}`).join('；');
+      add('ext_patch_moved', 'INFO', 8, `${new Set(movedIc.map((r) => r.shot)).size} 镜把画面说明里原有的台词搬进了台词栏，已交 IC 重写（不涉及剧情）`,
+        `${span(movedIc)}：${chTxt}。台词栏新写的每一句，原文本来就在这一镜的画面说明里，只是挪了位置，随后交 IC 按规则重写提示词，属于合法操作，不用处理。`,
+        { n: movedIc.length, last: movedIc.at(-1).ts });
+    }
     if (viaIc.length) {
       // 主会话 seq1750：先改台词/画面/提示词、接着交 IC 重写的，是黄色「提醒」（不推聊天），卡片写清哪几镜、改了什么、接着交的 IC 任务 id
       const head = viaIc.slice(0, 12).map((r) => `${r.ch || '?'}#${r.idx ?? '?'} 改了${r.fields.filter((f) => !BIND_FIELDS.has(f)).slice(0, 4).map(fieldZh).join('、')}（${ptHM(new Date(r.ts))}）`).join('；');
@@ -409,7 +417,7 @@ export function eventText(e) {
   return `【看门狗 ${t}·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}`;
 }
 // 不推到聊天的事件：补绑定（信息级，只在看门狗卡片里显示，避免刷屏）
-export function quietEvent(e) { return e.key === 'ext_bind' || e.key === 'ext_patch_ic' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
+export function quietEvent(e) { return e.key === 'ext_bind' || e.key === 'ext_patch_ic' || e.key === 'ext_patch_moved' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
 
 // 镜头字段 → 中文（看门狗消息用）
 const FIELD_ZH = { character_ids: '人物绑定', scene_ids: '场景绑定', prop_ids: '道具绑定', costume_ids: '服装绑定', age_ids: '年龄绑定', voice_ids: '音色绑定', media_ids: '素材绑定', dialogue: '台词', visual: '画面描述', video_prompt: '提示词', sub_shots: '分镜细节', camera: '运镜', duration: '时长', status: '状态', mode: '出片方式', idx: '镜号', chapter: '章节' };
@@ -421,4 +429,15 @@ const PATCH_IGNORE = new Set(['updated_at', 'created_at']);
 export function changedFields(before, after) {
   let a = {}, b = {}; try { b = JSON.parse(before || '{}') || {}; } catch {} try { a = JSON.parse(after || '{}') || {}; } catch {}
   return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !PATCH_IGNORE.has(k) && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+}
+
+// 台词栏新写的句子是不是「搬」来的：去掉「角色（OS）：」这类说话人前缀后，每一句都能在改之前这一镜的画面说明/分镜/旧台词里原样找到；只改了 dialogue 才算
+export function dialogueMovedFromText(beforeJson, afterJson, fields) {
+  if (!fields || !fields.length || fields.some((f) => f !== 'dialogue')) return false;
+  let b = {}, a = {}; try { b = JSON.parse(beforeJson || '{}'); a = JSON.parse(afterJson || '{}'); } catch { return false; }
+  const norm = (t) => String(t || '').replace(/[\s「」“”"'‘’]/g, '');
+  const pool = norm(['visual', 'sub_shots', 'video_prompt', 'dialogue', 'notes', 'narration'].map((k) => (typeof b[k] === 'string' ? b[k] : JSON.stringify(b[k] ?? ''))).join('\n'));
+  const lines = String(a.dialogue || '').split(/\r?\n/).map((l) => l.replace(/^[^：:]{1,20}[（(][^）)]*[）)]\s*[：:]|^[^：:（(]{1,12}[：:]/, '').trim()).filter(Boolean);
+  if (!lines.length) return false;
+  return lines.every((l) => pool.includes(norm(l)));
 }

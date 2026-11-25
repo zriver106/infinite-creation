@@ -376,3 +376,17 @@ test('2026-11-25（Andy：红色要重视，这种不是问题）：改台词后
   const all = L.evaluate(snap({ extPatches: [{ group: 'g', rows: [r('a', 1, 'rewritten')] }] }));
   assert.ok(!all.some((x) => x.level === 'ERROR'), '全部走了 IC → 没有红色');
 });
+
+test('2026-11-25（Andy：只是把台词搬进台词栏、不涉及剧情的合法）：搬来的台词交 IC 后是蓝色信息；新写的台词交 IC 后是黄色', () => {
+  const before = JSON.stringify({ visual: '江澈站在镜前。旁白（后期配音）：江澈（OS）：这次……没上次那么难熬了。', dialogue: '' });
+  assert.equal(L.dialogueMovedFromText(before, JSON.stringify({ dialogue: '江澈（OS）：这次……没上次那么难熬了。' }), ['dialogue']), true);
+  assert.equal(L.dialogueMovedFromText(before, JSON.stringify({ dialogue: '江澈（OS）：我要当首富。' }), ['dialogue']), false, '原文里没有的句子不算搬');
+  assert.equal(L.dialogueMovedFromText(before, JSON.stringify({ dialogue: '江澈（OS）：这次……没上次那么难熬了。', visual: 'x' }), ['dialogue', 'visual']), false, '同时改了画面不算');
+  const r = (id, idx, moved) => ({ id, ts: NOW - 20000, ch: '第30章', idx, shot: 'shot-' + id, fields: ['dialogue'], ic: 'rewritten', icJob: 'abcd1234ef', moved });
+  const f = L.evaluate(snap({ extPatches: [{ group: 'g', rows: [r('a', 1, true), r('b', 3, true), r('c', 4, false)] }] }));
+  const mv = f.find((x) => x.key === 'ext_patch_moved'); const ic = f.find((x) => x.key === 'ext_patch_ic');
+  assert.equal(mv.level, 'INFO'); assert.match(mv.title, /2 镜把画面说明里原有的台词搬进了台词栏/); assert.match(mv.text, /第30章 #1、#3/);
+  assert.equal(ic.level, 'WARN'); assert.match(ic.title, /1 镜被直接改了稿/);
+  assert.ok(L.quietEvent({ key: 'ext_patch_moved', type: 'new' }));
+  assert.ok(!f.some((x) => x.level === 'ERROR'));
+});
