@@ -62,6 +62,7 @@ after(() => { if (!server) return; return new Promise((r) => server.close(r)); }
 
 function mkPendingProject() {
   const p = core.Projects.create({ name: '分镜收尾开关测试', auto_script: false });
+  core.Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 本组测 IC 自带生图时的入队路径（系统缺省已改为 Muse 出图）
   const title = '第1章';
   const ch = core.Chapters.list(p.id).find((c) => c.title === title) || core.Chapters.create(p.id, { title, script: 'x' });
   const char = core.Assets.create(p.id, { category: 'character', name: '测试角色甲' });

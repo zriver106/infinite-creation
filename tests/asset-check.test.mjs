@@ -26,7 +26,7 @@ before(async () => {
     'C045_B,C045,,char,4S销售经理,B,,,11,,,miss,,,',
     'S001,S001,,scene,4S店,,,,11,,,miss,,,',
   ].join('\n'));
-  fs.writeFileSync(path.join(tmp, 'config.json'), JSON.stringify({ llm: { baseUrl: 'http://127.0.0.1:9/v1', model: 'mock' }, comfyui: { url: 'http://127.0.0.1:9' } }));
+  fs.writeFileSync(path.join(tmp, 'config.json'), JSON.stringify({ llm: { baseUrl: 'http://127.0.0.1:9/v1', model: 'mock' }, comfyui: { url: 'http://127.0.0.1:9' }, generation: { assetImageSource: 'ic' } }));
   process.env.IC_DATA_DIR = path.join(tmp, 'data');
   process.env.IC_CONFIG = path.join(tmp, 'config.json');
   core = await import('../lib/core/index.js');

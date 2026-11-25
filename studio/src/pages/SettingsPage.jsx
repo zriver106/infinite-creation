@@ -579,6 +579,23 @@ export default function SettingsPage({ onBack, publicMode = false }) {
 
           {active === 'comfyui' ? (
             <Section icon={Server} title="ComfyUI 服务" description="生成图片与视频的执行端">
+              <div className="grid gap-1.5">
+                <div className="text-[12px] font-medium text-[var(--fg-2)]">资产出图方式</div>
+                <Segmented
+                  value={cfg.generation?.assetImageSource === 'ic' ? 'ic' : 'muse'}
+                  onChange={(v) => setCfg({ ...cfg, generation: { ...(cfg.generation || {}), assetImageSource: v } })}
+                  options={[
+                    { value: 'muse', label: 'Muse 出图（默认）' },
+                    { value: 'ic', label: 'IC 自带生图' },
+                  ]}
+                />
+                <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
+                  {cfg.generation?.assetImageSource === 'ic'
+                    ? 'IC 按资产提示词自己文生图 / 图生图、换装、年龄变体（上游原流程）。'
+                    : '人物、场景、道具、服装图由 Muse 在 IC 外制作入库，由我们的 Agent 绑定；IC 不生图、不改图、不换装，缺的图只记进缺件单。音色照常由 IC 生成。项目里单独设过「缺件单 / 自动」的，按项目设置。'}
+                </p>
+              </div>
+              <div className="hairline" />
               <Segmented
                 value={isRunningHub ? 'runninghub' : hwMode}
                 onChange={switchMode}

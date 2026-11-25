@@ -1499,6 +1499,7 @@ test('create_asset 工具：变体幂等去重按 parent_id 区分（不同角�
 
 test('generate_asset_from_reference 工具：变体缺 parent_id 在落盘/出图前就被拒', async () => {
   const p = mkProject('参考生成变体项目');
+  Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 测 IC 自带生图路径的参数校验（系统缺省已改为 Muse 出图）
   const ch = Assets.create(p.id, { category: 'character', name: '小明' });
   const ref = core.ReferenceImages.create(p.id, { name: 'r', image_path: 'references/r.png', mode: 'reference' });
   const ctx = createToolRuntime({ projectId: p.id });

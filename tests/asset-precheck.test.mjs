@@ -34,7 +34,7 @@ before(async () => {
     'S906,S906,,scene,梅园牡丹厅,,scene/S906.png,,,ok,final,,,,',
     'S907,S907,,scene,龙津门岗,,scene/S907.png,,,ok,final,,,,',
   ].join('\n'));
-  fs.writeFileSync(path.join(tmp, 'config.json'), JSON.stringify({ llm: { baseUrl: 'http://127.0.0.1:9/v1', model: 'mock' }, comfyui: { baseUrl: 'http://127.0.0.1:9', url: 'http://127.0.0.1:9' } }));
+  fs.writeFileSync(path.join(tmp, 'config.json'), JSON.stringify({ generation: { assetImageSource: 'ic' }, llm: { baseUrl: 'http://127.0.0.1:9/v1', model: 'mock' }, comfyui: { baseUrl: 'http://127.0.0.1:9', url: 'http://127.0.0.1:9' } }));
   process.env.IC_DATA_DIR = path.join(tmp, 'data');
   process.env.IC_CONFIG = path.join(tmp, 'config.json');
   delete process.env.IC_ASSET_PRECHECK; delete process.env.IC_ASSET_FINAL_MAP;

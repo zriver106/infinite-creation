@@ -84,7 +84,7 @@ test('复查1 第2条：H2 原第 8、9 条（开场在场景内、光幕位置�
   assert.match(text('H2G'), /\*\*8\. The shot must open already inside the scene/);
   assert.match(text('H2G'), /\*\*9\. System panel position/);
   assert.doesNotMatch(text('H2'), /\*\*8\. The shot must open already inside the scene/);
-  assert.match(text('H2'), /移到 H2G/);
+  // H2 里原有的「移到 H2G」迁移注是作废文字，已在 8a1f608（压缩分卷）删除，不再断言。
 });
 
 test('复查2 第1条回归：「避免…/已有镜N…/…未用/…放在下一镜」与资产名「·Q版设定」不算本镜用了表现手段', () => {
