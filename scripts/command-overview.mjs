@@ -87,7 +87,7 @@ async function getPart(name, fn, project = PROJECT, force = false) {
 const openRo = () => new DatabaseSync('file:' + DB.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
 function projectList() {
   let db; try { db = openRo();
-    return db.prepare("select p.id, p.name, (select count(*) from shots s where s.project_id = p.id) shots, (select count(distinct s2.chapter) from shots s2 where s2.project_id = p.id and coalesce(s2.chapter, '') <> '') chapters from projects p order by (p.id = ?) desc, p.updated_at desc").all(PROJECT).map((r) => ({ id: r.id, name: r.name, shots: r.shots, chapters: r.chapters, isDefault: r.id === PROJECT, hasIssues: r.id === PROJECT }));
+    return db.prepare("select p.id, p.name, (select count(*) from shots s where s.project_id = p.id) shots, (select count(distinct s2.chapter) from shots s2 where s2.project_id = p.id and coalesce(s2.chapter, '') <> '') chapters from projects p order by (p.id = ?) desc, p.updated_at desc").all(PROJECT).filter((r) => r.shots > 0 || r.id === PROJECT).map((r) => ({ id: r.id, name: r.name, shots: r.shots, chapters: r.chapters, isDefault: r.id === PROJECT, hasIssues: r.id === PROJECT })); // 只列有镜头的项目（Andy 11-25：项目就 4 个；工具用的空项目不列）
   } finally { try { db?.close(); } catch {} }
 }
 function projectInfo(project) {
@@ -267,6 +267,22 @@ async function computeIssues(project = PROJECT) {
 
 let deps = {};
 export function overviewInit(d) { deps = d; }
+// 桌面会话的名字：jsonl 里最后一条 {"type":"custom-title","customTitle":…}；按文件大小增量扫，只找这一种行
+const titleCache = new Map(); // file -> { size, title }
+export async function sessionTitle(file) {
+  const st = await fsp.stat(file).catch(() => null); if (!st) return null;
+  const c = titleCache.get(file) || { size: 0, title: null };
+  if (st.size === c.size) return c.title;
+  const start = st.size > c.size ? c.size : 0;
+  await new Promise((resolve) => {
+    let rest = '';
+    fs.createReadStream(file, { start, encoding: 'utf8' }).on('data', (chunk) => {
+      const lines = (rest + chunk).split('\n'); rest = lines.pop();
+      for (const l of lines) if (l.includes('"custom-title"')) { try { const j = JSON.parse(l); if (j.customTitle) c.title = String(j.customTitle).slice(0, 40); } catch {} }
+    }).on('end', resolve).on('error', resolve);
+  });
+  c.size = st.size; titleCache.set(file, c); return c.title;
+}
 async function computeSessions() {
   // 会话登记表：聊天里的主会话/辅助会话（身份确定）；另外列出没登记、但最近 10 分钟会话文件有新内容的 Claude/Codex 会话（参考）
   await chatInit();
@@ -278,9 +294,10 @@ async function computeSessions() {
   for (const provider of ['claude', 'codex']) {
     const l = await deps.listSessions(provider, 1).catch(() => null);
     for (const s of (l?.sessions || []).filter((x) => new Date(x.mtime).getTime() >= since && ![...regCli].some((c) => String(x.id).includes(c))).slice(0, 8)) {
-      let last = null;
-      if (s.size < 40 * 1024 * 1024) { try { const r = await deps.readSession(provider, s.id, -1, 5); const m = (r.messages || []).filter((x) => x.role === 'assistant' || x.role === 'user').pop(); if (m) last = { role: m.role, text: String(m.text || '').replace(/\s+/g, ' ').slice(0, 40), ts: m.ts }; } catch {} }
-      others.push({ kind: 'file', provider, id: s.id, project: s.project, mtime: s.mtime, size: s.size, last, state: '最近 10 分钟有动静（未登记）' });
+      // 2026-11-25（Andy：信息太多、太难看）：只给会话名、类别、最后动静时间，不再带对话原文
+      const name = provider === 'claude' ? await sessionTitle(path.join(CLAUDE_PROJECTS, s.id)) : null;
+      const isIc = /infinite-creation-data-ag/i.test(s.project || '');
+      others.push({ kind: 'file', provider, id: s.id, project: s.project, mtime: s.mtime, size: s.size, name: name || (isIc ? 'IC 内部写稿 Agent' : (provider === 'codex' ? 'Codex 会话 ' : 'Claude 会话 ') + String(s.id).split('/').pop().slice(0, 8)), group: isIc ? 'ic' : 'desk', state: '最近 10 分钟有动静' });
     }
   }
   const working = registered.filter((r) => r.status === 'busy' || r.role === 'aux');
@@ -462,7 +479,7 @@ async function computeMetrics(project = PROJECT) {
     episodes: { total, grid, delivered: [...deliv.keys()].filter((n) => n >= 1 && n <= total).length, extra: [...deliv.keys()].filter((n) => n < 1 || n > total).sort((a, b) => a - b), twoK: grid.filter((g) => g.twoK).length, note: '交付\\EP*.mp4 存在＝已交付；问题描述该集还有未完成条目＝有未完成问题（优先显示）；其余＝未开始/未交付。2K＝ffprobe 短边 ≥1440' },
     issues: !isMain ? { none: true, note: '这个项目还没有问题表' } : items ? { ...st, total: st.todo + st.doing + st.done, classes: classifyIssues(items.eps), md5: items.md5, note: '问题描述.txt（只读）逐条状态；归类是关键词归类（按顺序取第一个命中的类），不准确的会落到别的类或「其他」' } : { error: '问题描述读不到' },
     todayVideos: gpu?.today?.ok ? gpu.today.videos : null,
-    gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current } : null,
+    gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current, recent: (gpu?.recent || []).slice(0, 8) } : null,
     tokens: tokensNow(),
     spend: main.error ? { error: main.error } : { windows: main.spend, note: main.note },
     rules,

@@ -16,7 +16,7 @@ import { handleIssues } from './command-issues.mjs';
 import { handleChat, chatRegistry, chatInit } from './command-chat.mjs';
 import { handleApiKey } from './command-apikey.mjs';
 import { handleTrial, trialInit } from './command-codex-trial.mjs';
-import { handleOverview, overviewInit } from './command-overview.mjs';
+import { handleOverview, overviewInit, sessionTitle } from './command-overview.mjs';
 import { handleWatchdog, watchdogInit } from './command-watchdog-api.mjs';
 
 const PORT = Number(process.env.CMD_PREVIEW_PORT || 4620);
@@ -219,7 +219,11 @@ async function listSessions(provider, days) {
       for (const f of files) {
         if (!f.endsWith('.jsonl')) continue;
         const fs2 = await fsp.stat(path.join(full, f)).catch(() => null);
-        if (fs2 && fs2.mtimeMs >= since) out.push({ id: d.name + '/' + f, project: d.name, size: fs2.size, mtime: fs2.mtime.toISOString() });
+        if (fs2 && fs2.mtimeMs >= since) {
+          // 2026-11-25：IC 自己起的写稿 Agent 归一组；桌面会话带上会话名（jsonl 里的 custom-title），页面不再只列文件名
+          const ic = /infinite-creation-data-agent/i.test(d.name);
+          out.push({ id: d.name + '/' + f, project: d.name, size: fs2.size, mtime: fs2.mtime.toISOString(), group: ic ? 'ic' : 'desk', name: ic ? null : await sessionTitle(path.join(full, f)).catch(() => null) });
+        }
       }
     }));
   } else {

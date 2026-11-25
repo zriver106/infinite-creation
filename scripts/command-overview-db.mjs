@@ -102,8 +102,9 @@ try {
   } else if (mode === 'gpu') {
     // GPU 面板：IC 里在跑/排队的任务、今天出片、最近 8 条出片（带来源任务 id）、最近 12 小时每小时条数、今天任务并集忙闲
     const shotOf = db.prepare('select chapter,idx,duration from shots where id=?');
-    const act = q(db, 'jobs active', "select id,type,status,project_id,detail,started_at,updated_at from jobs where status in ('running','queued','pending') order by started_at");
-    out.active = act.map((j) => { let d = {}; try { d = JSON.parse(j.detail || '{}') || {}; } catch {} const s = d.shot_id ? shotOf.get(d.shot_id) : null; return { id: j.id, type: j.type, status: j.status, project: j.project_id, startedAt: Number(j.started_at) || null, shotId: d.shot_id || null, ch: s?.chapter || null, idx: s?.idx ?? d.idx ?? null }; });
+    const act = q(db, 'jobs active', "select id,type,status,project_id,detail,checkpoint,started_at,updated_at from jobs where status in ('running','queued','pending') order by started_at");
+    // 出片任务（regenerate）的镜头 id 在 checkpoint.subject 里，detail 是一句话；写稿任务的章在 checkpoint.chapter（2026-11-25：GPU 卡只显示「出片」读不到镜号）
+    out.active = act.map((j) => { let d = {}, cp = {}; try { d = JSON.parse(j.detail || '{}') || {}; } catch {} try { cp = JSON.parse(j.checkpoint || '{}') || {}; } catch {} const sid = d.shot_id || (/^[0-9a-f-]{36}$/.test(String(cp.subject || '')) ? cp.subject : null); const s = sid ? shotOf.get(sid) : null; return { id: j.id, type: j.type, status: j.status, project: j.project_id, startedAt: Number(j.started_at) || null, shotId: sid, ch: s?.chapter || cp.chapter || null, idx: s?.idx ?? d.idx ?? null }; });
     out.lastGenFinished = Number(q(db, 'jobs last done', "select max(finished_at) m from jobs where type in ('regenerate','create') and finished_at is not null")[0].m) || null;
     const sv = q(db, 'shot_videos today', 'select sv.shot_id,sv.created_at,sv.selected,s.chapter,s.idx,s.duration from shot_videos sv left join shots s on s.id=sv.shot_id where sv.project_id=? and sv.created_at>=?', project, Math.min(T0, now - 12 * 3600e3));
     const today = sv.filter((v) => Number(v.created_at) >= T0);
