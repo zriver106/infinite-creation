@@ -97,3 +97,22 @@ test('出片口：缺省只报不拦；打开缺绑拦截后 A/B 拦这一镜', 
   ctx.cfg.generation.bindingCheckBlock = true;
   await assert.rejects(() => tools.prepareShotForRender(ctx, shot.id, { render: true }), (e) => e.code === 'BINDING_MISSING');
 });
+
+test('基础形象豁免：豁免段内的人物不报 B/C，段外照报', () => {
+  const { p, jc, yz, scene } = mk();
+  const shot = (idx, chapter = '第26章') => ({ project_id: p.id, idx, chapter, character_ids: [jc.id, yz.id], scene_ids: [scene.id], costume_ids: [] });
+  const { out, errors } = bc.normalizeCostumeBase([
+    { character_id: jc.id.slice(0, 8), chapter: 26, from: 1, to: 3 },
+    { character_id: yz.id, chapter: '第26章' },
+    { character_id: 'abc', chapter: 26 },
+  ]);
+  assert.equal(out.length, 2); assert.equal(errors.length, 1);
+  core.Projects.setContextKey(p.id, bc.COSTUME_BASE_KEY, out);
+  const inRange = bc.checkShotBindings(shot(2));
+  assert.ok(!inRange.issues.some((i) => i.kind === 'costume'), '甲 1–3 镜、乙全章都豁免');
+  const outRange = bc.checkShotBindings(shot(5));
+  assert.ok(outRange.issues.some((i) => i.level === 'B' && i.kind === 'costume' && /甲/.test(i.detail)), '甲第 5 镜不在豁免段，照报 B');
+  assert.ok(!outRange.issues.some((i) => /乙/.test(i.detail) && i.kind === 'costume'));
+  const otherCh = bc.checkShotBindings(shot(2, '第27章'));
+  assert.ok(otherCh.issues.some((i) => /乙/.test(i.detail) && i.level === 'C'), '别的章不豁免');
+});

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import { NextResponse } from 'next/server';
 import { Projects, withWriteContext } from '@/lib/core/index.js';
 import { readAssetCheckSettings, ASSET_MODE_KEY, ASSET_GATE_KEY, ASSET_ROOT_KEY, ASSET_BINDING_KEY } from '@/lib/agent/asset-check.js';
+import { COSTUME_BASE_KEY, normalizeCostumeBase } from '@/lib/agent/binding-check.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function GET(_req, { params }) {
   const { id } = await params;
   const p = Projects.get(id);
   if (!p) return NextResponse.json({ error: '项目不存在' }, { status: 404 });
-  return NextResponse.json(readAssetCheckSettings(p));
+  return NextResponse.json({ ...readAssetCheckSettings(p), costume_base: (p.context || {})[COSTUME_BASE_KEY] || [] });
 }
 
 export async function PUT(req, { params }) {
@@ -41,9 +42,16 @@ export async function PUT(req, { params }) {
     if (r && !fs.existsSync(r)) return NextResponse.json({ error: 'root 目录不存在：' + r }, { status: 400 });
     writes.push([ASSET_ROOT_KEY, r]);
   }
+  // 2026-11-25：基础形象豁免段（整份替换），缺绑检查据此不报 B/C。格式见 lib/agent/binding-check.js 文件头。
+  if (body.costume_base !== undefined) {
+    const { out, errors } = normalizeCostumeBase(body.costume_base);
+    if (errors.length) return NextResponse.json({ error: errors.slice(0, 10).join('；') }, { status: 400 });
+    writes.push([COSTUME_BASE_KEY, out]);
+  }
   if (!writes.length) return NextResponse.json({ error: '没有要保存的项' }, { status: 400 });
   return withWriteContext('PUT /api/projects/:id/asset-settings', () => {
     for (const [k, v] of writes) Projects.setContextKey(id, k, v);
-    return NextResponse.json(readAssetCheckSettings(Projects.get(id)));
+    const np = Projects.get(id);
+    return NextResponse.json({ ...readAssetCheckSettings(np), costume_base: (np.context || {})[COSTUME_BASE_KEY] || [] });
   });
 }
