@@ -18,6 +18,7 @@ before(async () => {
 
 function mk() {
   const p = core.Projects.create({ name: '绑定提示测试', auto_script: false });
+  core.Projects.setContextKey(p.id, 'asset_binding', 'ic'); // 本组测 IC 自动绑定的提示（系统缺省已改为 Agent 绑定）
   core.Chapters.create(p.id, { title: '第26章', script: 'x' });
   const put = (rel, bytes) => {
     const abs = path.join(core.projectDir(p.id), rel);

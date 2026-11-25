@@ -586,6 +586,7 @@ test('update_shot：不得改写别的项目的分镜（归属校验）', async 
 test('自动换装：同章第二次换装事件不被首次结果误判为「已显式引用」', async () => {
   const p = mkProject('自动换装项目');
   Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 测 IC 自带生图的自动换装（系统缺省已改为 Muse 出图）
+  Projects.setContextKey(p.id, 'asset_binding', 'ic'); // 测 IC 自动绑定（系统缺省已改为 Agent 绑定）
   const mkImg = (rel) => {
     const abs = path.join(projectDir(p.id), rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -1108,6 +1109,7 @@ test('narration：内置 Agent 与外部写入 API 同口径，可写旁白', as
 
 test('set_storyboard：对不上的资产名不再静默丢弃（随结果回报）', async () => {
   const p = mkProject('分镜资产名项目');
+  Projects.setContextKey(p.id, 'asset_binding', 'ic'); // 测 IC 自动绑定（系统缺省已改为 Agent 绑定）
   Assets.create(p.id, { category: 'character', name: '小明' });
   const ctx = createToolRuntime({ projectId: p.id, chapter: '第1章' });
   const r = await runTool(ctx, 'set_storyboard', { shots: [{ idx: 1, visual: '画面', characters: ['小明', '小铭'] }] });
@@ -1120,6 +1122,7 @@ test('set_storyboard：对不上的资产名不再静默丢弃（随结果回报
 test('换装兜底：LLM 阶段（renderDisabled）不渲染，推迟到「资产图」阶段执行', async () => {
   const p = mkProject('换装兜底阶段项目');
   Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 测 IC 自带生图的自动换装（系统缺省已改为 Muse 出图）
+  Projects.setContextKey(p.id, 'asset_binding', 'ic'); // 测 IC 自动绑定（系统缺省已改为 Agent 绑定）
   const mkImg = (rel) => {
     const abs = path.join(projectDir(p.id), rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
