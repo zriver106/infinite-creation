@@ -595,6 +595,28 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                     : '人物、场景、道具、服装图由 Muse 在 IC 外制作入库，由我们的 Agent 绑定；IC 不生图、不改图、不换装，缺的图只记进缺件单。音色照常由 IC 生成。项目里单独设过「缺件单 / 自动」的，按项目设置。'}
                 </p>
               </div>
+              <div className="grid gap-1.5">
+                <div className="text-[12px] font-medium text-[var(--fg-2)]">资产绑定方式</div>
+                <Segmented
+                  value={cfg.generation?.assetBindingSource === 'ic' ? 'ic' : 'ag'}
+                  onChange={(v) => setCfg({ ...cfg, generation: { ...(cfg.generation || {}), assetBindingSource: v } })}
+                  options={[
+                    { value: 'ag', label: 'Agent 绑定（默认）' },
+                    { value: 'ic', label: 'IC 自动绑定' },
+                  ]}
+                />
+                <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
+                  {cfg.generation?.assetBindingSource === 'ic'
+                    ? 'IC 写分镜时按名字自动把人物、场景、道具、服装、年龄、音色绑到镜头上（上游原行为）。'
+                    : '镜头的人物、场景、道具、服装、年龄、音色由我们的 Agent 用 PATCH /shots/:sid 绑定；IC 写分镜时不自动绑，已有绑定原样保留。项目里单独设过的按项目。'}
+                </p>
+                <Switch
+                  checked={!!cfg.generation?.bindingCheckBlock}
+                  onChange={(v) => setCfg({ ...cfg, generation: { ...(cfg.generation || {}), bindingCheckBlock: v } })}
+                  label="缺绑拦截"
+                  hint="出片前总会上报缺绑（A 缺场景、B 库里有却没绑、C 没资产可绑）。打开后对 A、B 两级拦下这一镜，其他镜照常出；默认关，只报不拦。"
+                />
+              </div>
               <div className="hairline" />
               <Segmented
                 value={isRunningHub ? 'runninghub' : hwMode}
