@@ -23,9 +23,9 @@
   "file": "C_心声.md",
   "id": "C",
   "title": "C 心声",
-  "tier": "base",
+  "tier": "volume",
   "when": [
-   "always"
+   "os"
   ],
   "chars": 11099
  },

@@ -8,7 +8,8 @@
  "base_end_line": 267,
  "base_chars": 15291,
  "base_budget_chars": 40000,
- "budget_chars": 40000,
+ "budget_chars": 80000,
+ "budget_mode": "total",
  "section_max_chars": 20000,
  "sections": [
   {

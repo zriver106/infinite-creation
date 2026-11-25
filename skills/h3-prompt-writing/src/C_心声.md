@@ -1,4 +1,4 @@
-<!-- rulebook: id=C tier=base when=always -->
+<!-- rulebook: id=C tier=volume when=os -->
 ## C 心声
 
 ### 〔C-001〕 Inner-Monologue (OS / 心声) Shots — hard rule (r19 rewrite 2026-11-24, Andy 18:34–18:48; template = the Han Zhicheng inner-voice shot Andy approved)
