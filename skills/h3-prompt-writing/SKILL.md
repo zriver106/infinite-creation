@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-22516d023c 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-840124ec5b 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -22,19 +22,19 @@ compatibility: Portable to any agent that can read local files — no external A
 | D | D 系统声与光幕 | 基础（已在上面，必读） | L179–L196 | 每次 |
 | F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L198–L234 | 每次 |
 | C2 | C2 心声闭嘴嘴形表 | 分册 | L239–L261 | 有心声 |
-| E | E 人声与台词 | 分册 | L263–L360 | 有台词 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L362–L397 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L399–L413 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L415–L462 | 有运镜、动作、打戏 |
-| H2 | H2 Q 版、特效、流行语与谐音（冷门） | 分册 | L464–L534 | 本镜用到 Q 版、特效、流行语、谐音或段子（分镜有【表现】行） |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L536–L548 | 每次 |
-| J | J 资产与绑定 | 分册 | L550–L594 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L596–L624 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L626–L667 | 用到时再查 |
-| Q | Q 审片 | 分册 | L669–L794 | 用到时再查 |
+| E | E 人声与台词 | 分册 | L263–L356 | 有台词 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L358–L393 | 两人及以上、有道具、桌面、车、绑了场景 |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L395–L409 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L411–L458 | 有运镜、动作、打戏 |
+| H2 | H2 Q 版、特效、流行语与谐音（冷门） | 分册 | L460–L524 | 本镜用到 Q 版、特效、流行语、谐音或段子（分镜有【表现】行） |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L526–L538 | 每次 |
+| J | J 资产与绑定 | 分册 | L540–L584 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L586–L614 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L616–L657 | 用到时再查 |
+| Q | Q 审片 | 分册 | L659–L784 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：D1E1A077
+本段校验码：F3110E5F
 
 ## A 铁律与流程
 
