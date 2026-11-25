@@ -71,7 +71,8 @@ function parse(lines) {
   lines.forEach((raw, i) => {
     const t = raw.trim();
     if (!t) { flush(); return; }
-    const h = /^第([一二三四五六七八九十百零两\d]+)集(.*)$/.exec(t);
+    // 带状态标记（--- 完成/修改中…）的行是问题行，不是集标题：如「第七集 1分29秒，…--- 修改中」写在第十七集下面（2026-11-25 Andy：第七集被误标未完成）
+    const h = TAG_RE.test(raw) ? null : /^第([一二三四五六七八九十百零两\d]+)集(.*)$/.exec(t);
     if (h) { flush(); cur = { no: cnNum(h[1]), header: raw, headerLine: i, note: h[2], items: [] }; eps.push(cur); return; }
     if (/^-{5,}/.test(t)) { flush(); return; }
     if (!cur) return;
@@ -608,7 +609,7 @@ export async function issuesForOverview() {
   let raw = 0, rawDone = 0, inEp = false, heads = 0;
   for (const l of doc.lines) {
     const t = l.trim();
-    if (/^第[一二三四五六七八九十百零两\d]+集/.test(t)) { inEp = true; heads++; continue; }
+    if (/^第[一二三四五六七八九十百零两\d]+集/.test(t) && !TAG_RE.test(l)) { inEp = true; heads++; continue; }
     if (!inEp || !t || /^-+新-+$/.test(t)) continue;
     raw++; if (/完成/.test(t) && !/未完成/.test(t)) rawDone++;
   }
