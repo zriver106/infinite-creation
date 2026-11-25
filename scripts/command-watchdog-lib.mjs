@@ -245,13 +245,13 @@ export function evaluate(snap) {
     const content = edited.filter((r) => !r.ic);
     const span = (rs) => rs.length ? `${ptMDHM(new Date(rs[0].ts))}${rs.length > 1 && ptHM(new Date(rs.at(-1).ts)) !== ptHM(new Date(rs[0].ts)) ? '–' + ptHM(new Date(rs.at(-1).ts)) : ''}` : '';
     if (viaIc.length) {
-      const byCh = {}; for (const r of viaIc) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
-      const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} ${set.size} 镜`).join('、');
-      const kinds = [...new Set(viaIc.flatMap((r) => r.fields))].filter((f) => !BIND_FIELDS.has(f)).map(fieldZh).join('、');
+      // 主会话 seq1750：先改台词/画面/提示词、接着交 IC 重写的，是黄色「提醒」（不推聊天），卡片写清哪几镜、改了什么、接着交的 IC 任务 id
+      const head = viaIc.slice(0, 12).map((r) => `${r.ch || '?'}#${r.idx ?? '?'} 改了${r.fields.filter((f) => !BIND_FIELDS.has(f)).slice(0, 4).map(fieldZh).join('、')}（${ptHM(new Date(r.ts))}）`).join('；');
+      const jobs = [...new Set(viaIc.map((r) => r.icJob).filter(Boolean))];
       const waiting = viaIc.filter((r) => r.ic === 'queued').length;
-      add('ext_patch_ic', 'INFO', 8, `${new Set(viaIc.map((r) => r.shot)).size} 镜先改了${kinds}，随后交 IC 重写（不算外部改稿）`,
-        `${span(viaIc)}：${chTxt}。改完马上交给 IC 按规则重写提示词${waiting ? `（其中 ${waiting} 条 IC 还在排队写）` : ''}，走了 IC，不用处理。`,
-        { n: viaIc.length, last: viaIc.at(-1).ts });
+      add('ext_patch_ic', 'WARN', 8, `${new Set(viaIc.map((r) => r.shot)).size} 镜被直接改了稿，随后交了 IC 重写`,
+        `${span(viaIc)}：${head}${viaIc.length > 12 ? `；另 ${viaIc.length - 12} 条` : ''}。接着交的 IC 写稿任务：${jobs.length ? jobs.map((x) => String(x).slice(0, 8)).join('、') : '（IC 已写回，没对上任务 id）'}${waiting ? `，其中 ${waiting} 条 IC 还在排队写` : ''}。提示词由 IC 重写，不算外部改稿；留意直接改的内容有没有依据。`,
+        { ids: viaIc.map((r) => r.id).sort(), jobs });
     }
     if (bind.length) {
       const byCh = {}; for (const r of bind) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);

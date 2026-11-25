@@ -366,10 +366,11 @@ test('第三轮：同签名时标题和正文都刷新（分钟数），但不�
 });
 
 test('2026-11-25（Andy：红色要重视，这种不是问题）：改台词后紧接着交了 IC 重写的降成信息、不推聊天；没交 IC 的仍是严重', () => {
-  const r = (id, idx, ic) => ({ id, ts: NOW - 20000, ch: '第30章', idx, shot: 'shot-' + id, fields: ['dialogue'], ...(ic ? { ic } : {}) });
+  const r = (id, idx, ic) => ({ id, ts: NOW - 20000, ch: '第30章', idx, shot: 'shot-' + id, fields: ['dialogue'], ...(ic ? { ic, icJob: 'fc5e0521-4c31-4440-8ef9-22d08ac2e496' } : {}) });
   const f = L.evaluate(snap({ extPatches: [{ group: 'g', rows: [r('a', 1, 'rewritten'), r('b', 3, 'queued'), r('c', 4)] }] }));
   const ic = f.find((x) => x.key === 'ext_patch_ic'); const cont = f.find((x) => x.key === 'ext_patch_content');
-  assert.equal(ic.level, 'INFO'); assert.match(ic.title, /2 镜先改了台词，随后交 IC 重写/); assert.match(ic.text, /1 条 IC 还在排队写/);
+  assert.equal(ic.level, 'WARN', '黄色提醒（主会话 seq1750）'); assert.match(ic.title, /2 镜被直接改了稿，随后交了 IC 重写/); assert.match(ic.text, /1 条 IC 还在排队写/);
+  assert.match(ic.text, /第30章#1 改了台词/); assert.match(ic.text, /第30章#3 改了台词/); assert.match(ic.text, /IC 写稿任务：fc5e0521/);
   assert.ok(L.quietEvent({ key: 'ext_patch_ic', type: 'new' }), '走了 IC 的不推聊天');
   assert.equal(cont.level, 'ERROR'); assert.match(cont.title, /有 1 镜/); assert.match(cont.text, /第30章#4 改了台词/); assert.doesNotMatch(cont.text, /第30章#1 /);
   const all = L.evaluate(snap({ extPatches: [{ group: 'g', rows: [r('a', 1, 'rewritten')] }] }));
