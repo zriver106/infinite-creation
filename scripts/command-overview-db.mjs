@@ -69,7 +69,9 @@ try {
     out.projectName = ctx?.name; try { out.deliveryDir = JSON.parse(ctx?.context || '{}').delivery_dir || null; } catch { out.deliveryDir = null; }
   } else if (mode === 'edits') {
     // 每个镜头「最后一次改内容字段」的时间（change_logs 里 before/after 真有变化的那次），和最新视频生成时间比
-    const CONTENT = ['scene_name', 'camera', 'visual', 'dialogue', 'narration', 'sub_shots', 'duration', 'character_ids', 'scene_ids', 'prop_ids', 'costume_ids', 'age_ids', 'audio_ids', 'refs', 'video_prompt', 'mode', 'resolution', 'aspect_ratio'];
+    // 2026-11-25（Andy：规则区一片红是遗留问题，清理干净）：只算会改变画面的内容字段；补绑定（人物/场景/道具/服装…）和分辨率等不算「改过稿」，
+    // 否则凌晨那批 B 类补绑会把已交付的集全标成「改过字段、晚于最新视频」。
+    const CONTENT = ['scene_name', 'camera', 'visual', 'dialogue', 'narration', 'sub_shots', 'duration', 'video_prompt', 'mode'];
     const shots = q(db, 'shots', 'select id,chapter,idx from shots where project_id=?', project);
     const vmax = new Map(q(db, 'shot_videos max', 'select shot_id, max(created_at) m from shot_videos where project_id=? group by shot_id', project).map((r) => [r.shot_id, Number(r.m)]));
     const t0 = Date.now(); const last = new Map(); let n = 0;

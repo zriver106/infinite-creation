@@ -138,14 +138,17 @@ function priorityCheck(gpu, iss, edits, missingEps, partial) {
   const inActive = (id) => activeIds.some((p) => id.startsWith(p) || p.startsWith(id));
   let editNote = null;
   if (edits?.edits) {
-    const lead = edits.edits.filter((e) => chN(e.ch) <= EARLY && !inActive(e.id));
+    // Andy 已把这一集问题全标完成的，镜头稿再晚于视频也是遗留（已交付、已认可），不再报红，只在说明里记个数
+    const all = edits.edits.filter((e) => chN(e.ch) <= EARLY && !inActive(e.id));
+    const lead = all.filter((e) => !andyDone.has(chN(e.ch)));
+    const legacy = all.length - lead.length;
     const byCh = new Map(); for (const e of lead) { const n = chN(e.ch); if (!byCh.has(n)) byCh.set(n, []); byCh.get(n).push(e); }
     for (const [n, arr] of [...byCh.entries()].sort((a, b) => a[0] - b[0])) {
       arr.sort((a, b) => a.idx - b.idx);
       const lastE = Math.max(...arr.map((e) => e.lastEdit)), lastV = Math.max(...arr.map((e) => e.newestVideo || 0));
-      violations.push({ rule: 'gpu-ep1-10-first', kind: 'write', ep: n, level: 'red', shots: arr.map((e) => ({ idx: e.idx, id: e.id, lastEdit: e.lastEdit, fields: e.fields, newestVideo: e.newestVideo })), text: `第${n}集 ${arr.length} 镜改过字段、晚于最新视频，但不在任何在跑或已挂的链里：#${arr.map((e) => e.idx).join('、#')}（最后改字段 ${ptMin(lastE)}，这些镜最新视频最晚 ${ptMin(lastV)}）${andyDone.has(n) ? `；第${n}集 Andy 已标问题全修好，这几镜要不要重出待定` : ''}` });
+      violations.push({ rule: 'gpu-ep1-10-first', kind: 'write', ep: n, level: 'red', shots: arr.map((e) => ({ idx: e.idx, id: e.id, lastEdit: e.lastEdit, fields: e.fields, newestVideo: e.newestVideo })), text: `第${n}集 ${arr.length} 镜改过字段、晚于最新视频，但不在任何在跑或已挂的链里：#${arr.map((e) => e.idx).join('、#')}（最后改字段 ${ptMin(lastE)}，这些镜最新视频最晚 ${ptMin(lastV)}）` });
     }
-    editNote = `改字段时间取 ic.db change_logs 里内容字段（提示词、画面、分镜、台词、绑定等）真有变化的最后一次；${edits.logRows} 条记录、${edits.shotsTotal} 个镜头，2 分钟缓存`;
+    editNote = `改字段时间取 IC 改动记录里内容字段（提示词、画面、分镜、台词、运镜、时长）真有变化的最后一次，补绑定不算；${edits.logRows} 条记录、${edits.shotsTotal} 个镜头，2 分钟缓存${legacy ? `；另有 ${legacy} 镜在 Andy 已标问题全修好的集里，算遗留，不报` : ''}`;
   }
   return { decisionRules: DECISION_RULES, releaseFields: RELEASE_FIELDS, gateMd5: GATE_MD5, releaseChecks: releaseChecks(), rules: PRIORITY_RULES, dispatchRules: DISPATCH_RULES, modelTable: MODEL_TABLE.map(({ re, ...m }) => m), unfinishedEarly: eps, activeChains: active.map((c) => ({ key: c.key, label: c.label, state: c.state, pid: c.pid || null, remaining: remOf(c).length })), ignoredChains: ignored, violations, ok: !violations.some((v) => v.level === 'red'), note: '只提醒，系统不改链、不改稿、不提交。判顺序只看在跑和已挂好的链' + (active.length ? `（${active.map((c) => c.label).join('、')}）` : '（现在没有）') + (ignored.length ? `；不参与判断：${ignored.join('、')}` : '') + (editNote ? `；${editNote}` : '') };
 }
