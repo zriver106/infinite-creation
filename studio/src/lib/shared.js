@@ -28,6 +28,8 @@ export {
   hardwareMode,
   isPresetWorkflows,
   comfyBaseUrl,
+  normalizeComfyEndpoints,
+  enabledComfyEndpoints,
   RUNNINGHUB_TIERS,
   nameMatches,
   isReferenceImageName,

@@ -26,6 +26,8 @@ import {
   RUNNINGHUB_TIERS,
   RUNNINGHUB_WORKFLOWS,
   comfyBaseUrl,
+  enabledComfyEndpoints,
+  normalizeComfyEndpoints,
   hardwareMode,
   VIDEO_RESOLUTION_CUSTOM,
 } from '../lib/shared.js';
@@ -189,7 +191,9 @@ export default function SettingsPage({ onBack, publicMode = false }) {
     try {
       const r = await api.post('/api/comfyui/test', { comfyui: cfg.comfyui });
       setComfyInfo(r);
-      setTest(timeLabel() + ' · ' + (r.ok ? '连接成功 · ' + r.system + ' · ' + r.device : '连接失败：' + r.error));
+      const multi = !isRunningHubCfg(cfg) && Array.isArray(r.endpoints) && r.endpoints.length > 1;
+      const head = multi ? '可用端点 ' + r.okCount + '/' + r.total + ' · ' : '';
+      setTest(timeLabel() + ' · ' + head + (r.ok ? '连接成功 · ' + r.system + ' · ' + r.device : '连接失败：' + r.error));
     } catch (e) {
       setTest(timeLabel() + ' · 失败：' + e.message);
     }
@@ -586,16 +590,20 @@ export default function SettingsPage({ onBack, publicMode = false }) {
               />
               <p className="m-0 text-[11px] leading-relaxed text-[var(--fg-4)]">
                 当前执行端：<b className="text-[var(--fg-2)]">{isRunningHub ? '云端渲染' : '本地 ComfyUI'}</b>
-                {' · '}有效并发 <b className="text-[var(--fg-2)]">{isRunningHub ? Math.max(1, Number(cfg.generation?.runninghubConcurrency) || 1) : 1}</b>
+                {' · '}有效并发 <b className="text-[var(--fg-2)]">{isRunningHub ? Math.max(1, Number(cfg.generation?.runninghubConcurrency) || 1) : Math.max(1, enabledComfyEndpoints(cfg.comfyui).length)}</b>
                 {isRunningHub
                   ? '（由下方「任务并发数量」控制，保存后立即生效）'
-                  : '（本地 ComfyUI 单队列串行，固定为 1；切到云端后按任务并发数量调度）'}
+                  : '（= 启用的端点数：每个 ComfyUI 实例单队列串行，渲染按空闲端点分派；多张显卡请每卡启动一个实例后在下方添加）'}
               </p>
 
               {!isRunningHub ? (
                 <>
+                  <ComfyEndpointsEditor
+                    comfyui={cfg.comfyui}
+                    onChange={(endpoints) => setCfg((c) => ({ ...c, comfyui: { ...c.comfyui, endpoints, baseUrl: (endpoints.find((e) => e.enabled && e.baseUrl) || endpoints[0] || {}).baseUrl || c.comfyui.baseUrl } }))}
+                  />
                   <Field
-                    label="服务地址"
+                    label="服务说明"
                     hint={
                       <span>
                         可以自行部署并ComfyUI跑通项目文件夹 /comfyui_original_workflows/NVIDIA/ 中的示例工作流，或者获取项目配套的ComfyUI工作流本地一键启动整合包可从{' '}
@@ -608,10 +616,9 @@ export default function SettingsPage({ onBack, publicMode = false }) {
                       </span>
                     }
                   >
-                    <div className="flex flex-wrap gap-2">
-                      <Input value={cfg.comfyui.baseUrl} onChange={(e) => setCfg({ ...cfg, comfyui: { ...cfg.comfyui, baseUrl: e.target.value } })} className="min-w-[240px] flex-1" />
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button variant="secondary" size="md" onClick={testComfy}>
-                        测试连接
+                        测试全部启用端点
                       </Button>
                     </div>
                   </Field>
@@ -1115,6 +1122,81 @@ function timeLabel() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function isRunningHubCfg(cfg) {
+  return cfg?.comfyui?.provider === 'runninghub';
+}
+
+// 本地 ComfyUI 端点列表（多显卡）：每行 = 地址 + 显卡编号 + 启用开关 + 测试连接。
+// 有效并发 = 启用的端点数；调度器把每次渲染派给空闲端点，单个端点连不上会自动改派其它端点。
+function ComfyEndpointsEditor({ comfyui, onChange }) {
+  const endpoints = normalizeComfyEndpoints(comfyui);
+  const [results, setResults] = useState({});
+  const [testing, setTesting] = useState({});
+  const update = (i, patch) => onChange(endpoints.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+  const remove = (i) => onChange(endpoints.filter((_, j) => j !== i));
+  const add = () => {
+    const used = new Set(endpoints.map((e) => e.id));
+    let n = endpoints.length;
+    while (used.has('gpu' + n)) n++;
+    // 建议地址：在最后一个端点的端口上 +1（8189 → 8190）
+    let next = '';
+    const m = /^(.*:)(\d+)$/.exec(endpoints[endpoints.length - 1]?.baseUrl || '');
+    if (m) next = m[1] + (Number(m[2]) + 1);
+    onChange([...endpoints, { id: 'gpu' + n, name: 'GPU ' + n, baseUrl: next || 'http://127.0.0.1:8190', gpu: String(n), enabled: false }]);
+  };
+  const testOne = async (e) => {
+    setTesting((t) => ({ ...t, [e.id]: true }));
+    try {
+      const r = await api.post('/api/comfyui/test', { baseUrl: e.baseUrl });
+      setResults((s) => ({ ...s, [e.id]: timeLabel() + ' · ' + (r.ok ? '连接成功 · ' + r.system + ' · ' + r.device + (r.vramFree ? ' · 空闲显存 ' + Math.round(r.vramFree / 1024 ** 3) + ' GB' : '') : '连接失败：' + r.error) }));
+    } catch (err) {
+      setResults((s) => ({ ...s, [e.id]: timeLabel() + ' · 失败：' + err.message }));
+    } finally {
+      setTesting((t) => ({ ...t, [e.id]: false }));
+    }
+  };
+  const enabledCount = enabledComfyEndpoints({ endpoints }).length;
+  return (
+    <Field
+      label={'本地端点（启用 ' + enabledCount + ' / 共 ' + endpoints.length + '）'}
+      hint="每张显卡启动一个 ComfyUI 实例（各自端口，启动脚本用 --cuda-device 绑卡，共享模型目录）。显卡编号只用于展示与核对，绑卡在启动脚本里完成。新加的端点默认不启用，测试连接成功后再打开。"
+      action={
+        <Button variant="secondary" size="xs" onClick={add}>
+          添加端点
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {endpoints.map((e, i) => (
+          <div key={e.id} className="rounded-xl border border-[var(--line)] bg-white/[0.015] p-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Switch checked={e.enabled} onChange={(v) => update(i, { enabled: v })} />
+              <Input value={e.name} onChange={(ev) => update(i, { name: ev.target.value })} placeholder="名称" className="w-28" />
+              <Input value={e.baseUrl} onChange={(ev) => update(i, { baseUrl: ev.target.value })} placeholder="http://127.0.0.1:8190" className="min-w-[200px] flex-1" />
+              <span className="text-[11px] text-[var(--fg-4)]">显卡</span>
+              <Input value={e.gpu} onChange={(ev) => update(i, { gpu: ev.target.value })} placeholder="0" className="w-14" />
+              <Button variant="secondary" size="sm" loading={!!testing[e.id]} onClick={() => testOne(e)}>
+                测试连接
+              </Button>
+              <Button variant="ghost" size="sm" disabled={endpoints.length <= 1} onClick={() => remove(i)}>
+                删除
+              </Button>
+            </div>
+            {results[e.id] ? (
+              <div className="mt-1.5">
+                <TestResult text={results[e.id]} />
+              </div>
+            ) : null}
+          </div>
+        ))}
+        {enabledCount === 0 ? (
+          <span className="text-[11.5px] text-[var(--danger)]">没有启用的端点：本地渲染将无法执行，请至少启用一个。</span>
+        ) : null}
+      </div>
+    </Field>
+  );
 }
 
 function TestResult({ text }) {

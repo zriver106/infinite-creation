@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { loadConfig } from '@/lib/core/index.js';
 import { queueEnabled } from '@/lib/core/scheduler.js';
 import { renderConcurrencyLimit } from '@/lib/core/render-gate.js';
+import { poolStatus } from '@/lib/core/comfy-pool.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,8 @@ export async function GET() {
         ? Math.max(1, Number(cfg?.generation?.runninghubConcurrency) || 1)
         : Math.max(1, Number(cfg?.generation?.videoConcurrency) || 1),
       queueEnabled: queueEnabled(cfg),
+      // 本地多显卡端点：忙闲 / 冷却 / 最近错误（不含密钥）。注意：渲染在 MCP 子进程里跑时这里看到的是本进程视角。
+      endpoints: provider === 'native' ? poolStatus(cfg).endpoints : [],
     };
   } catch {
     /* 配置读取失败不影响健康检查 */

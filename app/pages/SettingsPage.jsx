@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Input, Checkbox, RadioGroup, Radio, Select, SelectItem, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, Tab } from '@heroui/react';
 import { api } from '../api-client.js';
 import { useToast } from '../toast';
-import { HW_PRESETS, HW_DEFAULT_FREE, hardwareMode, isPresetWorkflows, comfyBaseUrl, RUNNINGHUB_TIERS } from '../../lib/shared/index.js';
+import { HW_PRESETS, HW_DEFAULT_FREE, hardwareMode, isPresetWorkflows, comfyBaseUrl, RUNNINGHUB_TIERS, normalizeComfyEndpoints, enabledComfyEndpoints } from '../../lib/shared/index.js';
 import { selectKeys, pickKey } from './shared';
 import SkillsTab from './SkillsTab';
 import WorkflowsTab from './WorkflowsTab';
@@ -231,11 +231,23 @@ export default function SettingsPage({ onBack }) {
                       <p className="text-xs text-danger" style={{ marginTop: 4 }}>
                         第三方服务免责声明：ComfyUI一键整合包是请第三方大佬做的，可能会包含第三方网站涉及的一些收费相关问题，制作不易理性支持。请仔细查验以免被骗，不要相信任何加你联系方式的陌生人卖你的资料。
                       </p>
-                      <div className="row">
-                        <Input size="sm" className="flex-1" value={cfg.comfyui.baseUrl} onChange={(e) => setCfg({ ...cfg, comfyui: { ...cfg.comfyui, baseUrl: e.target.value } })} />
-                        <Button size="sm" onPress={testComfy}>测试连接</Button>
-                        {test && <span className="muted">{test}</span>}
-                      </div>
+                      {/* 多显卡端点只在 Studio 设置页编辑；经典界面：单端点时可改地址（同步写 endpoints[0]），多端点时只读 */}
+                      {normalizeComfyEndpoints(cfg.comfyui).length <= 1 ? (
+                        <div className="row">
+                          <Input size="sm" className="flex-1" value={cfg.comfyui.baseUrl} onChange={(e) => {
+                            const ep = normalizeComfyEndpoints(cfg.comfyui)[0];
+                            setCfg({ ...cfg, comfyui: { ...cfg.comfyui, baseUrl: e.target.value, endpoints: [{ ...ep, baseUrl: e.target.value }] } });
+                          }} />
+                          <Button size="sm" onPress={testComfy}>测试连接</Button>
+                          {test && <span className="muted">{test}</span>}
+                        </div>
+                      ) : (
+                        <div className="row">
+                          <span className="muted flex-1">已配置 {normalizeComfyEndpoints(cfg.comfyui).length} 个本地端点（启用 {enabledComfyEndpoints(cfg.comfyui).length} 个），请在 Studio 设置页编辑。</span>
+                          <Button size="sm" onPress={testComfy}>测试连接</Button>
+                          {test && <span className="muted">{test}</span>}
+                        </div>
+                      )}
                     </>
                   )}
 
