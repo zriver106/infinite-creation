@@ -1,10 +1,10 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-22516d023c",
+ "version": "rules-840124ec5b",
  "file": "规则全文.md",
- "file_md5": "FBC5CFDE197C7648B4019F4FDE75AA28",
- "total_lines": 794,
+ "file_md5": "A1C3E3B0E63A3E99617520139A07B249",
+ "total_lines": 784,
  "base_end_line": 235,
  "base_chars": 39845,
  "base_budget_chars": 40000,
@@ -21,7 +21,7 @@
     "always"
    ],
    "chars": 2444,
-   "checksum": "D1E1A077"
+   "checksum": "F3110E5F"
   },
   {
    "id": "A",
@@ -100,19 +100,19 @@
    "title": "E 人声与台词",
    "tier": "volume",
    "start": 263,
-   "end": 360,
+   "end": 356,
    "when": [
     "dialogue"
    ],
-   "chars": 13090,
-   "checksum": "FAB39F9F"
+   "chars": 12585,
+   "checksum": "23581127"
   },
   {
    "id": "FX",
    "title": "F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具）",
    "tier": "volume",
-   "start": 362,
-   "end": 397,
+   "start": 358,
+   "end": 393,
    "when": [
     "multi",
     "prop",
@@ -125,8 +125,8 @@
    "id": "F5V",
    "title": "F5 多人同场多视角定义图（_MV）",
    "tier": "volume",
-   "start": 399,
-   "end": 413,
+   "start": 395,
+   "end": 409,
    "when": [
     "multi"
    ],
@@ -137,8 +137,8 @@
    "id": "H1",
    "title": "H1 镜头、运镜与打戏节奏",
    "tier": "volume",
-   "start": 415,
-   "end": 462,
+   "start": 411,
+   "end": 458,
    "when": [
     "motion"
    ],
@@ -149,20 +149,20 @@
    "id": "H2",
    "title": "H2 Q 版、特效、流行语与谐音（冷门）",
    "tier": "volume",
-   "start": 464,
-   "end": 534,
+   "start": 460,
+   "end": 524,
    "when": [
     "expression"
    ],
-   "chars": 15362,
-   "checksum": "A5D1FA11"
+   "chars": 13764,
+   "checksum": "7F8E7F22"
   },
   {
    "id": "H2G",
    "title": "H2G 开场画面与光幕位置（每镜必读）",
    "tier": "volume",
-   "start": 536,
-   "end": 548,
+   "start": 526,
+   "end": 538,
    "when": [
     "always"
    ],
@@ -173,8 +173,8 @@
    "id": "J",
    "title": "J 资产与绑定",
    "tier": "volume",
-   "start": 550,
-   "end": 594,
+   "start": 540,
+   "end": 584,
    "when": [
     "binding",
     "scene"
@@ -186,8 +186,8 @@
    "id": "L",
    "title": "L 现实逻辑与剧情",
    "tier": "volume",
-   "start": 596,
-   "end": 624,
+   "start": 586,
+   "end": 614,
    "when": [
     "logic"
    ],
@@ -198,8 +198,8 @@
    "id": "B2",
    "title": "B2 生成模式、全参考与多段（冷门）",
    "tier": "volume",
-   "start": 626,
-   "end": 667,
+   "start": 616,
+   "end": 657,
    "when": [
     "rare"
    ],
@@ -210,8 +210,8 @@
    "id": "Q",
    "title": "Q 审片",
    "tier": "volume",
-   "start": 669,
-   "end": 794,
+   "start": 659,
+   "end": 784,
    "when": [
     "rare"
    ],

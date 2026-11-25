@@ -24,7 +24,7 @@ H3 places each `<d>` line by the time window it is written in and lip-syncs it t
 
 #### 〔E-004〕 **Every line is voiced by H3 in the shot itself, OS and phone voices included.**
    - Every line in the shot's `dialogue` field (spoken, OS, phone voice) appears in `video_prompt` as a `<d>[Chinese] …</d>` line, word for word the same. A change to a line changes `dialogue`, `sub_shots` and `video_prompt` together; read all three back and check they match.
-   - Mixed shots (spoken dialogue + OS): the OS line uses the fixed OS sentence of the Inner-Monologue section (`An off-screen male/female inner-monologue voice (Sx), … narrates <d>…</d>. Nobody on screen is speaking; <Name> only listens to his/her own thoughts with his/her lips closed.`). Give it its own time block, written as closed-mouth acting with the face and closed mouth visible; put each spoken line in its own block before or after, never interleaved, with ≥ 0.8 s between blocks (2026-11-22; time fields are whole seconds, so in practice ≥ 1 s). Speaker IDs follow the order the voices are first heard in the shot. (IC 947e856 “Inner voice, hand props and glasses” rule 4; aligned 2026-11-25 dea54623; the 2026-11-23 “one kind of voice per camera shot” wording is void)
+   - Mixed shots (spoken dialogue + OS): the OS line uses the fixed OS sentence of the Inner-Monologue section (`An off-screen male/female inner-monologue voice (Sx), … narrates <d>…</d>. Nobody on screen is speaking; <Name> only listens to his/her own thoughts with his/her lips closed.`). Give it its own time block, written as closed-mouth acting with the face and closed mouth visible; put each spoken line in its own block before or after, never interleaved, with ≥ 0.8 s between blocks (2026-11-22; time fields are whole seconds, so in practice ≥ 1 s). Speaker IDs follow the order the voices are first heard in the shot.
    - No batch edit, lint fix or template may delete or skip a `<d>` line. After any batch edit, compare every shot's `<d>` text with its `dialogue` field before writing back.
 
 #### 〔E-005〕 **Phone voices (the far end of a call) are voiced by H3 too.** Write the caller's line as a `<d>` line with the caller's own speaker ID, described as the voice heard through the phone, e.g. `the caller's voice (S2) comes faintly through the phone's earpiece, tinny and slightly compressed, <emotion>, <pace>: <d>[Chinese] …</d>`, and bind the caller's own voice reference (`__MINIMAX_H3_REF_n__ is <Caller>'s voice (S2)`), so the timbre stays the same in every shot of the call.
@@ -33,8 +33,6 @@ H3 places each `<d>` line by the time window it is written in and lip-syncs it t
    - Rule 9 of the Inner-Monologue section (listening wording, banned call/conversation words) still applies to an OS speaker on the phone.
 
 #### 〔E-006〕 **Voice references keep one timbre per person.** A character's voice reference is the same sample for every line they have in any shot (spoken, OS, phone), so the voice never changes between shots. Never bind two different samples to one character.
-
-Checker: `skills/short-drama-director/scripts/validate_prompt.py` H13a–H13g warn on these rules (warn by default; `H3_SHOT_RULES=block` turns them into errors, `H3_SHOT_RULES=off` turns them off).
 
 #### 〔E-007〕 台词的情绪、语速、音量描述（原 Output Rules）
 
@@ -54,7 +52,6 @@ dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person i
 - 适用条件：每个有台词的镜；写稿、改稿、批量修改后交稿前；写稿的人。
 - 正确写法：
   1. 交稿前把每句 `dialogue` 对照剧本原句逐字读一遍，重点查同音字、近音字和漏字、多字；错字改 `dialogue`，同时按 E-004 改 `<d>` 和 `sub_shots`。
-  2. `dialogue` 和 `<d>` 逐字相同（E-004）；唯一例外是 H2 分册「Display text vs voiced text」标明的谐音替换台词。
   3. 已经出过片或导出过的镜改了台词，在报告里写明「台词已改，该集字幕需重新导出」，旧字幕不能沿用（X-003 第 6 条）。
 - 可用短句：
   - 报告句：`Dialogue proofread: every dialogue line matches the script character for character; dialogue = <d> in every shot.`
@@ -85,7 +82,6 @@ dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person i
 - 适用条件：`<d>` 里有数字、金额、号码或听错会改变意思的关键词的镜；写稿的人。
 - 正确写法：
   1. `<d>` 里念出来的数字全部写汉字，不出现阿拉伯数字、小数点、百分号、货币符号和单位缩写。
-  2. 读法照 `dialogue`，不自己改回全读或书面读法；`<d>` 和 `dialogue` 逐字一致（E-004）。
   3. `dialogue` 里的数字还是阿拉伯数字或书面全读时，按 R-003 改成口语汉字，`dialogue`、`<d>`、`sub_shots` 三处一起改，并在报告里写明改了哪一句。只改读法，不改数值。
   4. 有关键词的那句话，语气描述（E-007）里加上说得清楚、关键词略重，可以像 H2 分册谐音例子那样在引号里注一次拼音；这一句不写含糊、嘟囔、极快这类会吃字的语气。
   5. 关键词和上下文里另一个说得通的词只差一个音时，不靠语气硬撑：按 R-003 第 7 条换说法，三处同改，在报告里写明。
