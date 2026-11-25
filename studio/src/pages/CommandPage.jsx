@@ -137,18 +137,17 @@ function WatchdogCard() {
   const errs = (d?.alerts || []).filter((a) => a.level === 'ERROR');
   const tone = stale || errs.length ? 'red' : (d?.alerts || []).length ? 'yellow' : 'green';
   const label = stale ? '看门狗停了' : errs.length ? `${errs.length} 个严重告警` : (d?.alerts || []).length ? `${d.alerts.length} 个注意` : '正常';
+  const alerts = d?.alerts || [];
+  const hb = d?.heartbeat ? `心跳 ${ptHM(d.heartbeat.at)}（${age} 秒前）· 第 ${d.heartbeat.round} 轮 · ${d.heartbeat.ms} 毫秒 · 每 ${d.heartbeat.intervalSec} 秒一轮 · 自动恢复 ${d.config?.recoveryMode === 'live' ? '开' : 'dry'}` : '没有心跳';
   return (
-    <section data-watchdog={tone} className="panel p-4" style={{ borderColor: tone === 'red' ? '#dc2626' : tone === 'green' ? '#16a34a' : undefined, borderWidth: tone === 'yellow' ? undefined : 2 }}>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">看门狗 <Pill tone={tone}>{label}</Pill></h3>
-        <span className="text-[10px] text-[var(--fg-4)]">{d?.heartbeat ? `心跳 ${ptHM(d.heartbeat.at)}（${age} 秒前）· 第 ${d.heartbeat.round} 轮 · ${d.heartbeat.ms} 毫秒 · 每 ${d.heartbeat.intervalSec} 秒一轮 · 自动恢复 ${d.config?.recoveryMode === 'live' ? '开' : 'dry'}` : '没有心跳'}{w.error ? ` · 接口读不到：${w.error}` : ''}</span>
+    <section data-watchdog={tone} className="panel px-3 py-2" style={{ borderColor: tone === 'red' ? '#dc2626' : tone === 'green' ? '#16a34a' : undefined }}>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <b className="text-sm">看门狗</b><Info t={hb + (w.error ? ` · 接口读不到：${w.error}` : '') + (stale ? ' · 心跳超过 2 个周期没更新，保活任务每分钟会拉起它' : '')} />
+        <Pill tone={tone}>{stale ? '看门狗停了' : alerts.length ? `${alerts.length} 告警` : '正常'}</Pill>
+        {alerts.map((a) => <span key={a.key} className={'rounded px-1.5 py-0.5 text-[11px] ' + (a.level === 'ERROR' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400')} title={`${a.text}（${ptHM(a.since)} 起）`}>{shortTxt(a.title, 30)}</span>)}
+        <button type="button" className="ml-auto rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '原文'}</button>
       </div>
-      {stale ? <p className="mb-1 text-xs font-semibold text-red-500">看门狗停了：心跳{age == null ? '读不到' : ` ${age} 秒没更新`}（超过 2 个周期）。保活任务每分钟会拉起它。</p> : null}
-      <div className="flex flex-col gap-1 text-xs">
-        {(d?.alerts || []).length === 0 && !stale ? <div className="text-green-500">现在没有问题</div> : null}
-        {(d?.alerts || []).map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : 'text-amber-400'} title={a.key}>● {a.title}<span className="ml-1 text-[11px] text-[var(--fg-3)]">{a.text}（{ptHM(a.since)} 起）</span></div>)}
-      </div>
-      <button type="button" className="mt-2 rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '最近变化 / 自动恢复记录'}</button>
+      {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px]">{alerts.map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : 'text-amber-400'} title={a.key}>● {a.title}<span className="ml-1 text-[var(--fg-3)]">{a.text}（{ptHM(a.since)} 起）</span></div>)}</div> : null}
       {open ? <div className="mt-2 flex flex-col gap-0.5 font-mono text-[10px] text-[var(--fg-3)]">
         {(d?.changes || []).map((c, i) => <div key={i}>{c.atPT} {c.msg}</div>)}
         <div className="mt-1 font-sans text-[11px]">自动恢复记录：</div>
@@ -157,23 +156,201 @@ function WatchdogCard() {
     </section>
   );
 }
+// ---------- 图形小件（总览 / GPU 面板共用） ----------
+const C = { green: '#16a34a', amber: '#d97706', red: '#dc2626', blue: '#2563eb', gray: '#6b7280' };
+const shortTxt = (s, n) => { const t = String(s || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+const hm = (ms) => { if (ms == null) return '—'; const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+const mmss = (sec) => { if (sec == null || !isFinite(sec)) return '—'; const s = Math.max(0, Math.round(sec)); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const r = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`; };
+const tok = (n) => (n == null ? '—' : n >= 1e8 ? (n / 1e8).toFixed(2) + '亿' : n >= 1e4 ? (n / 1e4).toFixed(1) + '万' : String(n));
+const pct0 = (x) => (x == null ? '—' : Math.round(x * 100) + '%');
+function Info({ t }) { return t ? <span className="cursor-help text-[11px] text-[var(--fg-4)]" title={t}>ⓘ</span> : null; }
+function Dot({ c }) { return <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: c }} />; }
+function Big({ v, unit, sub, c }) { return <div><div className="text-2xl font-semibold leading-tight" style={c ? { color: c } : undefined}>{v}{unit ? <span className="ml-0.5 text-xs font-normal text-[var(--fg-3)]">{unit}</span> : null}</div>{sub ? <div className="text-[11px] text-[var(--fg-3)]">{sub}</div> : null}</div>; }
+function NoData() { return <span className="text-[11px] text-[var(--fg-4)]">暂无数据</span>; }
+function Head({ t, info, right }) { return <div className="mb-2 flex items-center gap-1.5"><b className="text-sm">{t}</b><Info t={info} />{right ? <span className="ml-auto">{right}</span> : null}</div>; }
+// 横向分段条：segs = [{ n, c, label }]
+function Stack({ segs, h = 8, showN = true }) {
+  const tot = segs.reduce((a, s) => a + (s.n || 0), 0);
+  return (
+    <div className="flex w-full overflow-hidden rounded" style={{ height: h, background: 'var(--line)' }} title={segs.map((s) => `${s.label} ${s.n}`).join(' · ')}>
+      {tot ? segs.filter((s) => s.n).map((s) => <div key={s.label} style={{ width: `${(s.n / tot) * 100}%`, background: s.c }} className="flex items-center justify-center text-[9px] leading-none text-white">{showN && h >= 12 && s.n / tot > 0.06 ? s.n : ''}</div>) : null}
+    </div>
+  );
+}
+function Prog({ done, total, c = 'var(--accent)' }) { return <div className="h-1.5 w-full rounded bg-[var(--line)]"><div className="h-1.5 rounded" style={{ width: `${total ? Math.min(100, (done / total) * 100) : 0}%`, background: c }} /></div>; }
+// 每小时柱（纯 CSS）：rows = [{ at, n }]
+function HourBars({ rows, h = 40 }) {
+  const m = Math.max(1, ...rows.map((r) => r.n || 0));
+  return (
+    <div className="flex items-end gap-[2px]" style={{ height: h + 12 }}>
+      {rows.map((r) => { const t = new Date(r.at ?? r.from); const hh = t.toLocaleTimeString('zh-CN', { timeZone: 'America/Los_Angeles', hour12: false, hour: '2-digit' }); return (
+        <div key={String(r.at ?? r.from)} className="flex flex-1 flex-col items-center justify-end" title={`${hh} 点：${r.n} 条`}>
+          <div className="w-full rounded-t" style={{ height: r.n ? Math.max(2, (r.n / m) * h) : 1, background: r.n ? 'var(--accent)' : 'var(--line)' }} />
+          <span className="text-[8px] leading-3 text-[var(--fg-4)]">{hh}</span>
+        </div>); })}
+    </div>
+  );
+}
+// 实时计时（mm:ss）
+function Ticker({ since }) {
+  const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f((x) => x + 1), 1000); return () => clearInterval(t); }, []);
+  if (!since) return null;
+  return <span className="font-mono tabular-nums">{mmss((Date.now() - new Date(since).getTime()) / 1000)}</span>;
+}
+// 今天的忙闲时间条（太平洋时间 0 点到 24 点；忙＝绿，闲＝灰，无数据＝斜纹，未来＝空）
+function DayBar({ bar }) {
+  if (!bar) return <NoData />;
+  const span = bar.dayEnd - bar.from; const x = (t) => `${((t - bar.from) / span) * 100}%`; const w = (a, b) => `${((b - a) / span) * 100}%`;
+  return (
+    <div>
+      <div className="relative h-4 w-full overflow-hidden rounded" style={{ background: 'color-mix(in srgb, var(--fg) 4%, transparent)' }}>
+        <div className="absolute inset-y-0" style={{ left: 0, width: w(bar.from, bar.to), background: 'color-mix(in srgb, var(--fg) 14%, transparent)' }} title="闲" />
+        {bar.noDataBefore ? <div className="absolute inset-y-0" style={{ left: 0, width: w(bar.from, bar.noDataBefore), background: 'repeating-linear-gradient(45deg, var(--line) 0 3px, transparent 3px 6px)' }} title="无数据" /> : null}
+        {(bar.busy || []).map(([a, b]) => <div key={a} className="absolute inset-y-0" style={{ left: x(a), width: w(a, b), minWidth: 1, background: C.green }} title={`忙 ${ptHM(a)}–${ptHM(b)}`} />)}
+        <div className="absolute inset-y-0 w-px bg-[var(--fg-3)]" style={{ left: x(bar.to) }} title="现在" />
+      </div>
+      <div className="flex justify-between text-[9px] text-[var(--fg-4)]">{[0, 6, 12, 18, 24].map((h) => <span key={h}>{h}</span>)}</div>
+    </div>
+  );
+}
+const EP_C = { delivered: C.green, open: C.amber, none: 'var(--line)' };
+function EpGrid({ grid }) {
+  return (
+    <div className="grid gap-[3px]" style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}>
+      {grid.map((g) => <div key={g.ep} className="flex h-5 items-center justify-center rounded-sm text-[9px]" style={{ background: g.twoK && g.state === 'delivered' ? C.blue : EP_C[g.state], color: g.state === 'none' ? 'var(--fg-4)' : '#fff', boxShadow: g.twoK && g.state !== 'delivered' ? `inset 0 0 0 1.5px ${C.blue}` : undefined }} title={`EP${g.ep}：${g.state === 'delivered' ? '已交付' : g.state === 'open' ? `有 ${g.open} 条未完成问题${g.delivered ? '（已交付）' : ''}` : '未交付'}${g.twoK ? ' · 2K' : ''}`}>{g.ep}</div>)}
+    </div>
+  );
+}
+const ISS_SEG = (x) => [{ label: '待修改', n: x.todo || 0, c: C.red }, { label: '修改中', n: x.doing || 0, c: C.amber }, { label: '完成', n: x.done || 0, c: C.green }];
+function Legend({ items }) { return <div className="flex flex-wrap gap-2 text-[10px] text-[var(--fg-3)]">{items.map(([l, c]) => <span key={l} className="flex items-center gap-1"><Dot c={c} />{l}</span>)}</div>; }
+
+// ---------- 总览（首屏：产能 → 大数字 → 正在做 → 看门狗 → 用量 / 规则 / 问题归类；其余折叠） ----------
 function Overview({ go }) {
   const top = usePoll('/api/command/ov?part=top', 30);
-  const iss = usePoll('/api/command/ov?part=issues', 60);
-  const ses = usePoll('/api/command/ov?part=sessions', 60);
-  const tr = usePoll('/api/command/ov?part=trends', 600);
-  const d = top.data;
-  if (!d) return <div className="flex flex-col gap-4"><WatchdogCard /><Card title="总览">{top.loading ? <p className="text-xs text-[var(--fg-3)]">读取中…</p> : <Err e={top.error} />}</Card></div>;
-  const T = d.films.totalChapters;
-  const sesActive = ses.data?.active || [];
+  const mt = usePoll('/api/command/ov?part=metrics', 30);
+  const [more, setMore] = useState(false);
+  const m = mt.data; const d = top.data;
+  const cap = m?.capacity; const W = cap?.windows || [];
+  const today = W.find((w) => w.id === 'today');
+  const viol = d?.priority?.violations || [];
+  const g = m?.gpuNow;
   return (
-    <div className="flex flex-col gap-4">
-      <div className="panel flex flex-wrap items-center justify-between gap-2 p-3">
+    <div className="flex flex-col gap-3" data-overview="v2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <h2 className="text-base font-semibold">我在城市用交易系统修仙 · 总览</h2>
-        <div className="flex flex-col items-end gap-0.5 text-[11px] text-[var(--fg-3)]"><span>按太平洋时间 {ptHM(new Date().toISOString())}</span><Stamp p={top} sec={30} /></div>
+        <span className="flex items-center gap-2 text-[11px] text-[var(--fg-3)]">{ptHM(new Date().toISOString())} PT<Info t={`首屏数据采样 ${ptHM(mt.at)}，每 30 秒刷新${mt.error ? `；暂时读不到：${mt.error}（保留上次值）` : ''}${m?.errors?.length ? `；部分数据源失败：${m.errors.join('；')}` : ''}`} />{mt.error || m?.errors?.length ? <Dot c={C.red} /> : null}</span>
       </div>
-      {d.errors?.length ? <p className="text-xs text-red-400">部分数据源读取失败：{d.errors.join('；')}</p> : null}
+
+      {/* 产能 */}
+      <section className="panel p-3" data-capacity>
+        <Head t="产能" info={cap?.note || (cap?.error ? '读取失败：' + cap.error : '读取中')} />
+        {!cap ? <NoData /> : cap.error ? <p className="text-xs text-red-400">ic.db 读不到</p> : (
+          <div className="flex flex-col gap-3">
+            <div className="grid items-center gap-3 md:grid-cols-[1fr_auto]">
+              <div><div className="mb-1 flex items-center gap-2 text-[11px] text-[var(--fg-3)]">今天忙闲 <Legend items={[['忙', C.green], ['闲', 'color-mix(in srgb, var(--fg) 14%, transparent)'], ['无数据', 'var(--line)']]} /></div><DayBar bar={cap.todayBar} /></div>
+              <div className="flex gap-5">
+                <Big v={hm(today?.busyMs)} sub="忙" c={C.green} />
+                <Big v={hm(today?.idleMs)} sub="闲" />
+                <Big v={pct0(today?.util)} sub="利用率" />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs tabular-nums">
+                <thead><tr className="text-[11px] text-[var(--fg-3)]"><th className="text-left font-normal" />{W.map((w) => <th key={w.id} className="px-2 text-right font-medium">{w.label}{w.noDataMs > 0 ? <span className="ml-0.5 text-[var(--fg-4)]" title={`前 ${hm(w.noDataMs)} 没有任务记录（无数据，不计入闲）`}>*</span> : null}</th>)}</tr></thead>
+                <tbody>
+                  {[
+                    ['GPU 忙', (w) => hm(w.busyMs)],
+                    ['GPU 闲', (w) => hm(w.idleMs)],
+                    ['利用率', (w) => <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-10 rounded bg-[var(--line)] align-middle"><span className="block h-1.5 rounded" style={{ width: `${(w.util || 0) * 100}%`, background: C.green }} /></span>{pct0(w.util)}</span>],
+                    ['总共出片', (w) => <b>{w.total}</b>],
+                    ['有效（选用）', (w) => <b style={{ color: C.green }}>{w.selected}</b>],
+                    ['无效（未选用）', (w) => w.unselected],
+                    ['失败任务', (w) => (w.failedJobs ? <span style={{ color: C.red }}>{w.failedJobs}</span> : 0)],
+                    ['有效率', (w) => pct0(w.effRate)],
+                    ['有效分钟', (w) => (w.effMin == null ? '—' : w.effMin.toFixed(1))],
+                    ['平均每镜用时', (w) => (w.perShotSec == null ? <NoData /> : mmss(w.perShotSec))],
+                  ].map(([k, f]) => <tr key={k} className="border-t border-[var(--line)]"><td className="py-0.5 text-[11px] text-[var(--fg-3)]">{k}</td>{W.map((w) => <td key={w.id} className="px-2 text-right">{f(w)}</td>)}</tr>)}
+                  <tr className="border-t border-[var(--line)]"><td className="py-0.5 text-[11px] text-[var(--fg-3)]">进了交付的有效条数</td>{W.map((w) => <td key={w.id} className="px-2 text-right"><NoData /></td>)}</tr>
+                </tbody>
+              </table>
+            </div>
+            <div><div className="mb-1 text-[11px] text-[var(--fg-3)]">最近 12 小时每小时出片</div><HourBars rows={cap.hourly || []} /></div>
+          </div>
+        )}
+      </section>
+
+      {/* 大数字 */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <section className="panel col-span-2 p-3">
+          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span></span> : null} />
+          {m?.episodes ? <><EpGrid grid={m.episodes.grid} /><div className="mt-1.5"><Legend items={[['已交付', C.green], ['2K', C.blue], ['有未完成问题', C.amber], ['未交付', 'var(--line)']]} /></div></> : <NoData />}
+        </section>
+        <section className="panel p-3">
+          <Head t="问题表" info="问题描述.txt（只读）逐条状态" />
+          {m?.issues && !m.issues.error ? <><Big v={m.issues.todo + m.issues.doing} unit={`/ ${m.issues.total} 未完成`} /><div className="mt-2"><Stack segs={ISS_SEG(m.issues)} h={14} /></div><div className="mt-1"><Legend items={[[`待修改 ${m.issues.todo}`, C.red], [`修改中 ${m.issues.doing}`, C.amber], [`完成 ${m.issues.done}`, C.green]]} /></div></> : <NoData />}
+        </section>
+        <section className="panel p-3">
+          <Head t="今天出片" info="ic.db shot_videos 今天（太平洋时间）新建条数" />
+          {today ? <><Big v={today.total} unit="条" sub={<span><span style={{ color: C.green }}>✓ {today.selected}</span> 选用</span>} /><div className="mt-1"><HourBars rows={(cap.hourly || []).slice(-8)} h={22} /></div></> : <NoData />}
+        </section>
+        <section className="panel p-3">
+          <Head t="GPU" info="8189 队列 + ic.db 在跑任务 + 出片链进程" />
+          {g ? (g.busy ? <><div className="flex items-center gap-1.5"><Dot c={C.green} /><b className="text-lg">出片中</b></div><div className="text-sm">{g.current ? `第${g.current.ch}章#${g.current.num}` : ''}</div><div className="text-xs text-[var(--fg-3)]"><Ticker since={g.current?.startedAt} /></div></> : <><div className="flex items-center gap-1.5"><Dot c={C.gray} /><b className="text-lg">空闲</b></div><Big v={g.idleMin == null ? '—' : hm(g.idleMin * 60000)} /></>) : <NoData />}
+        </section>
+      </div>
+
+      {/* 正在做 */}
+      <section className="panel px-3 py-2">
+        <div className="flex flex-col gap-1 text-xs">
+          {(m?.doing || []).slice(0, 3).map((x, i) => <div key={i} className="flex items-center gap-2"><Dot c={x.kind === 'gpu' ? (x.busy ? C.green : C.gray) : C.blue} /><span className="truncate" title={x.src || ''}>{x.text}</span><span className="ml-auto text-[10px] text-[var(--fg-4)]">{x.kind === 'gpu' && x.busy ? <Ticker since={x.since} /> : ptHM(x.since)}</span></div>)}
+          {!m ? <NoData /> : null}
+        </div>
+      </section>
+
       <WatchdogCard />
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {/* 用量 */}
+        <section className="panel p-3">
+          <Head t="用量（tokens）" info={(m?.tokens?.note || '') + (m?.spend?.note ? '；' + m.spend.note : '') + (m?.tokens?.at ? `；统计于 ${ptHM(m.tokens.at)}，5 分钟刷新` : '')} />
+          {m?.tokens?.windows ? (
+            <table className="w-full text-xs tabular-nums"><thead><tr className="text-[11px] text-[var(--fg-3)]"><th />{m.tokens.windows.map((w) => <th key={w.id} className="px-1 text-right font-medium">{w.label.replace('最近 ', '')}</th>)}</tr></thead><tbody>
+              {[['合计', 'total', true], ['输出', 'out'], ['缓存读', 'cr'], ['缓存写', 'cc'], ['输入', 'in']].map(([k, f, b]) => <tr key={k} className="border-t border-[var(--line)]"><td className="text-[11px] text-[var(--fg-3)]">{k}</td>{m.tokens.windows.map((w) => <td key={w.id} className="px-1 text-right">{b ? <b>{tok(w[f])}</b> : tok(w[f])}</td>)}</tr>)}
+              <tr className="border-t border-[var(--line)]"><td className="text-[11px] text-[var(--fg-3)]">主会话 $</td>{m.tokens.windows.map((w) => { const s = (m.spend?.windows || []).find((x) => x.id === w.id); return <td key={w.id} className="px-1 text-right">{s ? s.usd.toFixed(2) : '—'}</td>; })}</tr>
+            </tbody></table>
+          ) : m?.tokens?.pending ? <span className="text-[11px] text-[var(--fg-4)]">统计中…</span> : <NoData />}
+        </section>
+        {/* 规则 */}
+        <section className="panel p-3">
+          <Head t="规则条目" info={m?.rules?.note || m?.rules?.error} right={m?.rules?.total != null ? <span className="text-xl font-semibold">{m.rules.total}</span> : null} />
+          {m?.rules?.bySkill ? (() => { const mx = Math.max(1, ...Object.values(m.rules.bySkill)); return (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-0.5">{Object.entries(m.rules.bySkill).map(([k, n]) => <div key={k} className="flex items-center gap-2 text-[11px]"><span className="w-32 shrink-0 truncate text-[var(--fg-3)]" title={k}>{k}</span><div className="h-1.5 flex-1 rounded bg-[var(--line)]"><div className="h-1.5 rounded bg-[var(--accent)]" style={{ width: `${(n / mx) * 100}%` }} /></div><span className="w-7 text-right tabular-nums">{n}</span></div>)}</div>
+              <div className="grid grid-cols-3 gap-1 text-center text-[11px]">{(m.rules.changes || []).map((c) => <div key={c.id || 'x'} className="rounded border border-[var(--line)] py-1" title={c.missing || (c.baseEmpty ? '窗口起点时还没有编号条目，新增数＝当前全部' : `基准 ${c.base}`)}><div className="text-[10px] text-[var(--fg-4)]">{c.label || ''}</div>{c.missing ? <NoData /> : <div className="tabular-nums"><span style={{ color: C.green }}>+{c.added}</span> <span style={{ color: C.red }}>−{c.removed}</span> <span style={{ color: C.amber }}>~{c.modified}</span>{c.baseEmpty ? <span className="text-[var(--fg-4)]">*</span> : null}</div>}</div>)}</div>
+            </div>); })() : m?.rules?.pending ? <span className="text-[11px] text-[var(--fg-4)]">统计中…</span> : <NoData />}
+        </section>
+        {/* 问题归类 */}
+        <section className="panel p-3">
+          <Head t="问题归类" info={m?.issues?.note} right={<Legend items={[['待修改', C.red], ['修改中', C.amber], ['完成', C.green]]} />} />
+          {m?.issues?.classes ? (() => { const mx = Math.max(1, ...m.issues.classes.map((c) => c.total)); return (
+            <div className="flex flex-col gap-1">{m.issues.classes.map((c) => <div key={c.cls} className="flex items-center gap-2 text-[11px]"><span className="w-28 shrink-0 truncate text-[var(--fg-3)]" title={c.cls}>{c.cls}</span><div className="flex-1"><div style={{ width: `${Math.max(4, (c.total / mx) * 100)}%` }}><Stack segs={ISS_SEG(c)} h={10} /></div></div><span className="w-7 text-right tabular-nums">{c.total}</span></div>)}</div>); })() : <NoData />}
+        </section>
+      </div>
+
+      <details className="panel p-3">
+        <summary className="cursor-pointer text-sm font-semibold">规则与违规明细 {d ? <Pill tone={viol.some((v) => v.level === 'red') ? 'red' : viol.length ? 'yellow' : 'green'}>违反 {viol.length}</Pill> : null}</summary>
+        <div className="mt-3">{d ? <RulesCard d={d} go={go} /> : <NoData />}</div>
+      </details>
+      <details className="panel p-3" onToggle={(e) => setMore(e.currentTarget.open)}>
+        <summary className="cursor-pointer text-sm font-semibold">更多明细（原总览各卡）</summary>
+        {more ? <div className="mt-3">{d ? <OverviewMore go={go} top={top} /> : <NoData />}</div> : null}
+      </details>
+    </div>
+  );
+}
+// 规则与违规明细（原总览首屏的规则卡，原样保留，挪进折叠）
+function RulesCard({ d, go }) {
+  return (
       <Card title="规则（排序规则 + 派工规则；只显示和提醒，不自动改链、不自动派单）" right={<button type="button" className="rounded border border-[var(--line)] px-2 text-xs" onClick={() => go('dispatch')}>看派工单 →</button>}>
         <div className="flex flex-col gap-1 text-xs">
           <div className="text-[11px] font-semibold text-[var(--fg-3)]">排序规则（越靠上越优先）</div>
@@ -191,6 +368,19 @@ function Overview({ go }) {
           {(d.priority?.releaseChecks || []).map((c) => <div key={c.key} className={c.level === 'red' ? 'font-semibold text-red-500' : c.level === 'amber' ? 'text-amber-400' : 'text-green-500'}>{c.level === 'red' ? '✖' : c.level === 'amber' ? '⚠' : '✔'} 放行记录 {c.key}{c.kindLabel ? `（${c.kindLabel}）` : ''}：{c.msgs.length ? c.msgs.join('；') : '各栏齐全'}</div>)}
         </div>
       </Card>
+  );
+}
+// 原总览的明细卡（数据和写法不变），收进折叠、展开时才挂载
+function OverviewMore({ go, top }) {
+  const iss = usePoll('/api/command/ov?part=issues', 60);
+  const ses = usePoll('/api/command/ov?part=sessions', 60);
+  const tr = usePoll('/api/command/ov?part=trends', 600);
+  const d = top.data;
+  if (!d) return null;
+  const T = d.films.totalChapters;
+  const sesActive = ses.data?.active || [];
+  return (
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Tile title="做完的集（Andy 口径）">
           {d.films.doneAndy.value === null ? <Missing m={d.films.doneAndy} /> : <><div className="text-xl font-semibold">{d.films.doneAndy.n} <span className="text-xs font-normal">/ {T}</span></div><Bar v={d.films.doneAndy.n / T} /><div className="mt-1 text-[10px] text-[var(--fg-4)]" title={d.films.doneAndy.note}>第 {d.films.doneAndy.list.join('、') || '—'} 集 · 已导出且登记问题全修好；整集验收：<Missing m={d.films.accepted} /></div></>}
@@ -518,36 +708,71 @@ function Dispatch() {
 const STAGE_TONE = { 已完成: 'green', '待 Andy 点头': 'blue', 待导出: 'blue', 审片: 'blue', 出片中: 'yellow', 排队出片: 'yellow', 写库: 'yellow', 复审: 'yellow', 改稿中: 'yellow', 待改稿: 'red', 未知: 'gray' };
 const fmtEta = (s) => (s ? new Date(s).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '—');
 const CH_STATE = { running: ['在跑', 'yellow'], waiting: ['已挂起等上游', 'blue'], ready: ['脚本就绪未启动', 'gray'], done: ['已跑完', 'green'], stopped: ['有日志但进程不在', 'red'], missing: ['待建', 'gray'] };
+function GpuShots({ u }) {
+  const [lv, setLv] = useState(0); // 0 收起 1 前 6 个 2 全部
+  const all = u.allShots || u.shots || [];
+  const show = lv === 2 ? all : (u.shots || []);
+  return (
+    <div className="text-[11px]">
+      <div className="flex items-center gap-2">
+        <button type="button" className="min-w-0 flex-1 truncate text-left" title={u.key} onClick={() => setLv((x) => (x ? 0 : 1))}>{lv ? '▾' : '▸'} {u.label}</button>
+        <span className="w-16"><Prog done={u.done} total={u.total} c={u.state === 'running' ? C.green : 'var(--accent)'} /></span>
+        <span className="w-10 text-right tabular-nums text-[var(--fg-3)]">{u.done}/{u.total}</span>
+      </div>
+      {lv ? <div className="mt-0.5 flex flex-wrap gap-1 pl-3">{show.map((s, i) => <span key={i} className={'rounded px-1 ' + (s.done ? 'text-[var(--fg-4)] line-through' : 'bg-[var(--line)]')}>{s.ch}#{s.num}</span>)}{lv === 1 && u.more ? <button type="button" className="text-[var(--accent)]" onClick={() => setLv(2)}>…共 {all.length} 镜</button> : null}</div> : null}
+    </div>
+  );
+}
 function GpuBar({ g }) {
   if (!g) return null;
-  const r = g.running;
-  const lab = (c) => <span title={c.key}>{c.label || c.key}</span>;
+  const n = g.now || {}; const t = g.today || {}; const cur = n.current;
+  const DIAG_ST = { running: ['在跑', 'green'], waiting: ['在等', 'blue'], ready: ['未启动', 'gray'], stopped: ['进程不在', 'red'] };
   return (
     <section className="panel p-3 text-xs" data-gpu-bar>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <b className="text-sm">GPU 状态</b>
-        {g.idle ? <Pill tone="red">进程表里没有在跑的链（GPU 可能空闲）</Pill> : null}
-        <span className="text-[10px] text-[var(--fg-4)]">单镜耗时（估算）：{g.perShotSec ? `${Math.round(g.perShotSec)} 秒，取今天最近 ${g.sampleCount} 个 done 的中位数` : '没有样本'} · {g.note}</span>
+      <Head t="GPU 状态" info={`${g.note || ''}；现在＝出片链进程 + ic.db 在跑任务 + 8189 队列；今天＝ic.db；接下来＝最近 6 小时改过、没跑完、没被取代、没有 .STOP 的链脚本（最多 3 条）`} />
+      <div className="grid gap-2 md:grid-cols-3">
+        <div className="rounded border border-[var(--line)] p-2" data-gpu-now>
+          <div className="mb-1 text-[11px] text-[var(--fg-3)]">现在</div>
+          {n.busy ? <>
+            <div className="flex items-center gap-1.5"><Dot c={C.green} /><b className="text-base">出片中</b><span className="ml-auto text-sm"><Ticker since={cur?.startedAt} /></span></div>
+            {cur ? <div className="mt-0.5"><b className="text-lg">第{cur.ch}章#{cur.num}</b> <span className="text-[11px] text-[var(--fg-3)]" title={cur.job || ''}>{cur.label || cur.chain || (cur.job ? cur.job.slice(0, 8) : '')}</span></div> : null}
+          </> : <div className="flex items-center gap-1.5"><Dot c={C.gray} /><b className="text-base">空闲</b><span className="ml-auto text-lg font-semibold" title={n.idleSince ? `上一条出片任务 ${ptHM(n.idleSince)} 结束` : ''}>{n.idleMin == null ? '—' : hm(n.idleMin * 60000)}</span></div>}
+          <div className="mt-1.5 flex flex-wrap gap-1 text-[10px]">
+            <span className="rounded bg-[var(--line)] px-1.5" title="8189 /queue：▶ running · ⏸ pending">8189 {n.comfy?.ok ? `▶${n.comfy.running} ⏸${n.comfy.pending}` : '查不到'}</span>
+            {n.ic?.ok ? [...(n.ic.running || []).map((j) => ['▶', j]), ...(n.ic.queued || []).map((j) => ['⏸', j])].map(([k, j]) => <span key={j.job} className="rounded bg-[var(--line)] px-1.5" title={`IC 任务 ${j.job}`}>{k} {j.type}{j.ch ? ` ${j.ch}#${j.idx}` : ''}</span>) : <span className="rounded bg-[var(--line)] px-1.5">IC 查不到</span>}
+          </div>
+        </div>
+        <div className="rounded border border-[var(--line)] p-2" data-gpu-today>
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] text-[var(--fg-3)]">今天<Info t={t.note || t.error} /></div>
+          {t.ok ? <>
+            <div className="flex items-end gap-3">
+              <Big v={t.videos} unit="条" />
+              <div className="flex flex-1 flex-col gap-0.5 pb-1 text-[11px]"><span><span style={{ color: C.green }}>✓ {t.selected}</span> · 未选 {t.unselected}{t.failedJobs ? <span style={{ color: C.red }}> · 失败 {t.failedJobs}</span> : null}</span><span className="text-[var(--fg-3)]" title={`今天 ${t.sampleCount} 个 done 的中位数（chain.log）`}>每镜 {t.perShotSec ? mmss(t.perShotSec) : '—'}{t.idleMin != null ? ` · 闲 ${hm(t.idleMin * 60000)}` : ''}</span></div>
+            </div>
+            <HourBars rows={t.hourly || []} h={26} />
+          </> : <NoData />}
+        </div>
+        <div className="rounded border border-[var(--line)] p-2" data-gpu-next>
+          <div className="mb-1 text-[11px] text-[var(--fg-3)]">接下来</div>
+          {(g.upcoming || []).length ? <div className="flex flex-col gap-1">{g.upcoming.map((u) => <GpuShots key={u.key} u={u} />)}</div> : <span className="text-[11px] text-[var(--fg-4)]">没有待跑的链</span>}
+        </div>
       </div>
-      <div className="mb-2 grid gap-2 sm:grid-cols-2">
-        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">当前</p>{r ? <><b>{lab(r)}</b> PID {r.pid} · 进度 {r.done}/{r.total}{r.current ? ` · 正在出 ${r.current.ch ? r.current.ch.replace('章', '集') : ''} 第${r.current.num}镜（提交于 ${r.current.at.slice(11)}）` : ''} · 预计跑完 {fmtEta(r.eta)}（估算）</> : '没有在跑的链'}</div>
-        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">下一条</p>{g.next ? <><b>{lab(g.next)}</b> · {g.nextArmed ? (g.nextArmedBy === 'waiter' ? `已由等待器挂好（${g.next.waiter?.name}，PID ${g.next.waiter?.pid}）` : '已挂好在等上游') : g.next.approvedWaiting ? (g.next.approval?.note || '已放行，待挂') : g.next.reviewPending ? '待审' : CH_STATE[g.next.state]?.[0]} · {g.next.total} 镜</> : '队列里没有下一条'}</div>
+      <div className="mt-2 rounded border border-[var(--line)] p-2" data-gpu-recent>
+        <div className="mb-1 text-[11px] text-[var(--fg-3)]">最近出片</div>
+        <div className="grid gap-x-4 sm:grid-cols-2">
+          {(g.recent || []).map((r, i) => <div key={i} className="flex items-center gap-2 border-t border-[var(--line)] py-0.5 tabular-nums"><span className="text-[var(--fg-3)]">{ptHM(r.at)}</span><b>第{r.ch}章#{r.num}</b><span>{r.dur != null ? `${r.dur}s` : '—'}</span><span style={{ color: r.selected ? C.green : 'var(--fg-4)' }}>{r.selected ? '✓' : '·'}</span><span className="ml-auto truncate text-[10px] text-[var(--fg-4)]" title={r.job ? `IC 任务 ${r.job}` : ''}>{r.source || ''}</span></div>)}
+          {!(g.recent || []).length ? <NoData /> : null}
+        </div>
       </div>
-      <div className="mb-2 grid gap-2 sm:grid-cols-2 text-[11px]">
-        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">推出的链序（脚本默认 --after，在跑的看命令行）</p>{(g.derived || []).map((d) => d.label).join(' → ') || '—'}{g.conflicts?.length ? <div className="text-red-400">⚠ {g.conflicts.map((c) => `「${c.upstreamLabel}」后面接了 ${c.childLabels.join('、')}`).join('；')}</div> : null}{g.superseded?.length ? <div className="text-[var(--fg-4)]">被新版取代、不计入：{g.superseded.map((x) => `${x.label}（${x.key} → ${x.by}）`).join('、')}</div> : null}</div>
-        <div className="rounded border border-[var(--line)] p-2"><p className="section-label">参考顺序（以等待器为准）</p>{(g.reference || []).map((x) => x.label).join(' → ')}<div className="text-[10px] text-[var(--fg-4)]">{g.referenceNote}</div></div>
-      </div>
-      {(g.waiters || []).length ? <div className="mb-2 rounded border border-[var(--line)] p-2 text-[11px]"><p className="section-label">等待器（只读：进程命令行 + 脚本 + 它自己的日志）</p>{g.waiters.map((w) => <div key={w.file} className={w.alive ? '' : (w.aborted && !g.waiters.some((x) => x.alive)) ? 'text-red-400' : 'text-[var(--fg-4)]'}><b>{w.name}</b> · {w.alive ? `在运行 PID ${w.pid}` : '进程不在'} · {({ alive: '工作中', finished: '已跑完', aborted: '已中止', gone: '已结束' })[w.state]}{w.stopPresent ? ' · ⚠ 停止开关 arm_waiter.STOP 存在' : ''}<div>{w.steps.map((x) => `${x.kind === 'wait' ? '等' : '起'}「${x.label}」${x.kind === 'wait' ? '跑完' : ''}${x.after ? `（--after=${x.after}）` : ''}：${({ waiting: '等待中', armed: '已挂好', done: '已完成', started: '已启动', dead: '不会再执行' })[x.status] || x.status}${x.at ? ` ${x.at.slice(11)}` : ''}`).join(' → ')}</div><div className="text-[10px] text-[var(--fg-4)]" title={w.log}>日志末行：{w.lastLine || '—'}</div>{w.aborted ? <div>中止：{w.aborted}{g.waiters.some((x) => x.alive) ? '（已有在运行的等待器接替）' : ''}</div> : null}</div>)}</div> : null}
-      <table className="w-full text-[11px]"><thead><tr className="text-left text-[var(--fg-3)]"><th>顺序</th><th>链</th><th>状态</th><th>进度</th><th>镜单</th><th>脚本上游</th><th>参考上游</th><th>预计跑完（估算）</th></tr></thead>
-        <tbody>{g.chains.map((c, i) => (
-          <tr key={c.key} className={'border-t border-[var(--line)] align-top ' + (c.mismatch ? 'bg-red-500/10' : '')}>
-            <td>{i + 1}</td><td>{lab(c)}{c.unlisted && <span className="ml-1 text-[10px] text-amber-400">（不在参考顺序里）</span>}{c.logNote ? <div className="text-[10px] text-[var(--fg-4)]">{c.logNote}</div> : null}</td><td>{c.waiterArmed ? <Pill tone="green">已由等待器挂好</Pill> : c.approvedWaiting ? <><Pill tone="blue">已放行，待挂</Pill><div className="text-[10px] text-[var(--fg-4)]">{c.approval?.note}{c.approval ? ` · ${c.approval.by} ${String(c.approval.at).slice(11, 16)} 放行` : ''}</div></> : c.reviewPending ? <Pill tone="yellow">待审</Pill> : <Pill tone={CH_STATE[c.state]?.[1]}>{CH_STATE[c.state]?.[0]}</Pill>}{c.waiter && !c.waiterArmed ? <div className="text-[10px] text-[var(--fg-4)]">等待器：{({ waiting: '在等它跑完', done: '已确认跑完', started: '已由等待器启动', dead: '等待器不会再执行' })[c.waiter.status] || c.waiter.status}</div> : null}</td>
-            <td>{c.placeholder ? '—' : `${c.done}/${c.total}`}</td>
-            <td className="max-w-[320px] break-all">{(c.shots || []).map((s) => `${s.ch.replace('第', '').replace('章', '')}#${s.num}${s.done ? '✓' : ''}`).join(' ') || '—'}</td>
-            <td>{c.upstreamLabel || '—'}<div className="text-[10px] text-[var(--fg-4)]">{c.upstreamSrc}{c.pid ? ` · PID ${c.pid}` : ''}</div></td>
-            <td className={c.mismatch ? 'text-red-400' : ''}>{c.refPrev === undefined ? '（不在参考里）' : c.refPrevLabel || '—'}{c.mismatch ? ' · 不一致' : ''}</td>
-            <td>{c.state === 'done' ? `完成于 ${String(c.doneAt).slice(11)}` : fmtEta(c.eta)}</td>
-          </tr>))}</tbody></table>
+      <details className="mt-2 rounded border border-[var(--line)] p-2 text-[11px]">
+        <summary className="cursor-pointer text-[var(--fg-3)]">排链诊断（旧）· {(g.diag || []).length} 条</summary>
+        <table className="mt-1 w-full"><thead><tr className="text-left text-[var(--fg-3)]"><th>链</th><th>状态</th><th>进度</th><th>未出镜</th><th>上游</th></tr></thead><tbody>
+          {(g.diag || []).map((c) => <tr key={c.key} className={'border-t border-[var(--line)] ' + (c.mismatch ? 'bg-red-500/10' : '')}><td title={c.key}>{c.label}</td><td><Pill tone={DIAG_ST[c.state]?.[1] || 'gray'}>{DIAG_ST[c.state]?.[0] || c.state}</Pill>{c.pid ? <span className="ml-1 text-[var(--fg-4)]">PID {c.pid}</span> : null}</td><td className="tabular-nums">{c.done}/{c.total}</td><td>{c.shots.join(' ')}{c.more ? ` …共 ${c.shots.length + c.more} 镜` : ''}</td><td>{c.upstreamLabel || '—'}{c.mismatch ? <span className="ml-1 text-red-400">与参考不一致</span> : null}</td></tr>)}
+          {!(g.diag || []).length ? <tr><td colSpan={5} className="text-[var(--fg-4)]">没有在跑 / 在等 / 未完成的链</td></tr> : null}
+        </tbody></table>
+        {g.conflicts?.length ? <div className="mt-1 text-red-400">冲突：{g.conflicts.map((c) => `「${c.upstreamLabel}」后接 ${c.childLabels.join('、')}`).join('；')}</div> : null}
+        {(g.waiters || []).filter((w) => w.alive).map((w) => <div key={w.file} className="mt-1">等待器 {w.name}（PID {w.pid}）：{w.steps.map((x) => `${x.kind === 'wait' ? '等' : '起'}「${x.label}」·${x.status}`).join(' → ')}</div>)}
+      </details>
     </section>
   );
 }

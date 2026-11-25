@@ -1,6 +1,6 @@
 // 指挥系统 · 问题描述（可编辑）+ 返修进度推算 + GPU 状态栏（预览版）
 // 写：只写配置里的目标文件（测试阶段是测试副本）、备份目录、修改记录、建议队列；桌面真文件在 Andy 点头前拒写。
-// 读：chain.log / progress.json / 链脚本 / 进程表（只读）；IC 只发 GET；不连 8188/8189；不碰 4610 进程。
+// 读：chain.log / progress.json / 链脚本 / 进程表（只读）；IC 只发 GET；8189 只 GET /queue（3 秒超时）；ic.db 只读（worker + readOnly）；不连 8188；不碰 4610 进程。
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { waiterStatus } from './command-waiter.mjs';
@@ -8,6 +8,7 @@ import { linkEpisodes, linksInit, setManual } from './command-links.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { Worker } from 'node:worker_threads';
 
 const M = 'C:\\Users\\usazr\\Documents\\moviePro';
 const P = path.join(M, 'projects', '我在城市用交易系统修仙');
@@ -206,6 +207,38 @@ function readProcs() {
 }
 async function chainProcs() { return (await readProcs()).v; }
 const ymd = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+// 某链最近一个日志目录（<key>_chain_YYYYMMDD，取日期最大的，最多回看 2 天）
+function latestChainDir(key) {
+  let names = []; try { names = fs.readdirSync(G); } catch { return null; }
+  const re = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_chain_(\\d{8})$`);
+  const hit = names.map((n) => { const m = re.exec(n); return m ? { n, d: m[1] } : null; }).filter(Boolean).sort((a, b) => b.d.localeCompare(a.d))[0];
+  if (!hit) return null;
+  const st = fs.statSync(path.join(G, hit.n), { throwIfNoEntry: false });
+  return st && Date.now() - st.mtimeMs < 2 * 86400e3 ? path.join(G, hit.n) : null;
+}
+// ic.db 只读（同总览：worker 线程 + readOnly，限时）
+const IC_DB = process.env.CMD_IC_DB || 'C:/tmp_infinite_creation/infinite-creation/data/ic.db';
+function runIcDb(mode, timeoutMs = 8000) {
+  if (process.env.CMD_GPU_NO_DB) return Promise.resolve({ error: '测试模式不读 ic.db' });
+  return new Promise((resolve) => {
+    const w = new Worker(new URL('./command-overview-db.mjs', import.meta.url), { execArgv: [], workerData: { dbPath: IC_DB, project: PROJECT, mode, now: Date.now() } });
+    const tm = setTimeout(() => { w.terminate(); resolve({ error: `ic.db 查询超时（>${timeoutMs / 1000} 秒）` }); }, timeoutMs);
+    w.once('message', (m) => { clearTimeout(tm); resolve(m); w.terminate(); });
+    w.once('error', (e) => { clearTimeout(tm); resolve({ error: String(e.message || e) }); });
+  });
+}
+// 8189 队列（只 GET，3 秒超时）
+async function comfyQueue() {
+  if (process.env.CMD_GPU_NO_COMFY) return { ok: false, error: '查不到' };
+  try {
+    const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 3000);
+    const r = await fetch('http://127.0.0.1:8189/queue', { signal: ac.signal }); clearTimeout(tm);
+    const j = await r.json();
+    return { ok: true, running: (j.queue_running || []).length, pending: (j.queue_pending || []).length };
+  } catch { return { ok: false, error: '查不到' }; }
+}
+const chNum = (c) => Number(String(c || '').replace(/\D/g, '')) || null;
+const shotsPreview = (shots, n = 6) => ({ head: shots.slice(0, n), more: Math.max(0, shots.length - n), total: shots.length });
 async function readLines(f) { try { return (await fsp.readFile(f, 'utf8')).replace(/^\uFEFF/, '').split(/\r?\n/); } catch { return null; } }
 // chain.log 增量读：第一次整读建缓存，之后只读新增字节；文件变小（截断/换文件）就重建
 const logCache = new Map();
@@ -272,6 +305,7 @@ async function chainInfo(key, procs) {
   if (!meta) return info;
   info.total = meta.total;
   let dir = path.join(G, `${key}_chain_${ymd()}`);
+  if (!fs.existsSync(dir)) { const alt = latestChainDir(key); if (alt) dir = alt; } // 跨午夜：链昨天起的，日志还在昨天日期的目录
   if (!fs.existsSync(dir) && meta.stopName && meta.stopName !== key && fs.existsSync(path.join(G, `${meta.stopName}_chain_${ymd()}`))) { dir = path.join(G, `${meta.stopName}_chain_${ymd()}`); info.logNote = `脚本内部名是 ${meta.stopName}，日志写在 ${meta.stopName}_chain 目录（与同名链共用）`; }
   info.logDir = dir;
   let log = (await readLogLines(path.join(dir, 'chain.log'))) || [];
@@ -309,11 +343,83 @@ async function chainInfo(key, procs) {
 }
 const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const k = Math.floor(s.length / 2); return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
 async function allTodaySamples() {
-  const dirs = (await fsp.readdir(G).catch(() => [])).filter((n) => n.includes(ymd()));
+  // 今天日期的目录 + 跨午夜还在写的旧日期目录（链按启动日期建目录）；样本只取今天日期的 done 行
+  const day = ymd(); const dayIso = `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6)}`;
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const dirs = [];
+  for (const n of await fsp.readdir(G).catch(() => [])) { if (n.includes(day)) { dirs.push(n); continue; } if (!/_\d{8}$/.test(n)) continue; const st = await fsp.stat(path.join(G, n, 'chain.log')).catch(() => null); if (st && st.mtimeMs >= t0.getTime()) dirs.push(n); }
   const out = [];
   for (const d of dirs) { const L = await readLogLines(path.join(G, d, 'chain.log')); if (!L) continue; for (const l of L) { let m; if ((m = /^(\S+) done 第\d+章 \d+ [0-9a-f-]{36} [\d.]+ ([\d.]+)/.exec(l))) out.push({ at: m[1], s: Number(m[2]) }); else if ((m = /^(\S+) done idx \d+ .*?elapsed ([\d.]+)/.exec(l))) out.push({ at: m[1], s: Number(m[2]) }); } }
+  for (let i = out.length - 1; i >= 0; i--) if (!out[i].at.startsWith(dayIso)) out.splice(i, 1);
   out.sort((a, b) => a.at.localeCompare(b.at));
   return out.slice(-40).map((x) => x.s);
+}
+// 链日志里的 IC 任务 id → 链名（最近 24 小时动过的日志目录）
+async function jobChainMap() {
+  const m = new Map();
+  const dirs = await fsp.readdir(G).catch(() => []);
+  for (const d of dirs) {
+    const mm = /^(.+)_chain_\d{8}$/.exec(d); if (!mm) continue;
+    const f = path.join(G, d, 'chain.log'); const st = await fsp.stat(f).catch(() => null);
+    if (!st || Date.now() - st.mtimeMs > 24 * 3600e3) continue;
+    const L = await readLogLines(f); if (!L) continue;
+    for (const l of L) { const x = /^\S+ submitted (?:第\d+章 \d+|idx \d+ .*?) [0-9a-f-]{36}(?: job)? ([0-9a-f-]{36})/.exec(l); if (x) m.set(x[1], mm[1]); const y = /^\S+ done 第\d+章 \d+ ([0-9a-f-]{36}) /.exec(l); if (y) m.set(y[1], mm[1]); }
+  }
+  return m;
+}
+// 新版 GPU 面板数据：now / today / upcoming / recent / diag（旧字段不动）
+async function gpuGlance({ info, procs, running, per, samples, superseded }) {
+  const [db, comfy, jmap] = await Promise.all([runIcDb('gpu'), comfyQueue(), jobChainMap()]);
+  const nowMs = Date.now();
+  const dbOk = !db.error;
+  const icActive = dbOk ? db.active || [] : [];
+  const icRun = icActive.filter((j) => j.status === 'running' && ['regenerate', 'create'].includes(j.type));
+  let current = null;
+  if (running && running.current) {
+    const at = Date.parse(running.current.at) || null;
+    current = { ch: chNum(running.current.ch), num: running.current.num, source: 'chain', chain: running.key, label: running.label, job: running.current.job || null, startedAt: at ? new Date(at).toISOString() : null, runMin: at ? Math.round((nowMs - at) / 6000) / 10 : null };
+  } else if (icRun.length) {
+    const j = icRun[0];
+    current = { ch: chNum(j.ch), num: j.idx, source: 'ic', chain: jmap.get(j.id) || null, label: jmap.get(j.id) || null, job: j.id, startedAt: j.startedAt ? new Date(j.startedAt).toISOString() : null, runMin: j.startedAt ? Math.round((nowMs - j.startedAt) / 6000) / 10 : null };
+  }
+  const busy = !!current || (comfy.ok && comfy.running > 0);
+  const lastDone = dbOk ? db.lastGenFinished : null;
+  const now = {
+    busy, state: busy ? '出片中' : '空闲',
+    idleMin: !busy && lastDone ? Math.round((nowMs - lastDone) / 6000) / 10 : null, idleSince: !busy && lastDone ? new Date(lastDone).toISOString() : null,
+    current,
+    comfy: comfy.ok ? { ok: true, running: comfy.running, pending: comfy.pending } : { ok: false, error: comfy.error },
+    ic: dbOk ? { ok: true, running: icActive.filter((j) => j.status === 'running').map((j) => ({ type: j.type, ch: chNum(j.ch), idx: j.idx, job: j.id.slice(0, 8) })), queued: icActive.filter((j) => j.status !== 'running').map((j) => ({ type: j.type, ch: chNum(j.ch), idx: j.idx, job: j.id.slice(0, 8) })) } : { ok: false, error: db.error },
+  };
+  const today = dbOk ? {
+    ok: true, videos: db.today.videos, selected: db.today.selected, unselected: db.today.unselected, failedJobs: db.today.failedJobs,
+    perShotSec: per, sampleCount: samples.length,
+    idleMin: db.busyToday ? Math.round((db.busyToday.spanMs - db.busyToday.busyMs) / 6000) / 10 : null,
+    busyMin: db.busyToday ? Math.round(db.busyToday.busyMs / 6000) / 10 : null,
+    hourly: (db.hourly || []).map((h) => ({ at: new Date(h.from).toISOString(), n: h.n })),
+    note: '出片＝ic.db shot_videos 今天（太平洋时间）新建条数；忙闲＝ic.db 重生成/新建任务运行区间并集（含所有项目）；灰片拦截库里没有字段，不单列',
+  } : { ok: false, error: db.error, perShotSec: per, sampleCount: samples.length };
+  // 接下来：最近 6 小时改过、没跑完、没被取代、没有 .STOP 的链脚本（最多 3 条）
+  const cand = new Map(info);
+  for (const f of await fsp.readdir(U).catch(() => [])) {
+    const m = /^gpu_(.+)_chain\.py$/.exec(f); if (!m || cand.has(m[1])) continue;
+    const st = await fsp.stat(path.join(U, f)).catch(() => null);
+    if (st && nowMs - st.mtimeMs < 6 * 3600e3) cand.set(m[1], await chainInfo(m[1], procs));
+  }
+  const supKeys = new Set(superseded.map((s) => s.key));
+  const stopped = (c) => { const sn = scriptCache.get(c.script)?.v?.stopName || c.key; return fs.existsSync(path.join(U, `${sn}.STOP`)); };
+  const mt = (c) => scriptCache.get(c.script)?.mtime || 0;
+  const rank = { running: 0, waiting: 1, ready: 2, stopped: 3 };
+  const upcoming = [...cand.values()]
+    .filter((c) => c.script && (c.state === 'running' || nowMs - mt(c) < 6 * 3600e3) && c.state !== 'done' && c.state !== 'missing' && !c.superseded && !supKeys.has(c.key) && !stopped(c) && (c.total || 0) - (c.done || 0) > 0)
+    .sort((a, b) => (rank[a.state] ?? 9) - (rank[b.state] ?? 9) || mt(a) - mt(b))
+    .slice(0, 3)
+    .map((c) => { const sh = (c.shots || []).map((s) => ({ ch: chNum(s.ch), num: s.num, done: !!s.done })); return { key: c.key, label: c.label, state: c.state, total: c.total, done: c.done, remaining: Math.max(0, (c.total || 0) - (c.done || 0)), mtime: new Date(mt(c)).toISOString(), shots: shotsPreview(sh).head, more: shotsPreview(sh).more, allShots: sh }; });
+  const recent = dbOk ? (db.recent || []).map((v) => ({ at: new Date(v.at).toISOString(), ch: chNum(v.ch), num: v.idx, dur: v.dur, selected: v.selected, ...(() => { const ch = jmap.get(v.id) || (v.job && jmap.get(v.job)); return { source: ch || (v.job ? v.job.slice(0, 8) : null), sourceKind: ch ? 'chain' : v.job ? 'job' : null, job: v.job ? v.job.slice(0, 8) : null }; })() })) : [];
+  // 排链诊断（旧）：只留在跑 / 在等 / 未完成、24 小时内动过的
+  const moved = (c) => { const lm = c.logDir ? (fs.statSync(path.join(c.logDir, 'chain.log'), { throwIfNoEntry: false })?.mtimeMs || 0) : 0; return Math.max(mt(c), lm) > nowMs - 24 * 3600e3; };
+  const diag = [...info.values()].filter((c) => c.script && c.state !== 'done' && c.state !== 'missing' && !c.superseded && (c.pid || moved(c))).map((c) => { const sh = (c.shots || []).filter((s) => !s.done).map((s) => `${chNum(s.ch)}#${s.num}`); return { key: c.key, label: c.label, state: c.state, done: c.done, total: c.total, upstream: c.upstream, upstreamLabel: c.upstreamLabel || null, refPos: c.refPos ?? null, mismatch: !!c.mismatch, pid: c.pid || null, shots: sh.slice(0, 6), more: Math.max(0, sh.length - 6) }; });
+  return { now, today, upcoming, recent, diag };
 }
 export async function gpuQueue() {
   await ready();
@@ -400,7 +506,9 @@ export async function gpuQueue() {
   const next = derived.map((d) => info.get(d.key)).find((c) => c !== running && c.state !== 'done') || null;
   const nextArmed = !!(next && ((next.pid && next.state === 'waiting') || next.waiterArmed));
   const nextArmedBy = next ? (next.pid && next.state === 'waiting' ? 'process' : next.waiterArmed ? 'waiter' : null) : null;
+  const glance = await gpuGlance({ info, procs, running, per, samples, superseded });
   return {
+    ...glance,
     at: nowIso(), perShotSec: per, sampleCount: samples.length, running: running || null, next, nextArmed, nextArmedBy, queue: ordered.filter((c) => c.state !== 'done' && c !== running), chains: ordered, procs, idle: !procs.some((p) => !p.dry),
     derived: derived.map((d) => ({ ...d, label: info.get(d.key).label, state: info.get(d.key).state, upstream: info.get(d.key).upstream })), conflicts: conflicts.map((x) => ({ ...x, upstreamLabel: info.get(x.upstream)?.label, childLabels: x.children.map((k) => info.get(k)?.label) })),
     superseded, reference: ref.map((k) => ({ key: k, label: info.get(k)?.label || k, state: info.get(k)?.state })), referenceNote: aw ? `参考顺序以正在运行的等待器 ${aw.name}（PID ${aw.pid}）为准：已跑完/在跑的链按原口述顺序在前，之后是等待器的执行顺序；未审的新链列在最后` : '没有在运行的等待器；参考顺序来自总导口述（配置 issues-config.json 的 gpuOrder），只作对照',
@@ -485,6 +593,12 @@ function send(res, code, obj) { res.writeHead(code, { 'content-type': 'applicati
 const isHuman = (op) => cfg.humans.includes(op);
 // ---------- 给总览用的只读汇总 ----------
 // 问题描述：总览读桌面正式文件（只读，绝不写）；可编辑页仍只写测试副本
+// 总览用：问题描述.txt（正式文件，只读）逐条 {集, 正文, 状态}
+export async function issueItems() {
+  await ready();
+  const doc = await readDoc(cfg.realFile);
+  return { md5: doc.md5, eps: parse(doc.lines).map((e) => ({ no: e.no, items: e.items.map((i) => ({ text: i.text, status: i.status })) })) };
+}
 export async function issuesForOverview() {
   await ready();
   const file = cfg.realFile;

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gpuQueue, issuesForOverview, writeLead, logCacheStats, issuesCfg } from './command-issues.mjs';
+import { gpuQueue, issuesForOverview, writeLead, logCacheStats, issuesCfg, issueItems, readLogLines } from './command-issues.mjs';
 import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE, DECISION_RULES, RELEASE_FIELDS, checkRelease, GATE_MD5 } from './command-rules.mjs';
 function releaseChecks() { const a = (issuesCfg() || {}).approvals || {}; return Object.entries(a).map(([key, r]) => ({ key, at: r && r.at || null, by: r && (r.decider || r.by) || null, ...checkRelease(r) })); }
 import { chatInit, chatRegistry, chatRegistryFile } from './command-chat.mjs';
@@ -64,9 +64,9 @@ const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y)
 const r1 = (x) => (x == null ? null : Math.round(x * 10) / 10);
 
 // 各区缓存（内存）：失败时保留上次值并标采样时间
-const cache = { top: null, issues: null, sessions: null, trends: null };
+const cache = { top: null, issues: null, sessions: null, trends: null, metrics: null };
 const inflight = {};
-const TTL = { top: 30e3, issues: 60e3, sessions: 60e3, trends: 600e3 };
+const TTL = { top: 30e3, issues: 60e3, sessions: 60e3, trends: 600e3, metrics: 30e3 };
 async function getPart(name, fn) {
   const c = cache[name];
   if (c && Date.now() - c.computedAt < TTL[name] - 2000) return c;
@@ -270,9 +270,185 @@ async function computeTrends() {
   return { days: db.days, elapsedMs: db.elapsedMs };
 }
 
+// ======================= 首屏指标（part=metrics）：产能 / 正在做 / 章集进度 / 用量 / 规则 / 问题归类 =======================
+const ptDayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const ptDayOf = (ms) => ptDayFmt.format(new Date(ms));
+const lastDays = (n) => { const out = []; const seen = new Set(); for (let i = 0; out.length < n && i < n + 3; i++) { const d = ptDayOf(Date.now() - i * 86400e3); if (!seen.has(d)) { seen.add(d); out.push(d); } } return out; };
+const WIN_DEF = [{ id: 'today', label: '今天', days: 1, skip: 0 }, { id: 'yesterday', label: '昨天', days: 1, skip: 1 }, { id: 'd7', label: '最近 7 天', days: 7, skip: 0 }, { id: 'd30', label: '最近 30 天', days: 30, skip: 0 }];
+const ptMidnightIso = (day) => { for (const off of [8, 7]) { const t = Date.parse(`${day}T0${off}:00:00Z`); if (ptDayOf(t) === day && ptDayOf(t - 3600e3) !== day) return new Date(t).toISOString(); } return `${day}T00:00:00-08:00`; };
+const winDays =(w) => lastDays(w.days + w.skip).slice(w.skip);
+
+// --- tokens：~/.claude/projects/**/*.jsonl 的 assistant message.usage，按太平洋时间日汇总；按文件增量读，按 message.id 去重；5 分钟刷新一次
+const CLAUDE_PROJECTS = process.env.CMD_CLAUDE_PROJECTS || path.join(process.env.USERPROFILE || 'C:\\Users\\usazr', '.claude', 'projects');
+const tokFiles = new Map(); // file -> { size, offset, rest, ids:Set, days:Map }
+let tokState = { at: 0, running: null, data: null, error: null };
+async function scanTokenFile(f, st) {
+  let c = tokFiles.get(f);
+  if (c && c.size === st.size) return;
+  if (!c || st.size < c.size) { c = { size: 0, offset: 0, rest: '', ids: new Set(), days: new Map() }; tokFiles.set(f, c); }
+  await new Promise((resolve) => {
+    const s = fs.createReadStream(f, { start: c.offset, encoding: 'utf8', highWaterMark: 1 << 20 });
+    s.on('data', (chunk) => {
+      const t = c.rest + chunk; const k = t.lastIndexOf('\n'); if (k < 0) { c.rest = t; return; }
+      c.rest = t.slice(k + 1);
+      for (const line of t.slice(0, k).split('\n')) {
+        if (line.indexOf('"usage"') < 0 || line.indexOf('"assistant"') < 0) continue; // 只碰有用量的行
+        let j; try { j = JSON.parse(line); } catch { continue; }
+        const u = j?.message?.usage; if (j.type !== 'assistant' || !u || !j.timestamp) continue;
+        const id = j.message.id || j.requestId || j.uuid; if (id) { if (c.ids.has(id)) continue; c.ids.add(id); }
+        const day = ptDayOf(Date.parse(j.timestamp)); let d = c.days.get(day); if (!d) { d = { in: 0, out: 0, cr: 0, cc: 0, n: 0 }; c.days.set(day, d); }
+        d.in += u.input_tokens || 0; d.out += u.output_tokens || 0; d.cr += u.cache_read_input_tokens || 0; d.cc += u.cache_creation_input_tokens || 0; d.n++;
+      }
+    });
+    s.on('end', resolve); s.on('error', resolve);
+  });
+  c.size = st.size; c.offset = st.size;
+}
+async function tokenScan() {
+  const since = Date.now() - 31 * 86400e3;
+  const names = await fsp.readdir(CLAUDE_PROJECTS, { recursive: true }).catch(() => null);
+  if (!names) throw new Error('读不到 ' + CLAUDE_PROJECTS);
+  let files = 0;
+  for (const n of names) {
+    if (!n.endsWith('.jsonl')) continue;
+    const f = path.join(CLAUDE_PROJECTS, n); const st = await fsp.stat(f).catch(() => null);
+    if (!st || !st.isFile() || st.mtimeMs < since) continue;
+    files++; await scanTokenFile(f, st);
+  }
+  const all = new Map(); for (const c of tokFiles.values()) for (const [d, v] of c.days) { const a = all.get(d) || { in: 0, out: 0, cr: 0, cc: 0, n: 0 }; for (const k in v) a[k] += v[k]; all.set(d, a); }
+  const windows = WIN_DEF.map((w) => { const s = { id: w.id, label: w.label, in: 0, out: 0, cr: 0, cc: 0, n: 0 }; for (const d of winDays(w)) { const v = all.get(d); if (v) for (const k in v) s[k] += v[k]; } s.total = s.in + s.out + s.cr + s.cc; return s; });
+  return { windows, files, note: '~/.claude/projects 下 31 天内改过的 *.jsonl，assistant 消息的 message.usage 按 message.id 去重后按太平洋时间日求和；只含 Claude Code 本机会话，不含 Codex' };
+}
+function tokensNow() {
+  if (!tokState.running && Date.now() - tokState.at > 300e3) {
+    tokState.running = tokenScan().then((d) => { tokState = { at: Date.now(), running: null, data: d, error: null }; }).catch((e) => { tokState = { ...tokState, at: Date.now(), running: null, error: String(e.message || e) }; });
+  }
+  return tokState.data ? { ...tokState.data, at: new Date(tokState.at).toISOString(), refreshing: !!tokState.running } : tokState.error ? { error: tokState.error } : { pending: true };
+}
+
+// --- 指挥主会话：最近一条 assistant 第一行 + 花费（cost 字段是累计值，窗口花费 = 窗口内最后值 − 窗口前最后值）
+const MAIN_MSGS = path.join(M, 'Claude工作区', '指挥聊天测试', 'sessions', 'main', 'messages.jsonl');
+async function mainSession() {
+  const L = await readLogLines(MAIN_MSGS).catch(() => null);
+  if (!L) return { error: '读不到主会话记录' };
+  const rows = []; let last = null;
+  for (const l of L) { if (l.indexOf('"assistant"') < 0) continue; let j; try { j = JSON.parse(l); } catch { continue; } if (j.role !== 'assistant') continue; last = j; if (typeof j.cost === 'number') rows.push({ t: Date.parse(j.ts), cost: j.cost }); }
+  const spend = WIN_DEF.map((w) => { const ds = new Set(winDays(w)); const inW = rows.filter((r) => ds.has(ptDayOf(r.t))); if (!inW.length) return { id: w.id, label: w.label, usd: 0 }; const before = rows.filter((r) => r.t < inW[0].t).pop(); return { id: w.id, label: w.label, usd: Math.round((inW[inW.length - 1].cost - (before ? before.cost : 0)) * 100) / 100 }; });
+  const first = last ? String(last.text || '').split(/\r?\n/).map((x) => x.trim()).find(Boolean) || '' : '';
+  return { lastAt: last?.ts || null, lastLine: first.slice(0, 60), spend, note: '主会话 messages.jsonl 的 cost 是累计美元数；窗口花费按差值算' };
+}
+
+// --- 规则：skills/*/src/*.md 里以〔ID〕开头的标题条目；今天/7 天/30 天对比 git 里窗口起点前最后一次提交的版本
+const ROOT = path.resolve(__dirname, '..');
+const RULE_HEAD = /^#{1,6}\s*〔([A-Z][A-Z0-9]*-\d{2,4}[a-z]?)〕/;
+function ruleEntries(text) {
+  const out = new Map(); let cur = null; const body = [];
+  const flush = () => { if (cur) out.set(cur, body.join('\n').trim()); body.length = 0; };
+  for (const l of String(text).split(/\r?\n/)) { const m = RULE_HEAD.exec(l); if (m) { flush(); cur = m[1]; body.push(l.replace(RULE_HEAD, '')); } else if (/^#{1,6}\s/.test(l) && cur) { flush(); cur = null; } else if (cur) body.push(l); }
+  flush(); return out;
+}
+const git = (args) => new Promise((res) => execFile('git', ['-c', 'core.quotepath=off', '-C', ROOT, ...args], { maxBuffer: 64 << 20, timeout: 20000, windowsHide: true }, (e, out) => res(e ? null : out)));
+// 某时刻的规则快照：逐文件取「该时刻前最后一次改它的提交」里的版本（历史有合并，不能只看一条主线）
+async function rulesSnapshotAt(before, files) {
+  const snap = new Map(); let base = null;
+  for (const f of files) {
+    const rev = ((await git(['log', '-1', '--format=%H %ct', `--before=${before}`, '--', f])) || '').trim().split(' ');
+    if (!rev[0]) continue;
+    if (!base || Number(rev[1]) > base.t) base = { h: rev[0], t: Number(rev[1]) };
+    const t = await git(['show', `${rev[0]}:${f}`]); if (t == null) continue; // 该提交里删掉了 → 当时不存在
+    const sk = f.split('/')[1]; for (const [id, b] of ruleEntries(t)) snap.set(`${sk}|${id}`, b);
+  }
+  return { snap, base };
+}
+let rulesState = { at: 0, v: null };
+async function rulesStats() {
+  if (rulesState.v && Date.now() - rulesState.at < 300e3) return rulesState.v;
+  const cur = new Map(); const bySkill = {};
+  const skills = await fsp.readdir(path.join(ROOT, 'skills')).catch(() => []);
+  for (const sk of skills) { const dir = path.join(ROOT, 'skills', sk, 'src'); const fl = await fsp.readdir(dir).catch(() => []); for (const f of fl.filter((x) => x.endsWith('.md'))) { const t = await fsp.readFile(path.join(dir, f), 'utf8').catch(() => ''); for (const [id, b] of ruleEntries(t)) { cur.set(`${sk}|${id}`, b); bySkill[sk] = (bySkill[sk] || 0) + 1; } } }
+  const changes = [];
+  const hist = await git(['log', '--format=', '--name-only', '--', 'skills']);
+  if (hist == null) changes.push({ missing: '暂无数据：git 读不到' });
+  const files = [...new Set([...(hist || '').split('\n')].filter((f) => f && /^skills\/[^/]+\/src\/[^/]+\.md$/.test(f)))];
+  for (const w of hist == null ? [] : [{ id: 'today', label: '今天', days: 1 }, { id: 'd7', label: '最近 7 天', days: 7 }, { id: 'd30', label: '最近 30 天', days: 30 }]) {
+    const startDay = lastDays(w.days)[w.days - 1]; // 窗口第一天（太平洋时间）
+    const { snap: old, base } = await rulesSnapshotAt(ptMidnightIso(startDay), files);
+    let added = 0, removed = 0, modified = 0;
+    for (const [k, b] of cur) { if (!old.has(k)) added++; else if (old.get(k) !== b) modified++; }
+    for (const k of old.keys()) if (!cur.has(k)) removed++;
+    changes.push({ id: w.id, label: w.label, added, removed, modified, base: base ? base.h.slice(0, 8) : null, baseEmpty: !old.size });
+  }
+  const v = { total: cur.size, bySkill, changes, note: `条目＝skills/*/src/*.md 里以〔编号〕开头的标题，正文到下一个标题为止；对比基准＝窗口起点前最后一次提交，当前＝工作区（含未提交改动）；仓库 ${ROOT}` };
+  rulesState = { at: Date.now(), v }; return v;
+}
+
+// 规则统计要跑上百次 git，后台算、5 分钟一次，请求只拿上次结果
+let rulesRun = null, rulesErr = null;
+function rulesNow() {
+  if (!rulesRun && (!rulesState.v || Date.now() - rulesState.at > 300e3)) rulesRun = rulesStats().then(() => { rulesErr = null; }).catch((e) => { rulesErr = String(e.message || e); rulesState.at = Date.now(); }).finally(() => { rulesRun = null; });
+  return rulesState.v ? { ...rulesState.v, at: new Date(rulesState.at).toISOString() } : rulesErr ? { error: rulesErr } : { pending: true };
+}
+
+// --- 问题归类：关键词归类（按顺序取第一个命中的类）
+const ISSUE_CLASSES = [
+  ['心声/嘴动', /心声|嘴动|嘴型|嘴形|口型|张嘴|内心/],
+  ['资产（换人/缺图/脸）', /换人|换脸|脸|缺图|资产|定妆|长得|不像|变成了|另一个人/],
+  ['服装/人物一致性', /服装|衣服|穿着|外套|发型|头发|人物不一致|穿的/],
+  ['场景一致性', /场景|背景|房间|地点|环境|街|门|窗/],
+  ['台词/字幕', /台词|字幕|错字|念|读成|对白|说成/],
+  ['声音/音色', /声音|音色|声线|配音|男声|女声|音量|听不清/],
+  ['BGM/剪辑', /BGM|bgm|配乐|音乐|剪辑|卡顿|黑屏|转场|节奏|拖沓|太长|太短/],
+  ['穿帮/机位', /穿帮|机位|镜头|视角|角度|位置|方向|手|道具/],
+];
+function classifyIssues(eps) {
+  const rows = [...ISSUE_CLASSES.map(([k]) => k), '其他'].map((k) => ({ cls: k, done: 0, doing: 0, todo: 0 }));
+  for (const e of eps) for (const it of e.items) { const i = ISSUE_CLASSES.findIndex(([, re]) => re.test(it.text)); const r = rows[i < 0 ? rows.length - 1 : i]; r[it.status] = (r[it.status] || 0) + 1; }
+  for (const r of rows) r.total = r.done + r.doing + r.todo;
+  return rows;
+}
+
+async function computeMetrics() {
+  const errs = [];
+  const [cap, gpu, items, main, rules] = await Promise.all([
+    runDb('capacity', 20000),
+    gpuQueue().catch((e) => { errs.push('GPU：' + e.message); return null; }),
+    issueItems().catch((e) => { errs.push('问题描述：' + e.message); return null; }),
+    mainSession(),
+    rulesNow(),
+  ]);
+  if (cap.error) errs.push('ic.db：' + cap.error);
+  // 章集进度：交付\EP*.mp4 + 问题描述各集状态；2K＝ffprobe 行高 ≥1440（总览 top 已探测过的缓存）
+  const delivDir = path.join(P, '交付');
+  const dl = await deliveries(delivDir);
+  const total = 30;
+  const deliv = new Map((dl.files || []).filter((f) => !f.error).map((f) => [f.ep, f]));
+  const openBy = new Map(); const anyBy = new Map();
+  for (const e of items?.eps || []) { openBy.set(e.no, (openBy.get(e.no) || 0) + e.items.filter((i) => i.status !== 'done').length); anyBy.set(e.no, (anyBy.get(e.no) || 0) + e.items.length); }
+  const grid = []; for (let n = 1; n <= total; n++) { const f = deliv.get(n); const open = openBy.get(n) || 0; grid.push({ ep: n, state: open > 0 ? 'open' : f ? 'delivered' : 'none', delivered: !!f, twoK: !!(f && Math.min(f.w || 0, f.h || 0) >= 1440), open }); }
+  // 问题表三态
+  const st = { todo: 0, doing: 0, done: 0 }; for (const e of items?.eps || []) for (const it of e.items) st[it.status] = (st[it.status] || 0) + 1;
+  // 正在做
+  const doing = [];
+  const nw = gpu?.now;
+  if (nw) doing.push(nw.busy && nw.current ? { kind: 'gpu', busy: true, text: `GPU：第${nw.current.ch}章#${nw.current.num} 出片中`, since: nw.current.startedAt, src: nw.current.label || nw.current.job } : { kind: 'gpu', busy: false, text: `GPU 空闲${nw.idleMin != null ? ` ${Math.round(nw.idleMin)} 分钟` : ''}`, since: nw.idleSince });
+  if (main && !main.error && main.lastLine) doing.push({ kind: 'main', text: `主会话：${main.lastLine}`, since: main.lastAt });
+  return {
+    capacity: cap.error ? { error: cap.error } : { windows: cap.windows, todayBar: cap.todayBar, hourly: cap.hourly, firstJobAt: cap.firstJobAt, note: '忙＝ic.db 重生成/新建任务 started_at–finished_at 并集（含所有项目，GPU 共用）；闲＝时段内其余时间；早于第一条任务记录的时段算「无数据」。出片＝shot_videos 新建条数（本项目）；有效＝当前 selected=1；无效＝未选用；失败＝本项目失败任务数；有效分钟＝选用视频对应镜头的计划时长（shots.duration，不是 ffprobe 实测）；每镜用时＝本项目重生成任务（结束−开始）中位数。灰片拦截、进了交付的有效条数库里没有字段 → 暂无数据' },
+    doing,
+    episodes: { total, grid, delivered: deliv.size, twoK: grid.filter((g) => g.twoK).length, note: '交付\\EP*.mp4 存在＝已交付；问题描述该集还有未完成条目＝有未完成问题（优先显示）；其余＝未开始/未交付。2K＝ffprobe 短边 ≥1440' },
+    issues: items ? { ...st, total: st.todo + st.doing + st.done, classes: classifyIssues(items.eps), md5: items.md5, note: '问题描述.txt（只读）逐条状态；归类是关键词归类（按顺序取第一个命中的类），不准确的会落到别的类或「其他」' } : { error: '问题描述读不到' },
+    todayVideos: gpu?.today?.ok ? gpu.today.videos : null,
+    gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current } : null,
+    tokens: tokensNow(),
+    spend: main.error ? { error: main.error } : { windows: main.spend, note: main.note },
+    rules,
+    errors: errs,
+  };
+}
+
 export async function handleOverview(req, res, url, send) {
   const part = url.searchParams.get('part') || 'top';
-  const fn = { top: computeTop, issues: computeIssues, sessions: computeSessions, trends: computeTrends }[part];
+  const fn = { top: computeTop, issues: computeIssues, sessions: computeSessions, trends: computeTrends, metrics: computeMetrics }[part];
   if (!fn) return send(res, 404, { error: 'unknown part' });
   const r = await getPart(part, fn);
   return send(res, 200, { part, ok: r.ok, at: r.at, failedAt: r.failedAt || null, error: r.error || null, refreshSec: TTL[part] / 1000, data: r.data });

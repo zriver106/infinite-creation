@@ -97,6 +97,48 @@ try {
       const u = busyUnion(jobs, d.from, d.to);
       return { day: d.day, videos, firstGen: born.length, oneShot: one, oneShotRate: born.length ? one / born.length : null, settled, occupancy: (d.to - d.from) ? u.busy / (d.to - d.from) : null };
     });
+  } else if (mode === 'gpu') {
+    // GPU 面板：IC 里在跑/排队的任务、今天出片、最近 8 条出片（带来源任务 id）、最近 12 小时每小时条数、今天任务并集忙闲
+    const shotOf = db.prepare('select chapter,idx,duration from shots where id=?');
+    const act = q(db, 'jobs active', "select id,type,status,project_id,detail,started_at,updated_at from jobs where status in ('running','queued','pending') order by started_at");
+    out.active = act.map((j) => { let d = {}; try { d = JSON.parse(j.detail || '{}') || {}; } catch {} const s = d.shot_id ? shotOf.get(d.shot_id) : null; return { id: j.id, type: j.type, status: j.status, project: j.project_id, startedAt: Number(j.started_at) || null, shotId: d.shot_id || null, ch: s?.chapter || null, idx: s?.idx ?? d.idx ?? null }; });
+    out.lastGenFinished = Number(q(db, 'jobs last done', "select max(finished_at) m from jobs where type in ('regenerate','create') and finished_at is not null")[0].m) || null;
+    const sv = q(db, 'shot_videos today', 'select sv.shot_id,sv.created_at,sv.selected,s.chapter,s.idx,s.duration from shot_videos sv left join shots s on s.id=sv.shot_id where sv.project_id=? and sv.created_at>=?', project, Math.min(T0, now - 12 * 3600e3));
+    const today = sv.filter((v) => Number(v.created_at) >= T0);
+    out.today = { videos: today.length, selected: today.filter((v) => Number(v.selected) === 1).length, unselected: today.filter((v) => Number(v.selected) !== 1).length };
+    out.today.failedJobs = q(db, 'jobs failed today', "select count(*) n from jobs where project_id=? and type in ('regenerate','create') and status='failed' and coalesce(finished_at,started_at)>=?", project, T0)[0].n;
+    const hours = []; const H0 = Math.floor(now / 3600e3) * 3600e3; for (let i = 11; i >= 0; i--) { const a = H0 - i * 3600e3; hours.push({ from: a, n: sv.filter((v) => Number(v.created_at) >= a && Number(v.created_at) < a + 3600e3).length }); }
+    out.hourly = hours;
+    const recent = q(db, 'shot_videos recent', 'select sv.id,sv.shot_id,sv.created_at,sv.selected,s.chapter,s.idx,s.duration from shot_videos sv left join shots s on s.id=sv.shot_id where sv.project_id=? order by sv.created_at desc limit 8', project);
+    const jobOf = db.prepare("select id from jobs where type in ('regenerate','create') and detail like '%' || ? || '%' and finished_at between ? and ? order by abs(finished_at-?) limit 1");
+    out.recent = recent.map((v) => { const t = Number(v.created_at); let job = null; try { job = jobOf.get(v.shot_id, t - 30000, t + 30000, t)?.id || null; } catch {} return { id: v.id, at: t, ch: v.chapter, idx: v.idx, dur: v.duration == null ? null : Number(v.duration), selected: Number(v.selected) === 1, job }; });
+    const all = q(db, 'jobs today', "select status,started_at,finished_at from jobs where type in ('regenerate','create') and started_at is not null and (finished_at is null or finished_at>=?)", T0 - 86400e3);
+    const u = busyUnion(all, T0, now);
+    out.busyToday = { busyMs: u.busy, spanMs: now - T0 };
+  } else if (mode === 'capacity') {
+    // 产能四档：今天 / 昨天 / 最近 7 天 / 最近 30 天（按太平洋时间分天）
+    const Y0 = ptMidnight(T0 - 12 * 3600e3);
+    const D7 = ptMidnight(now - 6 * 86400e3), D30 = ptMidnight(now - 29 * 86400e3);
+    const wins = [{ id: 'today', label: '今天', from: T0, to: now }, { id: 'yesterday', label: '昨天', from: Y0, to: T0 }, { id: 'd7', label: '最近 7 天', from: D7, to: now }, { id: 'd30', label: '最近 30 天', from: D30, to: now }];
+    const jobs = q(db, 'jobs 30d', "select project_id,type,status,started_at,finished_at from jobs where type in ('regenerate','create') and started_at is not null and (finished_at is null or finished_at>=?)", D30 - 86400e3);
+    const firstJob = Number(q(db, 'jobs first', "select min(started_at) m from jobs where type in ('regenerate','create') and started_at is not null")[0].m) || null;
+    const sv = q(db, 'shot_videos 30d', 'select sv.created_at,sv.selected,s.duration from shot_videos sv left join shots s on s.id=sv.shot_id where sv.project_id=? and sv.created_at>=?', project, D30);
+    out.firstJobAt = firstJob;
+    out.windows = wins.map((w) => {
+      const from = firstJob && firstJob > w.from ? firstJob : w.from; // 早于第一条任务记录的部分算「无数据」，不计入闲
+      const u = busyUnion(jobs, from, w.to);
+      const span = Math.max(0, w.to - from);
+      const v = sv.filter((x) => Number(x.created_at) >= w.from && Number(x.created_at) < w.to);
+      const sel = v.filter((x) => Number(x.selected) === 1);
+      const mine = jobs.filter((j) => j.project_id === project && Number(j.finished_at || j.started_at) >= w.from && Number(j.finished_at || j.started_at) < w.to);
+      const durs = mine.filter((j) => j.status === 'done' && j.finished_at && j.type === 'regenerate').map((j) => (Number(j.finished_at) - Number(j.started_at)) / 1000).filter((x) => x > 0);
+      return { id: w.id, label: w.label, from: w.from, to: w.to, noDataMs: from - w.from, busyMs: u.busy, idleMs: Math.max(0, span - u.busy), util: span ? u.busy / span : null, total: v.length, selected: sel.length, unselected: v.length - sel.length, failedJobs: mine.filter((j) => j.status === 'failed').length, effRate: v.length ? sel.length / v.length : null, effMin: sel.reduce((a, x) => a + (Number(x.duration) || 0), 0) / 60, perShotSec: median(durs), perShotN: durs.length };
+    });
+    // 今天的忙闲时间条：忙段（任务区间并集）
+    const iv = []; for (const j of jobs) { const a = Number(j.started_at); const b = j.finished_at ? Number(j.finished_at) : (j.status === 'running' ? now : null); if (!a || !b || b < T0 || a > now) continue; iv.push([Math.max(a, T0), Math.min(b, now)]); }
+    iv.sort((x, y) => x[0] - y[0]); const segs = []; for (const [a, b] of iv) { const l = segs[segs.length - 1]; if (l && a <= l[1]) l[1] = Math.max(l[1], b); else segs.push([a, b]); }
+    out.todayBar = { from: T0, to: now, dayEnd: ptMidnight(T0 + 36 * 3600e3), busy: segs, noDataBefore: firstJob && firstJob > T0 ? firstJob : null };
+    const H0 = Math.floor(now / 3600e3) * 3600e3; out.hourly = []; for (let i = 11; i >= 0; i--) { const a = H0 - i * 3600e3; out.hourly.push({ from: a, n: sv.filter((x) => Number(x.created_at) >= a && Number(x.created_at) < a + 3600e3).length }); }
   }
 } catch (e) { out.error = String(e.message || e); }
 finally { try { db.close(); } catch {} }
