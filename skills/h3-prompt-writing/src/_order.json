@@ -181,5 +181,15 @@
    "rare"
   ],
   "chars": 931
+ },
+ {
+  "file": "X_导出合成与交付.md",
+  "id": "X",
+  "title": "X 导出、合成与交付",
+  "tier": "volume",
+  "when": [
+   "rare"
+  ],
+  "chars": 0
  }
 ]

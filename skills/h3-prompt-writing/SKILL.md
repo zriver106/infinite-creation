@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-cd19e147cd 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-fdbd9d4813 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -16,44 +16,45 @@ compatibility: Portable to any agent that can read local files — no external A
 
 | 段 | 内容 | 层级 | 行号 | 什么时候读 |
 |---|---|---|---|---|
-| A | A 铁律与流程 | 基础（已在上面，必读） | L41–L69 | 每次 |
-| B | B 提示词格式与标签 | 基础（已在上面，必读） | L71–L126 | 每次 |
-| D | D 系统声与光幕 | 基础（已在上面，必读） | L128–L145 | 每次 |
-| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L147–L183 | 每次 |
-| C | C 心声 | 分册 | L188–L239 | 有心声 |
-| C2 | C2 心声闭嘴嘴形表 | 分册 | L241–L263 | 有心声 |
-| E | E 人声与台词 | 分册 | L265–L358 | 有台词 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L360–L395 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L397–L412 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L414–L463 | 有运镜、动作、打戏 |
-| H2C | H2C 表现通用 | 分册 | L465–L474 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L476–L531 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L533–L545 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L547–L559 | 每次 |
-| J | J 资产与绑定 | 分册 | L561–L605 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L607–L635 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L637–L678 | 用到时再查 |
-| Q | Q 审片 | 分册 | L680–L805 | 用到时再查 |
+| A | A 铁律与流程 | 基础（已在上面，必读） | L42–L79 | 每次 |
+| B | B 提示词格式与标签 | 基础（已在上面，必读） | L81–L136 | 每次 |
+| D | D 系统声与光幕 | 基础（已在上面，必读） | L138–L155 | 每次 |
+| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L157–L202 | 每次 |
+| C | C 心声 | 分册 | L207–L258 | 有心声 |
+| C2 | C2 心声闭嘴嘴形表 | 分册 | L260–L282 | 有心声 |
+| E | E 人声与台词 | 分册 | L284–L377 | 有台词 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L379–L441 | 两人及以上、有道具、桌面、车、绑了场景 |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L443–L458 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L460–L509 | 有运镜、动作、打戏 |
+| H2C | H2C 表现通用 | 分册 | L511–L520 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L522–L577 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L579–L591 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L593–L605 | 每次 |
+| J | J 资产与绑定 | 分册 | L607–L651 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L653–L681 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L683–L724 | 用到时再查 |
+| Q | Q 审片 | 分册 | L726–L852 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L854–L1017 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：B2FEB77D
+本段校验码：5599E2B9
 
 ## A 铁律与流程
 
 ### 〔A-002〕 【通用】铁律：规则先进 IC，写稿、改稿、出片只走 IC 工作流
 
-由来：Andy 11-23 20:20–20:27 原话：「要同步好才开工」「要走ic工作流.改东西也一样」「没走ic工作流出来的片子一律作废」「质量就算没问题可能风格也不对」「这个是铁律要写进手册」「我们的会话多半是管理工作，查缺补漏辅助ic管理ic工作可持续」「和一些资产生成和绑定」。手册第0章 0.0 同文。本条优先于其他技能正文和任何会话派单。
+由来：Andy 11-23 20:20–20:27 原话：「要同步好才开工」「要走ic工作流.改东西也一样」「没走ic工作流出来的片子一律作废」「质量就算没问题可能风格也不对」「这个是铁律要写进手册」（会话做管理见第4条）。手册第0章 0.0 同文。本条优先于其他技能正文和任何会话派单。
 
 1. **先同步、再开工。** 规则改了，先同步进 IC 技能并核对已经生效（在 IC 里拼出一条提示词，看得到新规则原文），才写稿、出片。
 2. **写稿、改稿、返修只走 IC 工作流。** 剧本、分镜、视频提示词的新写和修改都由 IC 工作流完成（`write_shot_video_prompt`、提示词撰写任务、阶段任务等）。外部会话不得手写稿后直接写库（PATCH、SQL、脚本批量写回都算）。改一句也走 IC。
-3. **没走 IC 工作流出来的片子一律作废。** 作废看来源，不看单镜质量（质量没问题，风格也可能不对）。先归档，不删除；对应的镜回到 IC 工作流重写、重出。
+3. **没走 IC 工作流出来的片子一律作废。** 作废看来源，不看单镜质量（质量没问题，风格也可能不对）。先归档，不删除；对应的镜回到 IC 工作流重写、重出。导出前按 X-011 核写入来源。
 4. **会话做管理，IC 做生产。** 指挥系统各会话负责查缺补漏、给 IC 补规则和技能、保证 IC 持续运转、资产生成和绑定；写稿、改稿、出片由 IC 工作流完成。
 5. **对 IC 内的写作者：** 你就是这条工作流。接到写稿或改稿任务时，按本技能和对应阶段技能写；不要把稿子交给外部去改再写库。发现规则缺口时，在报告里写明，由管理会话补进技能。
 6. **不准代写、不准脚本建镜；「走 IC」硬定义（手册 0.0 第5、6条）。** 「走 IC」是指通过 IC 自己的方法或接口（例如 write-prompts）去调用，由 IC 自己读规则、自己生成稿子；给 IC 的输入只能是问题描述和规则编号。以下三种都不算走 IC：外部代写整句交给 IC 照抄；用脚本改字、建镜；从外部直接写库（POST 或 PATCH /shots、改 ic.db）。**对写作者**：revision_requirement 只当问题和规则编号读；里面有英文句子或句式、`<d>`、REF 定义、`<情绪>` 类占位、「代写」「整套模板」的，不照抄，按规则书自己写，并 `report_rule_gap` 登记「requirement 含代写整句」。
 
 ### 〔A-003〕 【通用】作废的审片经验：「正脸改成微侧或低头（为防口型）」
 
-由来：总导 2026-11-23 20:33 拍板，依据 Andy 11-23 20:24 铁律（要走 IC 工作流）与第6集心声镜核查（`M\_\ep6_rule_audit_2025\核查报告.md`：6#7 背向镜头、6#6 和 6#10 为防口型改成低头侧脸，都出自外部会话的审片经验，不在手册里）。
+由来：总导 2026-11-23 20:33 拍板，依据 A-002 铁律与心声镜核查（为防口型改背向、低头侧脸，都出自外部会话的审片经验，不在手册里）。
 
 1. 这条经验作废，以手册 M33 第7条为准：镜头只按剧情选，不为防口型背身、遮脸、专选背影，也不为防口型改成低头、侧脸。正脸近景照常可以承载心声；防口型靠 C-001 的紧闭嘴声明、每段闭嘴嘴形和 narrates 声音句、第8条不带人名和说话动词的声音句、第12条镜头负载（M33 第3、10条，r19）和 M34。
 2. M33 第6、7、8条现在是错误，不是提醒（检查器 `inner_voice_check_m33_678.py`）：一个镜头（`[Shot N]`）里不能既有心声又有出口台词；不写背向镜头、脸转开、只见后脑、捂嘴、遮脸、「为防口型」；心声窗口写明「The inner voice runs from Xs to Ys」，到切点或段末、两句之间、与对白之间都至少 0.8 秒。
@@ -66,7 +67,16 @@ compatibility: Portable to any agent that can read local files — no external A
 
 1. **三处同改（TR-V18 已并进 h3-prompt-writing「Visual follows the prompt」节）。** 改镜头写法（景别、机位、站位、动作、台词）时，`visual`、`camera`、`sub_shots`、`video_prompt` 一起改；只改一处，渲染出来的还是旧的。台词改动同时改 `dialogue`、`<d>`、`sub_shots`。
 2. **看不懂的镜作废，不删除（TR-V11）。** 观众看不懂的镜（没交代的回忆、莫名其妙的一拍）标作废（retire），不删；作废后，下一镜按「相邻镜站位」（TR-V10；提示词套见 F 段，改编套见 S 段）重新接上上一镜的结尾站位。
-本段校验码：8AF4F0CB
+
+### 〔A-006〕 【待测】【通用】改稿只增不删锁
+
+- 目的：重写时不丢已有的锁。
+- 做法：改一镜前先列旧稿的锁句（服装 ID、人数、防重复、场景、背景人群、视线、闭嘴、身份、道具数量）；新稿逐项保留，措辞可改，内容不减。
+- 要求：缺了就补回再存。只有修改要求明说删、或剧情变了（离场、换装那一拍）才删，报告写明删了哪条、为什么。口径变更的存量扫描见 X-010。
+- 校验：报告写「旧锁 N 条，保留 N 条，删 0 条」；写库前比对新旧锁标签，丢锁退回（钩子待加）。
+- 正例：只改语气的重写，服装 ID、人数句、场景锁都在。
+- 反例：重写心声窗口时服装 ID 丢了，成片换了衣服。
+本段校验码：5995AEBA
 
 ## B 提示词格式与标签
 
@@ -90,7 +100,7 @@ Every shot's video prompt in this project writes the music section as exactly `n
 - **Character appearance: write only the clothing ID, never a look description (R22, rewritten 2026-11-23 rulepack-lock-20261123; 总导 2026-11-23 03:36 批准)**: a character's image reference carries the face, age, hair texture, skin, build, fabric, materials, shoes, accessories and trims, so the prompt never describes them. (1) **Reference line = who, not what they look like:** write character name + role/identity, e.g. `__MINIMAX_H3_REF_1__ is Ye Xueji's spirit body`; never add age, facial features, face shape, skin, build, materials, shoes, accessories or trims. (2) **When to write the clothing ID:** write one short clothing ID — colour + main garment + hair, e.g. `grey-blue short-sleeved T-shirt, dark grey trousers, short black hair` — for each bound character (a) in every shot with two or more people on screen, (b) in every shot, solo shots included, of a scene where any shot has two or more people on screen, and (c) whenever the story puts the character in a state the bound image does not show (injury, dirt, wet, exhaustion): add that state as words after the clothing ID, at the degree the novel gives, e.g. `a small scrape on the right cheekbone`. A solo shot in a scene that only ever has one person writes no clothing ID. (3) **Where the words come from:** copy the clothing ID from the bound costume asset (or the character asset when no costume is bound) and from the costume-state trajectory table when one exists; keep it word-for-word identical in every shot of the scene until the story changes the costume (see *Same-scene presence and costume lock* items 2, 4 and 11). Write it in the reference line or the headcount lock sentence, never as a separate appearance paragraph. (4) **Never** write `keep the look of __MINIMAX_H3_REF_N__`, `keep the look of each reference`, `stay faithful to the reference image` or any similar sentence (these make the shot drift into the reference image at its end); end the prompt with the live-scene lock instead, e.g. `The last frame is still the live <scene> scene.` (5) If the task input supplies a character's look (asset description, character bible, continuity notes, 「角色一致性」 line), take only the clothing ID out of it under (2)–(3); do not copy anything else. This rule overrides the `keeps the look of <Picture N>` advice in references/ref-en.txt. Scenes, props and environments are not covered by this rule — describe them normally.
 - **Make every character action emotion-driven and physically specific**: never write only inert/still verbs (stands / sits / walks / looks) with no force. State the action's intensity, speed, and body language so the motion has visible energy (e.g. `slams the table`, `paces frantically`, `clenches his fists`, `leans in intensely`, `snatches the letter`, `stumbles back breathless`) — and keep the action consistent with that line's emotion. Static characters plus a monotonous read come across as lazy; give each beat visible, purposeful movement. **Inner-monologue exception:** in an OS block the force goes into the eyes, brows, head, hands and body only — never into the mouth (see “Inner-Monologue (OS / 心声) Shots”).
 - Avoid plot summaries, unresolved reference labels, and timing that does not match the requested duration.
-- **Speaker IDs follow the speaking order inside this shot**: each IC shot is its own video, and H3 gives `(S1)` to the first voice heard in it and `(S2)` to the next new voice (`references/ref-en.txt` §5.4). So the first voice in this shot, OS included, is `(S1)`; never fix an ID for the whole chapter. The voice-reference line uses the same ID as that character's lines, whatever its REF number (`__MINIMAX_H3_REF_4__ is Jiang Che's voice (S2)` is fine); in the OS fixed sentences `(S1)` means the OS speaker's ID in this shot. Jobs 70f12d2f shot 17 and 231e6bc2 shots 1–2 tagged the shop owner, who spoke first, `(S2)`: both voices came out swapped.
+- **Speaker IDs follow the speaking order inside this shot**: each IC shot is its own video, and H3 gives `(S1)` to the first voice heard in it and `(S2)` to the next new voice (`references/ref-en.txt` §5.4). So the first voice in this shot, OS included, is `(S1)`; never fix an ID for the whole chapter. The voice-reference line uses the same ID as that character's lines, whatever its REF number (`__MINIMAX_H3_REF_4__ is the lead's voice (S2)` is fine); in the OS fixed sentences `(S1)` means the OS speaker's ID in this shot. Jobs 70f12d2f shot 17 and 231e6bc2 shots 1–2 tagged the shop owner, who spoke first, `(S2)`: both voices came out swapped.
 
 ### 〔B-003〕 No style-lock sentence; live-action lock instead — 不写画风锁定句，改写实景锁
 
@@ -123,7 +133,7 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 #### 〔B-006〕 B-008【待定】画风基线
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
-本段校验码：3963973C
+本段校验码：42E1D15F
 
 ## D 系统声与光幕
 
@@ -136,31 +146,31 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 
 ### 〔D-002〕 System voice — 系统声写进 `<d>`，由 H3 直出
 
-1. **Who.** A dialogue line whose speaker, with brackets removed, is 系统 / 系统音 / 系统声 / 系统提示 / 系统提示音 / 系统女声 / 系统男声 is a system line. 「系统面板：」 or 「江澈（系统）：」 are not system lines.
+1. **Who.** A dialogue line whose speaker, with brackets removed, is 系统 / 系统音 / 系统声 / 系统提示 / 系统提示音 / 系统女声 / 系统男声 is a system line. 「系统面板：」 or 「主角（系统）：」 are not system lines.
 2. **Fixed sentence (one per series, copied word for word every time; manual M30 item 1 example).** `An unseen synthetic system voice (Sx) that belongs to no one in the frame, a calm, clear, neutral young female synthetic voice with a faint electronic edge, speaking at a moderate pace, says <d>[Chinese] <complete system line, unchanged></d>.` If the shot binds a system-voice audio asset, add `in the same voice referenced from __MINIMAX_H3_REF_N__` after `pace,`. Never give the system a character's voice reference; never write `<Name> says` for it.
 3. **Timing.** The panel (or hint bar) appears in the same second the system `<d>` starts and stays until it ends. The system voice is an off-screen voice, so handbook M33 rule 6 applies: the camera shot (`[Shot N]`) that carries it has no spoken line; spoken lines go in another camera shot after a hard cut, ≥ 0.8 s (in practice ≥ 1 s) away (rule and cut template: skill h3-camera-moves CAM-003「一个 [Shot N] 只有一种人声」, read with skill(name="h3-camera-moves")). It may overlap the listener's action. Speaker IDs follow the order the voices are first heard.
 4. **The listener.** Everyone visible keeps the mouth closed while the system speaks: write `<Listener> listens with his lips closed.` (IC 947e856 listener sentence) and act with eyes / brows / head only; no mouth or breath words.
 5. **Panel text** follows TR-V04 (the "System UI: short text on the panel" item at the top of this section D): ≤ 2 short lines, ≤ 14 characters each, English quotes, taken from the system line.
 6. **Not in scope.** Narration 旁白 and broadcast-style narrators are not changed by this rule; 旁白 stays in post. The workflow manual package r81 that carries the same change is still under review; this section is the IC side only.
-本段校验码：CAA053AC
+本段校验码：C809D8BD
 
 ## F 一致性（人物、服装、场景、道具、站位、人数）
 
 ### 〔F-001〕 Same-scene presence and costume lock — 同场在场人物入画 + 服装锁
 
-H3 only draws people who have a reference and are named in the prompt, and it freely swaps faces and clothes between references. A1 QC lost people and mixed clothes in 7 shots: 5-1 #8/#10/#12 and 19-2 #18 / 20-1 #5 (a seated table-mate was left out of `character_ids` because he had no line, so he vanished), 16-R-V1 #18 (the lead in a crowded wide shot was drawn in another character's dark green shirt), 17-2 #22 (the host got the side-table classmate's orange polo), 20-2 #27 (the speaker was written as "squeezing in from behind", so H3 put the wrong man in the centre and gave him the line). For every shot with two or more people:
+H3 only draws people who have a reference and are named in the prompt, and it freely swaps faces and clothes between references. For every shot with two or more people:
 
 1. **Everyone the storyboard places in frame is a reference and is named.** If the scene's blocking map / whiteboard puts a present character inside this framing (edge of frame, soft-focus foreground, back view included), that character must be in the shot's references and must be written into the 0s opening with screen side, facing and state (`lips closed` if silent; in a shot that overlaps an inner-voice window keep their lips closed as in C-001 rule 7, never other mouth words). Never drop a present character just because he has no line. If the framing really excludes him, say where he is (`off screen-left`).
-2. **Write a clothing ID for each person (R22 (2))** in `subject_definitions` and again in the 0s opening: colour + garment + hair, copied from the bound costume asset (`__MINIMAX_H3_REF_2__ is Han Zixiao: dark green long-sleeve shirt, slicked-back black hair`). A story state that the bound image does not show is added as words after the ID (`right cheek red and swollen`), see item 11. `fully_preserved` alone is not enough. Only the clothing ID: no faces, ages, materials or accessories. **Asset match (Andy 2026-11-24, 待测):** top, bottom, outerwear and shoes keep the asset's garment type and main colour (asset knee-length shorts → `knee-length shorts`, never `trousers`, `pants` or `jeans`); never add a garment the asset lacks. If the storyboard `visual` disagrees with the asset, write the asset and report the mismatch so `visual` is fixed too; gate COSTUME_ASSET_MISMATCH_PROMPT.
+2. **Write a clothing ID for each person (R22 (2))** in `subject_definitions` and again in the 0s opening: colour + garment + hair, copied from the bound costume asset (`__MINIMAX_H3_REF_2__ is <A>: dark green long-sleeve shirt, slicked-back black hair`). A story state that the bound image does not show is added as words after the ID, see item 11. `fully_preserved` alone is not enough. Only the clothing ID: no faces, ages, materials or accessories. **Asset match (Andy 2026-11-24, 待测):** top, bottom, outerwear and shoes keep the asset's garment type and main colour (asset knee-length shorts → `knee-length shorts`, never `trousers`, `pants` or `jeans`); never add a garment the asset lacks. If the storyboard `visual` disagrees with the asset, write the asset and report the mismatch so `visual` is fixed too; gate COSTUME_ASSET_MISMATCH_PROMPT.
 3. **Add the lock sentence** whenever two people could be confused (same sex, similar age, strongly contrasting clothes): `Each person's face and clothing come only from his or her own reference; never move one person's clothing onto another person. Exactly one person in the frame wears <garment>.`
 4. **Costume inheritance.** Inside one scene and continuous time, a character keeps the costume reference he wore in the previous shots of that scene (same `costume_ids`) until the story shows a costume change (item 11). Write the same clothing ID, word for word, in every shot; a story state (injury, dirt) is added to it as words and does not by itself change `costume_ids`.
 5. **The speaker is already in place at 0s.** Do not make the speaking character "enter / squeeze in / push to the centre" to take his speaking position; put him there from the first frame and state `only <clothing ID> moves his mouth; <others> keep their lips closed` (in a shot that also has an inner-voice window, the silent people stay silent with a closed mouth as in C-001 rule 7).
 6. **Wide and crowd shots:** the named leads are at least medium size or in the foreground, with their clothing IDs; extras are described as "other guests" and must not wear a lead's colour.
 7. **Who does the action comes from the novel/script, not from a similar-looking extra.** If the visual line names a character (e.g. "支架青年 deletes the clip"), the reference bound for that action must be that character; flag the shot if the binding names someone else.
 8. **Headcount lock in every multi-person shot:** besides the count in the first sentence, write once in the body: `Exactly <N> people are in this shot and each of them appears only once: <A> (__MINIMAX_H3_REF_a__) in <clothing ID>; <B> (__MINIMAX_H3_REF_b__), a different man with a different face, <clothing ID>, never in <A's garment>. There is never a second <A> or any look-alike of him in the frame.` N counts only people on screen (voice-only and off-screen people are named as off screen).
-9. **No limb without an owner, no second copy of anyone:** every body part at the frame edge or in the foreground belongs to a named, bound person on screen (name the owner, e.g. `Han Zixiao's half-cropped head and right shoulder at the screen-left edge`; never as an over-the-shoulder or foreground-shoulder phrase, which the no-over-the-shoulder rule (section E, "Faceless speaker" item 3) and the gate r71 OFF_OTS_BANNED reject; never use the lead as that half-cropped edge figure while he is also elsewhere in the frame, see ic-lessons TR-B09; examples changed 2026-11-23 IC规则同步 because the old ones conflicted with that rule). Never write a shoulder, arm, hand or back of a head that has no owner in the story, and never a second copy of anyone: `No stray shoulder, hand or arm without an owner enters the frame, and nobody appears twice.` A shoulder-only person with no owner at the edge was drawn as a second lead in ch3 #13. This item does not decide whether an over-the-shoulder framing is allowed; that is section E "Faceless speaker" item 3 and the gate's own OFF_OTS_BANNED.
-10. **Per-shot lock inside a scene:** items 2, 8 and 9 apply to every shot of the scene that binds the character, including solo shots, reaction shots and the last shots of the scene, not only the first ones.
-11. **Costume change vs. story state:** inside a scene the costume reference and clothing ID stay the same. A **costume change** (changes clothes, puts on or takes off a coat) switches `costume_ids` only from the first shot where the novel or script shows it, and from that shot uses the new clothing ID. A **story state** (injured, dirty, wet, exhausted) is an overlay on the same costume: keep the current `costume_ids` and write the state as words after the clothing ID; bind a state image only when an approved one that matches the novel exists (listed in the trajectory table), and never bind a state image that does not match (a slap gives a red swollen cheek and blood at the mouth, not scratches) — words are better than a wrong image. A prop-holding variant (e.g. "holding the bouquet") is not a costume change: keep the costume and bind the prop. Read the costume-state trajectory table when one exists.
+9. **No limb without an owner, no second copy of anyone:** every body part at the frame edge or in the foreground belongs to a named, bound person on screen (name the owner, e.g. `<A>'s half-cropped head and right shoulder at the screen-left edge`; never as an over-the-shoulder or foreground-shoulder phrase, which the no-over-the-shoulder rule (section E, "Faceless speaker" item 3) and the gate r71 OFF_OTS_BANNED reject; never use the lead as that half-cropped edge figure while he is also elsewhere in the frame, see ic-lessons TR-B09). Never write a shoulder, arm, hand or back of a head that has no owner in the story, and never a second copy of anyone: `No stray shoulder, hand or arm without an owner enters the frame, and nobody appears twice.` This item does not decide whether an over-the-shoulder framing is allowed; that is section E "Faceless speaker" item 3 and the gate's own OFF_OTS_BANNED.
+10. **Per-shot lock inside a scene:** items 2, 8 and 9 apply to every shot of the scene that binds the character, including solo shots, reaction shots and the last shots of the scene, not only the first ones. Solo shots too: a missing clothing ID is to be a gate ERROR (COSTUME_LOCK_MISSING_SOLO, pending).
+11. **Costume change vs. story state:** inside a scene the costume reference and clothing ID stay the same. A **costume change** (changes clothes, puts on or takes off a coat) switches `costume_ids` only from the first shot where the novel or script shows it, and from that shot uses the new clothing ID. A **story state** (injured, dirty, wet, exhausted) is an overlay on the same costume: keep the current `costume_ids` and write the state as words after the clothing ID; bind a state image only when an approved one that matches the novel exists (listed in the trajectory table), and never bind a state image that does not match — words are better than a wrong image. How bad an injury or tiredness looks follows the novel's degree; a user ruling (kept in the project constants, not in rules) wins. A prop-holding variant (e.g. "holding the bouquet") is not a costume change: keep the costume and bind the prop. Read the costume-state trajectory table when one exists.
 12. **Gaze lock when three or more people are on screen and someone speaks to a person who is not the lead:** `Gaze lock: whenever <A> speaks to <B> or listens to him, her eyes stay on <B>'s face and her head, shoulders and upper body are turned toward him; she never looks at <C> and never looks into the camera lens.` Add where B is on screen (screen side, standing or sitting) from the blocking.
 13. **Voice references:** every voice IC attaches gets its own reference line, `__MINIMAX_H3_REF_k__ is <name>'s voice (Sx)`, with Sx in speaking order inside this shot (see Output Rules). A voice reference with no definition line is a duplicate-person risk.
 14. **Scene lock:** the first body sentence names the location and two or more visible landmarks. A close-up with a blurred background still names one or two landmarks that remain recognisable in the blur. Use one negation only: `never a plain grey wall or a photo-studio backdrop`. IC always orders references as characters, then scenes, then props. Keep the scene reference early: do not bind background extras who are not needed (or bind a cropped single image, not a grey multi-view board), crop prop images, and never replace a detailed scene image with a rougher one.
@@ -169,7 +179,7 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 
 #### 〔F-003〕 第2、3集通过后转正：**Prop size lock (TR-V03).** A prop whose reference is a multi-view or a sized sheet gets one fixed real-world size sentence in every shot it appears in: `The <prop> is <real-world size copied from the prop asset sheet> and it never grows or shrinks.`
 
-#### 〔F-004〕 第2、3集通过后转正：**Adjacent-shot position lock (TR-V10).** Every shot of a scene states who is on which side of whom (also after a push, pull or hug). Only for two shots in the same scene where the action is continuous does the next shot open with `The characters keep the same left-right positions as in the previous shot.` followed by who is on which side. After a camera change, a jump cut or a time skip, write only who is on which side of whom in the new framing. Describe people's positions only; never write a sentence that locks the camera or the frame to the previous shot. Right (continuous push): #12 opens `The characters keep the same left-right positions as in the previous shot: Han Zixiao stays on screen-left of Jiang Che.` Right (#13 cuts to the reverse angle): `Han Zixiao is on Jiang Che's right, between him and the door.` Wrong: opening #13 with a sentence that ties its camera to the last frame of #12.
+#### 〔F-004〕 第2、3集通过后转正：**Adjacent-shot position lock (TR-V10).** Every shot of a scene states who is on which side of whom (also after a push, pull or hug). Only for two shots in the same scene where the action is continuous does the next shot open with `The characters keep the same left-right positions as in the previous shot.` followed by who is on which side. After a camera change, a jump cut or a time skip, write only who is on which side of whom in the new framing. Describe people's positions only; never write a sentence that locks the camera or the frame to the previous shot. Right (continuous push): #12 opens `The characters keep the same left-right positions as in the previous shot: <A> stays on screen-left of <B>.` Right (#13 cuts to the reverse angle): `<A> is on <B>'s right, between him and the door.` Wrong: opening #13 with a sentence that ties its camera to the last frame of #12.
 
 #### 〔F-005〕 第2、3集通过后转正：**Every shot binds a scene (TR-V12).** `scene_ids` is never empty; the gate already stops an empty `scene_ids` as an error (SCENE_UNBOUND). Same-scene shots share one scene sentence (see item 14 "Scene lock" in the section "Same-scene presence and costume lock — 同场在场人物入画 + 服装锁" above).
 
@@ -179,6 +189,15 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 
 ### 〔F-008〕 【待测】【分镜】【提示词】人物身份：小角色也写服装 ID 和性别（G01、G02，人物一致性）
 
-每个绑定的具名人物（包括中介、经理、同学、邻桌客人这类小角色，包括背影和虚焦里的人），定义句都写服装 ID（颜色＋衣物＋发型，照抄绑定的服装资产），并带一个性别词（a man / a woman），同章同场逐字一致；不能只写「名字，职业」（只写名字时中介被画成了女的）。按 h3-prompt-writing 的 R22，定义句不写脸、年龄、材质、配饰描写（T9 G01 草案里的「大致年龄」不采用）。主角和反复出现的角色，每镜加一句身份锁：同一个人、每镜同一张脸、性别不变、发型不变（句式同 h3-prompt-writing 同场节第 8 条的「a different man with a different face」写法）；人设没有的配饰（眼镜等）写明不戴。不写会改脸的特写（青筋暴起、疤），除非剧情要、而且有状态图。
-本段校验码：5C8B2593
+每个绑定的具名人物（包括中介、经理、同学、邻桌客人这类小角色，包括背影和虚焦里的人），定义句都写服装 ID（颜色＋衣物＋发型，照抄绑定的服装资产），并带一个性别词（a man / a woman），同章同场逐字一致；不能只写「名字，职业」（只写名字时中介被画成了女的）。按 h3-prompt-writing 的 R22，定义句不写脸、年龄、材质、配饰描写。主角和反复出现的角色，每镜加一句身份锁：同一个人、每镜同一张脸、性别不变、发型不变（句式同 h3-prompt-writing 同场节第 8 条的「a different man with a different face」写法）；人设没有的配饰（眼镜等）写明不戴。不写会改脸的特写（青筋暴起、疤），除非剧情要、而且有状态图。
+
+### 〔F-009〕 【待测】【提示词】正式场合不改服装
+
+- 目的：宴会、酒店、售车店、办公室这类场合，模型会自己加西装、领带、胸牌、工牌。
+- 做法：这类场合每个具名人物的服装 ID 后加一句 `<Name> wears exactly this outfit for the whole shot: no added jacket, tie, name badge or work badge.`
+- 要求：只从剧本写明换装那一拍起换（第11条）；资产没有的衣物、配饰不写。
+- 校验：缺这句，或写了 suit / tie / badge 而资产没有，门禁报警告（只报不拦）。
+- 正例：售车店里主角照资产穿灰 T 恤，加上面那句。
+- 反例：只写 formal setting，成片主角西装领带。
+本段校验码：FD4E6BD8
 

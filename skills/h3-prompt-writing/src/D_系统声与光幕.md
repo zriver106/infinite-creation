@@ -10,7 +10,7 @@
 
 ### 〔D-002〕 System voice — 系统声写进 `<d>`，由 H3 直出
 
-1. **Who.** A dialogue line whose speaker, with brackets removed, is 系统 / 系统音 / 系统声 / 系统提示 / 系统提示音 / 系统女声 / 系统男声 is a system line. 「系统面板：」 or 「江澈（系统）：」 are not system lines.
+1. **Who.** A dialogue line whose speaker, with brackets removed, is 系统 / 系统音 / 系统声 / 系统提示 / 系统提示音 / 系统女声 / 系统男声 is a system line. 「系统面板：」 or 「主角（系统）：」 are not system lines.
 2. **Fixed sentence (one per series, copied word for word every time; manual M30 item 1 example).** `An unseen synthetic system voice (Sx) that belongs to no one in the frame, a calm, clear, neutral young female synthetic voice with a faint electronic edge, speaking at a moderate pace, says <d>[Chinese] <complete system line, unchanged></d>.` If the shot binds a system-voice audio asset, add `in the same voice referenced from __MINIMAX_H3_REF_N__` after `pace,`. Never give the system a character's voice reference; never write `<Name> says` for it.
 3. **Timing.** The panel (or hint bar) appears in the same second the system `<d>` starts and stays until it ends. The system voice is an off-screen voice, so handbook M33 rule 6 applies: the camera shot (`[Shot N]`) that carries it has no spoken line; spoken lines go in another camera shot after a hard cut, ≥ 0.8 s (in practice ≥ 1 s) away (rule and cut template: skill h3-camera-moves CAM-003「一个 [Shot N] 只有一种人声」, read with skill(name="h3-camera-moves")). It may overlap the listener's action. Speaker IDs follow the order the voices are first heard.
 4. **The listener.** Everyone visible keeps the mouth closed while the system speaks: write `<Listener> listens with his lips closed.` (IC 947e856 listener sentence) and act with eyes / brows / head only; no mouth or breath words.

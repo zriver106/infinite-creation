@@ -14,8 +14,8 @@ H3 copies the lighting of a bound scene reference image almost unchanged: time o
 
 When the bound scene reference image is a wide or establishing shot and this shot is a medium shot, a medium close-up or a close-up, H3 copies the whole wide layout from the image and shrinks the characters to fit it. For every such shot:
 
-1. **The shot-size sentence comes first and is explicit.** It is the first sentence of the prompt (free-text prompts) or the first sentence of `summary` and of `detailed_description` (Ref2VA sections; `subject_definitions` stays first). Name the size, the body crop and the face size, e.g. `Medium shot, framed from the waist up; each face is about one quarter of the frame height.` / `Medium close-up from the chest up; the face fills about one third of the frame height.` / `Close-up of Jiang Che's face; the face fills most of the frame height.` (中景/腰部以上/脸约占画面高度 1/4). Do not open with the location.
-2. **The scene reference describes only the background visible behind the character.** Its definition says what this framing shows behind and beside the character (e.g. `__MINIMAX_H3_REF_2__ is the background behind Jiang Che: the green wall with the gold peony relief`), not the whole room.
+1. **The shot-size sentence comes first and is explicit.** It is the first sentence of the prompt (free-text prompts) or the first sentence of `summary` and of `detailed_description` (Ref2VA sections; `subject_definitions` stays first). Name the size, the body crop and the face size, e.g. `Medium shot, framed from the waist up; each face is about one quarter of the frame height.` / `Medium close-up from the chest up; the face fills about one third of the frame height.` / `Close-up of the lead's face; the face fills most of the frame height.` (中景/腰部以上/脸约占画面高度 1/4). Do not open with the location.
+2. **The scene reference describes only the background visible behind the character.** Its definition says what this framing shows behind and beside the character (e.g. `__MINIMAX_H3_REF_2__ is the background behind the lead: the green wall with the gold peony relief`), not the whole room.
 3. **Retention is "background only / partially".** Ref2VA: `__MINIMAX_H3_REF_n__: partially_preserved - background only: <what is visible behind the character>`. Free text: `use __MINIMAX_H3_REF_n__ for the background only, partially`. Never `fully_preserved` for the scene in such a shot.
 4. **The layout list keeps only what this shot can show.** Keep the items behind or next to the character in this framing; drop the far door, distant tables, the ceiling chandelier and anything else that cannot be in frame at this size.
 5. If the scene image itself is already a medium or close view of that spot, rules 2–4 are already met; rule 1 still applies.
@@ -36,7 +36,7 @@ When the bound scene reference image is a wide or establishing shot and this sho
   1. 读场景资产描述里的用途、必须有的标志物、不能像的场所，和这一镜分镜写的地点、这场戏要做的事对一遍。对得上才写。
   2. 对不上，或图里明显有别的场所才有的结构：不绑着它硬写，也不靠一句「只当布局参考」去压；在报告里写明，退回换图或补资产（adapt-rules J-002、J-003）。
   3. 提示词里的场所描述照图和资产描述写，不写图里没有的标志物，不写和图冲突的场所名。
-  4. 同一个场景的各镜绑同一张合格的图、写同一句场所句（F-005）；不因为这一镜的图不合适就单独换一张别处的图顶替。
+  4. 同一个场景的各镜绑同一张合格的图、写同一句场所句（F-005）；不因为这一镜的图不合适就单独换一张别处的图顶替。一个地点全剧只认一个场景资产（adapt-rules J-004）；地点名和登记表对不上的，报告。
   5. 场所句只起加固作用，可以点出这是哪类场所、有哪两三样标志物；不能拿它当图不合格的补救。
 - 可用短句：
   - `The scene is <an ordinary open-plan office area>: <rows of desks with monitors, a filing cabinet, a potted plant by the window>; it stays this same place from the first frame to the last.`
