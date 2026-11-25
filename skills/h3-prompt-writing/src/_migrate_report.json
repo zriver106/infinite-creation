@@ -1,5 +1,5 @@
 {
- "stamp": "20261123-224345",
+ "stamp": "20261124-000225",
  "prompt_set": [
   {
    "file": "A_铁律与流程.md",
@@ -9,7 +9,7 @@
    "when": [
     "always"
    ],
-   "chars": 1775
+   "chars": 1569
   },
   {
    "file": "B_提示词格式与标签.md",
@@ -29,7 +29,7 @@
    "when": [
     "always"
    ],
-   "chars": 11591
+   "chars": 11099
   },
   {
    "file": "D_系统声与光幕.md",
@@ -39,7 +39,7 @@
    "when": [
     "always"
    ],
-   "chars": 4418
+   "chars": 4439
   },
   {
    "file": "F_一致性_人物服装场景道具.md",
@@ -49,7 +49,7 @@
    "when": [
     "always"
    ],
-   "chars": 10835
+   "chars": 10923
   },
   {
    "file": "E_人声与台词.md",
@@ -71,7 +71,7 @@
     "prop",
     "scene"
    ],
-   "chars": 1609
+   "chars": 1613
   },
   {
    "file": "F5_多视角定义图.md",
@@ -154,7 +154,7 @@
    "when": [
     "always"
    ],
-   "chars": 1544
+   "chars": 1569
   },
   {
    "file": "R_剧本.md",
@@ -174,7 +174,7 @@
    "when": [
     "always"
    ],
-   "chars": 5144
+   "chars": 5148
   },
   {
    "file": "C_分镜层心声.md",
@@ -208,6 +208,19 @@
   }
  ],
  "unmapped": [],
- "cases": 59,
- "cases_file": "C:\\Users\\usazr\\Documents\\moviePro\\projects\\我在城市用交易系统修仙\\项目数据\\规则案例库\\从规则正文抽出的出处_20261123-224345.md"
+ "cases": 58,
+ "cases_file": "C:/Users/usazr/Documents/moviePro/_/ic_rule_sync/r11/stage/cases\\索引.csv",
+ "replaced_refs": {
+  "下一镜按【分镜】第 6 条重新接上上一镜的结尾站位": 2,
+  "see \"One kind of voice per camera shot\" ": 1,
+  "follows TR-V04 (item 4 of \"Rules verifie": 1,
+  "which item 3 and the gate r71 OFF_OTS_BA": 1,
+  "because the old ones conflicted with ite": 1,
+  "that is item 3 above and the gate's own ": 1,
+  "（同【分镜】第 6 条）": 2
+ },
+ "dedup": [
+  "TR-V11（英文，与 ic-lessons【通用】「看不懂的镜作废，不删除」同一条，A 段只留中文）",
+  "「Inner-voice (OS) shots follow the Inner-Monologue section above」（就在 C 段里，指向自己的重复条）"
+ ]
 }

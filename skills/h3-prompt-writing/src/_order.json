@@ -7,7 +7,7 @@
   "when": [
    "always"
   ],
-  "chars": 1775
+  "chars": 1569
  },
  {
   "file": "B_提示词格式与标签.md",
@@ -27,7 +27,17 @@
   "when": [
    "always"
   ],
-  "chars": 11591
+  "chars": 11099
+ },
+ {
+  "file": "C2_心声嘴形表.md",
+  "id": "C2",
+  "title": "C2 心声闭嘴嘴形表",
+  "tier": "volume",
+  "when": [
+   "os"
+  ],
+  "chars": 2840
  },
  {
   "file": "D_系统声与光幕.md",
@@ -37,7 +47,7 @@
   "when": [
    "always"
   ],
-  "chars": 4418
+  "chars": 4439
  },
  {
   "file": "F_一致性_人物服装场景道具.md",
@@ -47,7 +57,7 @@
   "when": [
    "always"
   ],
-  "chars": 10835
+  "chars": 10923
  },
  {
   "file": "E_人声与台词.md",
@@ -69,7 +79,7 @@
    "prop",
    "scene"
   ],
-  "chars": 1609
+  "chars": 1613
  },
  {
   "file": "F5_多视角定义图.md",
@@ -100,6 +110,16 @@
    "expression"
   ],
   "chars": 17871
+ },
+ {
+  "file": "H2G_开场画面与光幕位置.md",
+  "id": "H2G",
+  "title": "H2G 开场画面与光幕位置（每镜必读）",
+  "tier": "volume",
+  "when": [
+   "always"
+  ],
+  "chars": 0
  },
  {
   "file": "J_资产与绑定.md",

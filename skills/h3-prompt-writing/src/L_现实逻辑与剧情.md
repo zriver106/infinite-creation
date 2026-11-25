@@ -1,12 +1,29 @@
 <!-- rulebook: id=L tier=volume when=logic -->
 ## L 现实逻辑与剧情
 
-#### 第2、3集通过后转正：**Transactions are shown step by step (TR-V06).** Scan-to-pay (payee shows the code, payer scans with a phone), the arrival notice and the transfer-success screen: show the steps the story needs so a viewer can follow; bind the phone screen as a prop and open an exception for that screen in the no-text sentence. Never a calculator or other stand-in.
+#### 〔L-001〕 第2、3集通过后转正：**Transactions are shown step by step (TR-V06).** Scan-to-pay (payee shows the code, payer scans with a phone), the arrival notice and the transfer-success screen: show the steps the story needs so a viewer can follow; bind the phone screen as a prop and open an exception for that screen in the no-text sentence. Never a calculator or other stand-in.
 
-#### L-005【待测】回忆不硬切全屏，能用剧中媒介就用媒介（TR-V16）
+#### 〔L-002〕 L-005【待测】回忆不硬切全屏，能用剧中媒介就用媒介（TR-V16）
 
 回忆、闪回优先通过剧中媒介呈现（手机里的照片、聊天记录、视频），不硬切成一段观众看不懂的全屏回忆；看不懂的回忆镜按 A 类「作废不删除」处理。
 
-#### L-006【待测】不画中画、不分格（G09）
+#### 〔L-003〕 L-006【待测】不画中画、不分格（G09）
 
 视频通话、两人隔空对话也只拍一个正常画面：不写 picture-in-picture、split screen、inset、floating face；要两人都出现，就切成两镜或拍手机屏幕特写。
+
+#### 〔L-004〕 【待测】照分镜的动作和语气写，不自己加戏；分镜看不懂就报回，不在提示词里改剧情（G23，txt L25、L57、L71、L99）
+
+- 原则：提示词多写一个动作、换一个相近的动作、语气写反，成片里人物就会做出原著没有的事。剧情和台词归改编分镜环节定（adapt-rules R-002、S-016、S-011），写稿只负责照着写准。
+- 适用条件：每个有人物动作或台词的镜；写视频提示词的人。
+- 正确写法：
+  1. 动作照分镜写：分镜写了什么动作就写什么动作，不换成相近的别的动作，不为了画面热闹加分镜没有的动作（起身、鼓掌、推打、多余的手势）。
+  2. 容易被模型演过头的地方加一句明确的限定：该坐着的写明全程坐着，没有肢体冲突的写明两人不接触，具体的手部动作写明是哪一种、不是哪一种。
+  3. 语气照处境写：台词前的情绪、语速、音量（E-007）按人物这时候的处境选；分镜标了语气的照标注写。E-007 说偏向高能量，但退缩、心虚、服软的台词写成低、弱、迟疑，不写成响亮自信。
+  4. 发现分镜里的动作没有原因、台词听不懂或接不上上文，不在提示词里自己改台词、加剧情；在报告里写明哪一镜、哪里看不懂，退回分镜环节改。
+- 可用短句：
+  - `<Name> stays seated for the whole shot and never stands up.`
+  - `<Name A> and <Name B> never touch each other; there is no pushing or hitting in this shot.`
+  - `<Name> rubs his palms together slowly in front of his chest; he does not clap.`
+  - `<Name> (Sx), backing down, in a small unsteady voice, slowly, eyes lowered, says <d>[Chinese] …</d>`
+  - 报告句：`Shot <n>: the line / action has no visible cause in the storyboard; returned to storyboard, prompt not written.`
+- 错误案例：见 `C:\Users\usazr\Documents\moviePro\docs\通用规则_错误案例.md` CASE-013、CASE-014、CASE-017、CASE-018

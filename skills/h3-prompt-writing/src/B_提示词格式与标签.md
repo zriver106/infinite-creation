@@ -3,7 +3,7 @@
 
 # H3 Prompt Writing
 
-### Project rule: no in-shot score — `non_diegetic_music: N/A`
+### 〔B-001〕 Project rule: no in-shot score — `non_diegetic_music: N/A`
 
 Every shot's video prompt in this project writes the music section as exactly `non_diegetic_music: N/A`, in the base modes and in Ref2VA alike. No music is generated inside a shot.
 
@@ -14,7 +14,7 @@ Every shot's video prompt in this project writes the music section as exactly `n
 - Do not bind `music` assets as a shot's audio reference (`audios`); only voice and sfx assets go there.
 - The render-time music check (`lib/core/music-check.js`) warns when `non_diegetic_music` is not N/A, when an H3-sectioned prompt has no `non_diegetic_music` section, or when a shot binds a `music` asset.
 
-### Output Rules
+### 〔B-002〕 Output Rules
 
 - Write rewrite sections in English; preserve dialogue, lyrics, and visible scene text in their original language.
 - Describe each shot by composition, subjects, environment, actions, camera, sound, and the exact point where referenced content appears.
@@ -23,7 +23,7 @@ Every shot's video prompt in this project writes the music section as exactly `n
 - Avoid plot summaries, unresolved reference labels, and timing that does not match the requested duration.
 - **Speaker IDs follow the speaking order inside this shot**: each IC shot is its own video, and H3 gives `(S1)` to the first voice heard in it and `(S2)` to the next new voice (`references/ref-en.txt` §5.4). So the first voice in this shot, OS included, is `(S1)`; never fix an ID for the whole chapter. The voice-reference line uses the same ID as that character's lines, whatever its REF number (`__MINIMAX_H3_REF_4__ is Jiang Che's voice (S2)` is fine); in the OS fixed sentences `(S1)` means the OS speaker's ID in this shot. Jobs 70f12d2f shot 17 and 231e6bc2 shots 1–2 tagged the shop owner, who spoke first, `(S2)`: both voices came out swapped.
 
-### No style-lock sentence; live-action lock instead — 不写画风锁定句，改写实景锁
+### 〔B-003〕 No style-lock sentence; live-action lock instead — 不写画风锁定句，改写实景锁
 
 H3 reads any sentence that ties the shot's look to a reference image as "show the reference image". The end of the shot, or the whole shot, then turns into the reference picture, a character sheet or a grey backdrop, and the reference's rendering style is locked in.
 
@@ -33,7 +33,7 @@ H3 reads any sentence that ties the shot's look to a reference image as "show th
 4. **Wrong:** `... she turns back to the window, keeping the look of __MINIMAX_H3_REF_1__.` **Right:** `... she turns back to the window. The last frame is still the same live-action seafood buffet restaurant.`
 5. **Check:** h3_prompt_lint ERROR `STYLE_REF_KEEP` (r66, extended r85) already blocks these phrases before rendering. When you rewrite a shot, delete the sentence from that shot. Do not widen a fix to other shots only for this sentence; how existing hits in untouched shots are cleared is decided by 总导.
 
-### Visual follows the prompt — 改提示词就同步重写 visual
+### 〔B-004〕 Visual follows the prompt — 改提示词就同步重写 visual
 
 `video_prompt` is what renders. Whenever you write or change a shot's `video_prompt`, rewrite these parts of that shot's `visual` from the new prompt in the same PATCH, then read the two back together:
 - who is in frame, who enters or exits, and who is only a voice;
@@ -47,10 +47,10 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 - **Never edit only `visual` to get past a lint check if that makes it contradict the prompt.** Example: writing "the panel has not appeared yet" when the prompt opens the panel at 1 s. Fix the prompt or the binding instead, or report the lint item and ask for a waiver.
 - Before handing a batch in, compare each changed shot's `visual` with its prompt on the items above. List every contradiction in the report.
 
-#### B-005【待测】IC 提示词的时间段只用整秒（TR-V13）
+#### 〔B-005〕 B-005【待测】IC 提示词的时间段只用整秒（TR-V13）
 
 `N-Ms:` 时间段、`runs from` 句里的秒数一律写整数；不写 0.5s 这类小数。
 
-#### B-008【待定】画风基线
+#### 〔B-006〕 B-008【待定】画风基线
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
