@@ -290,6 +290,15 @@ function patchCheck(now, errs) {
       state.patch.seen[r.id] = { ts: r.ts, group: r.batch_id || r.id, ch, idx, shot: r.entity_id, fields: L.changedFields(r.before, r.after) };
       if (r.ts > state.patch.lastTs) state.patch.lastTs = r.ts;
     }
+    // 2026-11-25（Andy：「这个情况不是问题」）：直接改了台词/画面后，紧接着交给 IC 重写的，算走了 IC。
+    // 判据（任一）：之后该镜有 IC Agent 写回的记录（change_logs source 以 agent: 开头）；或该章有 prompt-write 任务在这次改动之后排上/在跑/已完成。
+    const laterAgent = db.prepare("select 1 from change_logs where entity_id = ? and ts >= ? and source like 'agent:%' limit 1");
+    const laterWrite = db.prepare("select status from jobs where type = 'prompt-write' and coalesce(updated_at, started_at, 0) >= ? and status in ('queued','running','done') and checkpoint like ? limit 1");
+    for (const v of Object.values(state.patch.seen)) {
+      if (v.ic || !v.fields?.length || v.fields.every((f) => L.BIND_FIELDS.has(f))) continue;
+      if (laterAgent.get(v.shot, v.ts)) v.ic = 'rewritten';
+      else if (v.ch) { const j = laterWrite.get(v.ts, '%"chapter":"' + v.ch + '"%'); if (j) v.ic = j.status === 'done' ? 'rewritten' : 'queued'; }
+    }
   } catch (e) { errs.push('外部PATCH检查：' + e.message); }
   finally { try { db?.close(); } catch {} }
   const keep = now - cfg.patchKeepHours * 3600000;

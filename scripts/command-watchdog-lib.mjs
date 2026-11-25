@@ -239,8 +239,20 @@ export function evaluate(snap) {
   {
     const rows = (snap.extPatches || []).flatMap((g) => g.rows).sort((a, b) => a.ts - b.ts);
     const bind = rows.filter((r) => r.fields.length && r.fields.every((f) => BIND_FIELDS.has(f)));
-    const content = rows.filter((r) => !bind.includes(r));
+    const edited = rows.filter((r) => !bind.includes(r));
+    // 改完紧接着交了 IC 重写的（r.ic）不算外部改稿：只记一条「信息」，红色只留给真没走 IC 的（Andy 11-25：红色的问题要重视，这个情况不是问题）
+    const viaIc = edited.filter((r) => r.ic);
+    const content = edited.filter((r) => !r.ic);
     const span = (rs) => rs.length ? `${ptMDHM(new Date(rs[0].ts))}${rs.length > 1 && ptHM(new Date(rs.at(-1).ts)) !== ptHM(new Date(rs[0].ts)) ? '–' + ptHM(new Date(rs.at(-1).ts)) : ''}` : '';
+    if (viaIc.length) {
+      const byCh = {}; for (const r of viaIc) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
+      const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} ${set.size} 镜`).join('、');
+      const kinds = [...new Set(viaIc.flatMap((r) => r.fields))].filter((f) => !BIND_FIELDS.has(f)).map(fieldZh).join('、');
+      const waiting = viaIc.filter((r) => r.ic === 'queued').length;
+      add('ext_patch_ic', 'INFO', 8, `${new Set(viaIc.map((r) => r.shot)).size} 镜先改了${kinds}，随后交 IC 重写（不算外部改稿）`,
+        `${span(viaIc)}：${chTxt}。改完马上交给 IC 按规则重写提示词${waiting ? `（其中 ${waiting} 条 IC 还在排队写）` : ''}，走了 IC，不用处理。`,
+        { n: viaIc.length, last: viaIc.at(-1).ts });
+    }
     if (bind.length) {
       const byCh = {}; for (const r of bind) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
       const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} ${set.size} 镜`).join('、');
@@ -397,7 +409,7 @@ export function eventText(e) {
   return `【看门狗 ${t}·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}`;
 }
 // 不推到聊天的事件：补绑定（信息级，只在看门狗卡片里显示，避免刷屏）
-export function quietEvent(e) { return e.key === 'ext_bind' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
+export function quietEvent(e) { return e.key === 'ext_bind' || e.key === 'ext_patch_ic' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
 
 // 镜头字段 → 中文（看门狗消息用）
 const FIELD_ZH = { character_ids: '人物绑定', scene_ids: '场景绑定', prop_ids: '道具绑定', costume_ids: '服装绑定', age_ids: '年龄绑定', voice_ids: '音色绑定', media_ids: '素材绑定', dialogue: '台词', visual: '画面描述', video_prompt: '提示词', sub_shots: '分镜细节', camera: '运镜', duration: '时长', status: '状态', mode: '出片方式', idx: '镜号', chapter: '章节' };
