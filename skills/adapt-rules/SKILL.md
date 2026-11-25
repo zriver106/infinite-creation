@@ -2,7 +2,7 @@
 name: adapt-rules
 description: 改编规则（原著→剧本、分镜）：地图 + 基础规则，按行号读分册。IC 加载剧本、分镜类技能时附上。
 ---
-<!-- rulebook:generated rules-9e501816ce 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-1b534b4fd7 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（改编（原著→剧本、分镜））：使用方法
 
@@ -21,7 +21,7 @@ description: 改编规则（原著→剧本、分镜）：地图 + 基础规则�
 | H2 | H2 表现手段（Q 版、特效、谐音；冷门） | 分册 | L361–L385 | 开了表现开关或有 Q 版/特效 |
 
 地图结束。下面是基础规则。
-本段校验码：3938D503
+本段校验码：1E9BB5F7
 
 ## A 铁律与流程
 
