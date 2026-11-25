@@ -390,3 +390,12 @@ test('2026-11-25（Andy：只是把台词搬进台词栏、不涉及剧情的合
   assert.ok(L.quietEvent({ key: 'ext_patch_moved', type: 'new' }));
   assert.ok(!f.some((x) => x.level === 'ERROR'));
 });
+
+test('2026-11-25：GPU 空闲提示的「上一次出片」按 IC 最后一次出完的出片任务写，不再只认旧链', () => {
+  const at = NOW - 4 * 60000;
+  const f = L.evaluate(snap({ idle: { sinceMs: NOW - 200000, lastRender: { atMs: at, ch: '第40章', idx: 17 } } }));
+  const idle = f.find((x) => x.key === 'gpu_idle');
+  assert.ok(idle, '空闲 200 秒要报');
+  assert.match(idle.text, /上一次出片：\d\d-\d\d \d\d:\d\d 出完 第40章#17/);
+  assert.ok(!/上一条链/.test(idle.text), '有 IC 记录时不再写旧链');
+});

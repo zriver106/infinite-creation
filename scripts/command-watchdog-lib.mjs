@@ -174,7 +174,9 @@ export function evaluate(snap) {
       const prep = all.filter((c) => c.state === 'prepared' && c.shots && c.shots.unsubmitted.length);
       const fresh = prep.filter((c) => c.scriptMtimeMs && now - c.scriptMtimeMs < recentH * 3600000).sort((a, b) => b.scriptMtimeMs - a.scriptMtimeMs);
       const old = prep.length - fresh.length;
-      const startTxt = lastDone ? `上一条链 ${lastDone.name} 在 ${lastDone.last.slice(11, 19)} ${terminalOf(lastDone.name, lastDone.last) === 'done' ? '出完（done）' : '停下（stopped）'}` : '没找到上一条链的结束行';
+      const lr = snap.idle.lastRender; // IC 里最后一次出完的出片任务（比旧链日志准）
+      const chainTxt = lastDone ? `上一条链 ${lastDone.name} 在 ${lastDone.last.slice(11, 19)} ${terminalOf(lastDone.name, lastDone.last) === 'done' ? '出完（done）' : '停下（stopped）'}` : '没找到上一条链的结束行';
+      const startTxt = lr && lr.atMs ? `${ptMDHM(new Date(lr.atMs))} 出完${lr.ch ? ` ${lr.ch}#${lr.idx ?? '?'}` : ''}` : chainTxt;
       const voidM = snap.voidChains || new Map();
       const prepTxt = fresh.length ? `最近 ${recentH} 小时内准备好、还没起的链：` + fresh.map((c) => `${c.name}（脚本 ${ptHM(new Date(c.scriptMtimeMs))} 改，待出 ${c.shots.unsubmitted.length} 镜${(c.plan || []).some((p) => p.ch > (cfg.gateMaxChapter ?? 10)) ? '，含第11章以后' : ''}${voidM.has(c.name) ? `；**已作废（外部稿），不应起**${voidM.get(c.name) ? '：' + trim(voidM.get(c.name), 80) : ''}` : ''}）`).join('、') + '。' + (fresh.every((c) => voidM.has(c.name)) ? '这些都已作废，没有可起的链。' : '') : `最近 ${recentH} 小时内没有准备好的新链。`;
       const gateTxt = snap.gateFlag ? '' : ' 注意：第1–10集闸门生效（Andy 19:00：EP1–10 没做完前第11章以后不上 GPU）——若是闸门要求的空闲，请主会话确认。';

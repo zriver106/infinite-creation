@@ -273,6 +273,25 @@ function sessionCheck(procs, now) {
 // ---------- 外部 PATCH 写稿（只读 ic.db，最多 60 秒一次） ----------
 const PATCH_SRC = 'PATCH /api/projects/:id/shots/:sid';
 let patchAt = 0;
+// IC 里最后一次出完的出片任务（出片器、IC 页面、链都算）：看门狗「上一次出片」不再只认旧链脚本（2026-11-25：GPU 一直出到 11:39，却报「上一次 05:13」）
+let lastRenderCache = { at: 0, v: null };
+function lastIcRender(now) {
+  if (now - lastRenderCache.at < 30000) return lastRenderCache.v;
+  const dbPath = ENV.WD_ICDB || cfg.icDb;
+  if (TEST && !ENV.WD_ICDB) return null;
+  let db, v = null;
+  try {
+    db = new DatabaseSync('file:' + dbPath.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
+    const j = db.prepare("select finished_at, checkpoint from jobs where type = 'regenerate' and status = 'done' and finished_at is not null order by finished_at desc limit 1").get();
+    if (j) {
+      let cp = {}; try { cp = JSON.parse(j.checkpoint || '{}') || {}; } catch {}
+      const sid = /^[0-9a-f-]{36}$/.test(String(cp.subject || '')) ? cp.subject : null;
+      const sh = sid ? db.prepare('select chapter, idx from shots where id = ?').get(sid) : null;
+      v = { atMs: Number(j.finished_at), ch: sh?.chapter || null, idx: sh?.idx ?? null };
+    }
+  } catch { v = null; } finally { try { db?.close(); } catch {} }
+  lastRenderCache = { at: now, v }; return v;
+}
 function patchCheck(now, errs) {
   const dbPath = ENV.WD_ICDB || cfg.icDb;
   if (TEST && !ENV.WD_ICDB) return; // 测试模式不碰真 ic.db
@@ -379,7 +398,7 @@ async function round() {
   const extPatches = patchGroups();
   summary.extPatch = { lastCheckTs: state.patch?.lastTs ?? null, open: extPatches.reduce((n, g) => n + g.rows.length, 0) };
   const voids = voidChains(now);
-  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, idle: { sinceMs: state.idleSince }, extPatches, voidChains: voids, chains: views, allChains: [...byName.values()], procs, sessions, deadlines, gateFlag, queueChapters });
+  const found = L.evaluate({ now, cfg, gpu, gpuEmptySinceMs: state.gpuEmptySince, idle: { sinceMs: state.idleSince, lastRender: lastIcRender(now) }, extPatches, voidChains: voids, chains: views, allChains: [...byName.values()], procs, sessions, deadlines, gateFlag, queueChapters });
   const events = L.diffAlerts(state, found, nowIso, cfg.resolveAfterRounds);
   // 自动恢复（只对白名单脚本、进程没了的链）
   const recov = [];
