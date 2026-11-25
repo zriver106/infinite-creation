@@ -397,7 +397,7 @@ export function eventText(e) {
   return `【看门狗 ${t}·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}`;
 }
 // 不推到聊天的事件：补绑定（信息级，只在看门狗卡片里显示，避免刷屏）
-export function quietEvent(e) { return e.key === 'ext_bind'; }
+export function quietEvent(e) { return e.key === 'ext_bind' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
 
 // 镜头字段 → 中文（看门狗消息用）
 const FIELD_ZH = { character_ids: '人物绑定', scene_ids: '场景绑定', prop_ids: '道具绑定', costume_ids: '服装绑定', age_ids: '年龄绑定', voice_ids: '音色绑定', media_ids: '素材绑定', dialogue: '台词', visual: '画面描述', video_prompt: '提示词', sub_shots: '分镜细节', camera: '运镜', duration: '时长', status: '状态', mode: '出片方式', idx: '镜号', chapter: '章节' };
