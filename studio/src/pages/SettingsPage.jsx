@@ -1216,6 +1216,7 @@ function ComfyEndpointsEditor({ comfyui, onChange }) {
               <Input value={e.baseUrl} onChange={(ev) => update(i, { baseUrl: ev.target.value })} placeholder="http://127.0.0.1:8190" className="min-w-[200px] flex-1" />
               <span className="text-[11px] text-[var(--fg-4)]">显卡</span>
               <Input value={e.gpu} onChange={(ev) => update(i, { gpu: ev.target.value })} placeholder="0" className="w-14" />
+              <InstanceButton baseUrl={e.baseUrl} gpu={e.gpu} />
               <Button variant="secondary" size="sm" loading={!!testing[e.id]} onClick={() => testOne(e)}>
                 测试连接
               </Button>
@@ -1235,6 +1236,44 @@ function ComfyEndpointsEditor({ comfyui, onChange }) {
         ) : null}
       </div>
     </Field>
+  );
+}
+
+// 端点卡片上的「启动 / 停止」：在本机按这个端点的显卡号和端口起一套 ComfyUI（scripts/multi-gpu 脚本，含安全检查），
+// 起好后换成「停止」。8189 是正在出片的主实例，只显示「主实例」，不能在这里启停。
+function InstanceButton({ baseUrl, gpu }) {
+  const [st, setSt] = useState({ state: 'unknown' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const refresh = useCallback(async () => {
+    try { setSt(await api.get('/api/comfyui/instance?baseUrl=' + encodeURIComponent(baseUrl || ''))); }
+    catch (e) { setSt({ state: 'unknown' }); }
+  }, [baseUrl]);
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (st.state !== 'starting') return undefined;
+    const t = setInterval(refresh, 3000);
+    return () => clearInterval(t);
+  }, [st.state, refresh]);
+  if (st.main) return <Badge tone="neutral" title="8189 是正在出片的主实例，不能在这里启停">主实例</Badge>;
+  const act = async (action) => {
+    setBusy(true); setErr('');
+    try { await api.post('/api/comfyui/instance', { action, baseUrl, gpu }); }
+    catch (e) { setErr(e.message || String(e)); }
+    finally { setBusy(false); refresh(); }
+  };
+  const running = st.state === 'running';
+  const startingNow = st.state === 'starting';
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={'inline-block h-2 w-2 rounded-full ' + (running ? 'bg-[var(--success)]' : startingNow ? 'animate-pulse bg-amber-400' : 'bg-[var(--fg-4)]')} title={running ? '运行中' : startingNow ? '启动中' : '未运行'} />
+      {running ? (
+        <Button variant="secondary" size="sm" loading={busy} onClick={() => act('stop')}>停止</Button>
+      ) : (
+        <Button variant="secondary" size="sm" loading={busy || startingNow} disabled={startingNow} onClick={() => act('start')}>{startingNow ? '启动中…' : '启动'}</Button>
+      )}
+      {err || (startingNow && st.log) ? <span className="max-w-[260px] truncate text-[11px] text-[var(--fg-4)]" title={err || st.log}>{err || st.log}</span> : null}
+    </span>
   );
 }
 
