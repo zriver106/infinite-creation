@@ -1262,5 +1262,5 @@ function CodexTrialCard() {
   );
 }
 function Settings() {
-  return <div className="flex flex-col gap-4"><ApiKeyCard /><CodexTrialCard /></div>;
+  return <div className="flex flex-col gap-4"><ApiKeyCard /><details className="panel p-3 text-xs"><summary className="cursor-pointer text-[var(--fg-3)]">Codex 只读试用（11-24 至 11-25，已结束；点开看结果）</summary><div className="mt-2"><CodexTrialCard /></div></details></div>; // 试用已到期（Andy 11-25：旧的收起来）
 }
