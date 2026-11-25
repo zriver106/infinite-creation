@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { NextResponse } from 'next/server';
 import { Projects, withWriteContext } from '@/lib/core/index.js';
-import { readAssetCheckSettings, ASSET_MODE_KEY, ASSET_GATE_KEY, ASSET_ROOT_KEY } from '@/lib/agent/asset-check.js';
+import { readAssetCheckSettings, ASSET_MODE_KEY, ASSET_GATE_KEY, ASSET_ROOT_KEY, ASSET_BINDING_KEY } from '@/lib/agent/asset-check.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +26,11 @@ export async function PUT(req, { params }) {
   if (body.mode !== undefined) {
     if (!['gap-list', 'auto'].includes(body.mode)) return NextResponse.json({ error: 'mode 只能是 gap-list / auto' }, { status: 400 });
     writes.push([ASSET_MODE_KEY, body.mode]);
+  }
+  // 2026-11-25：项目级资产绑定方式（'ag' = 我方 Agent 绑定 | 'ic' = IC 按名字自动绑定），不设按系统设置。
+  if (body.binding !== undefined) {
+    if (!['ag', 'ic'].includes(body.binding)) return NextResponse.json({ error: 'binding 只能是 ag / ic' }, { status: 400 });
+    writes.push([ASSET_BINDING_KEY, body.binding]);
   }
   if (body.gate !== undefined) {
     if (!['A', 'B'].includes(body.gate)) return NextResponse.json({ error: 'gate 只能是 A / B' }, { status: 400 });
