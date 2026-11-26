@@ -282,6 +282,46 @@ function GpuNow({ g: n }) {
     </section>
   );
 }
+// 用量卡（2026-11-26 Andy：「这个是显卡的还是 claude 的 不如做个按钮切换下」「都安排吧」）：Claude / Codex 看 tokens，显卡看占用时长
+const USAGE_TABS = [['claude', 'Claude'], ['codex', 'Codex'], ['gpu', '显卡']];
+function UsageCard({ m }) {
+  const [tab, setTab] = useState(() => { try { return localStorage.getItem('cmd.usage.tab') || 'claude'; } catch { return 'claude'; } });
+  const pick = (t) => { setTab(t); try { localStorage.setItem('cmd.usage.tab', t); } catch {} };
+  const src = tab === 'codex' ? m?.tokensCodex : tab === 'gpu' ? m?.gpuUse : m?.tokens;
+  const at = src?.at ? `；统计于 ${ptHM(src.at)}，5 分钟刷新` : '';
+  const info = tab === 'claude' ? (m?.tokens?.note || '') + (m?.spend?.note ? '；' + m.spend.note : '') + at : (src?.note || src?.error || '') + at;
+  const seg = (
+    <span className="inline-flex overflow-hidden rounded-md border border-[var(--line)] text-[11px]" data-usage-tabs>
+      {USAGE_TABS.map(([id, label]) => <button key={id} type="button" onClick={() => pick(id)} className={'px-2 py-0.5 transition-colors ' + (tab === id ? 'bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] text-[var(--fg)]' : 'text-[var(--fg-3)] hover:bg-[var(--line)]')}>{label}</button>)}
+    </span>);
+  const th = (ws) => <thead><tr className="text-[11px] text-[var(--fg-3)]"><th />{ws.map((w) => <th key={w.id} className="px-1 text-right font-medium">{w.label.replace('最近 ', '')}</th>)}</tr></thead>;
+  const row = (k, ws, cell, bold) => <tr key={k} className="border-t border-[var(--line)]"><td className="whitespace-nowrap text-[11px] text-[var(--fg-3)]">{k}</td>{ws.map((w) => <td key={w.id} className="px-1 text-right">{bold ? <b>{cell(w)}</b> : cell(w)}</td>)}</tr>;
+  let body;
+  if (!src || src.pending) body = <span className="text-[11px] text-[var(--fg-4)]">统计中…</span>;
+  else if (!src.windows) body = <NoData />;
+  else if (tab === 'gpu') {
+    const ws = src.windows; const h = (x) => (x >= 100 ? x.toFixed(0) : x.toFixed(1)) + ' 小时';
+    body = <table className="w-full text-xs tabular-nums">{th(ws)}<tbody>
+      {row('占用时长', ws, (w) => h(w.busyH), true)}
+      {row('占用率', ws, (w) => Math.round(w.util * 100) + '%')}
+      {row('出片（条）', ws, (w) => w.renders)}
+      {row('失败（条）', ws, (w) => w.failed)}
+      {row('显卡任务', ws, (w) => w.jobs)}
+    </tbody></table>;
+  } else {
+    const ws = src.windows;
+    body = <table className="w-full text-xs tabular-nums">{th(ws)}<tbody>
+      {[['合计', 'total', true], ['输出', 'out'], ['缓存读', 'cr'], ['缓存写', 'cc'], ['输入', 'in']].map(([k, f, b]) => row(k, ws, (w) => tok(w[f]), b))}
+      {tab === 'claude' ? row('主会话 $', ws, (w) => { const s = (m.spend?.windows || []).find((x) => x.id === w.id); return s ? s.usd.toFixed(2) : '—'; }) : null}
+    </tbody></table>;
+  }
+  return (
+    <section className="panel p-3" data-usage-card>
+      <Head t={tab === 'gpu' ? '用量（显卡）' : '用量（tokens）'} info={info} right={seg} />
+      {body}
+    </section>);
+}
+
 function Overview({ go }) {
   const proj = useOverviewProject();
   const [rk, setRk] = useState(0);
@@ -368,16 +408,8 @@ function Overview({ go }) {
       <WatchdogCard />
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {/* 用量 */}
-        <section className="panel p-3">
-          <Head t="用量（tokens）" info={(m?.tokens?.note || '') + (m?.spend?.note ? '；' + m.spend.note : '') + (m?.tokens?.at ? `；统计于 ${ptHM(m.tokens.at)}，5 分钟刷新` : '')} />
-          {m?.tokens?.windows ? (
-            <table className="w-full text-xs tabular-nums"><thead><tr className="text-[11px] text-[var(--fg-3)]"><th />{m.tokens.windows.map((w) => <th key={w.id} className="px-1 text-right font-medium">{w.label.replace('最近 ', '')}</th>)}</tr></thead><tbody>
-              {[['合计', 'total', true], ['输出', 'out'], ['缓存读', 'cr'], ['缓存写', 'cc'], ['输入', 'in']].map(([k, f, b]) => <tr key={k} className="border-t border-[var(--line)]"><td className="text-[11px] text-[var(--fg-3)]">{k}</td>{m.tokens.windows.map((w) => <td key={w.id} className="px-1 text-right">{b ? <b>{tok(w[f])}</b> : tok(w[f])}</td>)}</tr>)}
-              <tr className="border-t border-[var(--line)]"><td className="text-[11px] text-[var(--fg-3)]">主会话 $</td>{m.tokens.windows.map((w) => { const s = (m.spend?.windows || []).find((x) => x.id === w.id); return <td key={w.id} className="px-1 text-right">{s ? s.usd.toFixed(2) : '—'}</td>; })}</tr>
-            </tbody></table>
-          ) : m?.tokens?.pending ? <span className="text-[11px] text-[var(--fg-4)]">统计中…</span> : <NoData />}
-        </section>
+        {/* 用量：Claude / Codex / 显卡 切换（Andy 11-26） */}
+        <UsageCard m={m} />
         {/* 规则 */}
         <section className="panel p-3">
           <Head t="规则条目" info={m?.rules?.note || m?.rules?.error} right={m?.rules?.total != null ? <span className="text-xl font-semibold">{m.rules.total}</span> : null} />

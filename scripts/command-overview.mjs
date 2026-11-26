@@ -8,6 +8,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { codexNow, gpuUseNow, usageInit } from './command-usage.mjs';
 import { gpuQueue, issuesForOverview, writeLead, logCacheStats, issuesCfg, issueItems, readLogLines } from './command-issues.mjs';
 import { PRIORITY_RULES, DISPATCH_RULES, MODEL_TABLE, DECISION_RULES, RELEASE_FIELDS, checkRelease, GATE_MD5 } from './command-rules.mjs';
 function releaseChecks() { const a = (issuesCfg() || {}).approvals || {}; return Object.entries(a).map(([key, r]) => ({ key, at: r && r.at || null, by: r && (r.decider || r.by) || null, ...checkRelease(r) })); }
@@ -317,6 +318,7 @@ const lastDays = (n) => { const out = []; const seen = new Set(); for (let i = 0
 const WIN_DEF = [{ id: 'today', label: '今天', days: 1, skip: 0 }, { id: 'yesterday', label: '昨天', days: 1, skip: 1 }, { id: 'd7', label: '最近 7 天', days: 7, skip: 0 }, { id: 'd30', label: '最近 30 天', days: 30, skip: 0 }];
 const ptMidnightIso = (day) => { for (const off of [8, 7]) { const t = Date.parse(`${day}T0${off}:00:00Z`); if (ptDayOf(t) === day && ptDayOf(t - 3600e3) !== day) return new Date(t).toISOString(); } return `${day}T00:00:00-08:00`; };
 const winDays =(w) => lastDays(w.days + w.skip).slice(w.skip);
+usageInit({ ptDayOf, WIN_DEF, winDays, ptMidnightIso, openRo: () => openRo() });
 
 // --- tokens：~/.claude/projects/**/*.jsonl 的 assistant message.usage，按太平洋时间日汇总；按文件增量读，按 message.id 去重；5 分钟刷新一次
 const CLAUDE_PROJECTS = process.env.CMD_CLAUDE_PROJECTS || path.join(process.env.USERPROFILE || 'C:\\Users\\usazr', '.claude', 'projects');
@@ -481,6 +483,8 @@ async function computeMetrics(project = PROJECT) {
     todayVideos: gpu?.today?.ok ? gpu.today.videos : null,
     gpuNow: nw ? { busy: nw.busy, idleMin: nw.idleMin, current: nw.current, recent: (gpu?.recent || []).slice(0, 8) } : null,
     tokens: tokensNow(),
+    tokensCodex: codexNow(),
+    gpuUse: gpuUseNow(),
     spend: main.error ? { error: main.error } : { windows: main.spend, note: main.note },
     rules,
     errors: errs,
