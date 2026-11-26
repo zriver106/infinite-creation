@@ -1094,8 +1094,9 @@ function LivePanel({ s, onClose }) {
   return (
     <div className="panel flex min-w-0 flex-1 flex-col p-2 text-xs" data-live-panel={s.id} data-live-ready={d ? '1' : '0'}>
       <div className="mb-1 flex items-center gap-2">
-        <b className="flex-1 truncate" title={s.id}>{s.title}</b>
-        <Pill tone="blue">只读</Pill>
+        <b className="flex-1 truncate" title={s.id}>{s.title || s.name}</b>
+        {(() => { const u = s.provider === 'claude' ? (/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/.exec(String(s.id)) || [])[1] : null; return u && !/infinite-creation-data-ag/i.test(String(s.id)) ? <a href={`claude://claude.ai/epitaxy/local_${u}`} className="rounded border border-[var(--accent)] px-2 py-0.5 text-[11px] text-[var(--accent)]" title="在 Claude 桌面 App 里打开这个会话，在那里直接发消息（网页这边只读，避免和 App 同时写同一份记录）">在 Claude 里打开，直接对话</a> : null; })()}
+        <Pill tone="blue">这里只读</Pill>
         <span className="text-[10px] text-[var(--fg-4)]">{s.provider}</span>
         <button type="button" className="rounded border border-[var(--line)] px-1.5 text-[10px]" onClick={onClose}>关</button>
       </div>
