@@ -102,18 +102,25 @@
     "F|第2、3集通过后转正：**Prop size lock (TR-V03).** A prop whose reference is a multi-view or a sized sheet gets one fixed real-world size sentence in every shot it appears in: `The <prop> is <real-world size copied from the prop asset sheet> and it never grows or shrinks.`": "F-003",
     "F|第2、3集通过后转正：**Adjacent-shot position lock (TR-V10).** Every shot of a scene states who is on which side of whom (also after a push, pull or hug). Only for two shots in the same scene where the action is continuous does the next shot open with `The characters keep the same left-right positions as in the previous shot.` followed by who is on which side. After a camera change, a jump cut or a time skip, write only who is on which side of whom in the new framing. Describe people's positions only; never write a sentence that locks the camera or the frame to the previous shot. Right (continuous push): #12 opens `The characters keep the same left-right positions as in the previous shot: <A> stays on screen-left of <B>.` Right (#13 cuts to the reverse angle): `<A> is on <B>'s right, between him and the door.` Wrong: opening #13 with a sentence that ties its camera to the last frame of #12.": "F-004",
     "F|第2、3集通过后转正：**Every shot binds a scene (TR-V12).** `scene_ids` is never empty; the gate already stops an empty `scene_ids` as an error (SCENE_UNBOUND). Same-scene shots share one scene sentence (see item 14 \"Scene lock\" in the section \"Same-scene presence and costume lock — 同场在场人物入画 + 服装锁\" above).": "F-005",
-    "X|【待测】【通用】导出前做同人同装、同场景对照审查": "X-012"
+    "X|【待测】【通用】导出前做同人同装、同场景对照审查": "X-012",
+    "E|【待测】没有台词的时段不写任何人声背景（2026-11-26 用户点出）": "E-013",
+    "E|【待测】台词前只写情绪和语速，不写音高、音色词（2026-11-26 用户点出）": "E-014",
+    "FX|【待测】【提示词】手机视频、打电话按正常拍戏写，通话从拨打或接听开始（2026-11-26 用户点出）": "FX-012",
+    "FX|【待测】【分镜】【提示词】对某人某物做反应、评论（含心声）时，视线朝向那个对象（2026-11-26 用户点出）": "FX-013",
+    "H1|【待测】【分镜】【提示词】行进中的戏在行进中拍，静态对话不硬加运动（2026-11-26 用户点出）": "H1-005",
+    "X|【待测】【通用】导出前核对每镜选用片晚于最后一次改稿": "X-013",
+    "A|【待测】【通用】写提示词前读本章剧本和原著，照原著的意思和感受写（2026-11-26 用户点出）": "A-007"
   },
   "next": {
-    "A": 7,
+    "A": 8,
     "B": 7,
     "C": 6,
     "D": 3,
     "F": 10,
-    "E": 13,
-    "FX": 12,
+    "E": 15,
+    "FX": 14,
     "F5V": 2,
-    "H1": 5,
+    "H1": 6,
     "H2": 3,
     "J": 6,
     "L": 5,
@@ -122,6 +129,6 @@
     "H2G": 2,
     "H2C": 2,
     "H2L": 2,
-    "X": 13
+    "X": 14
   }
 }

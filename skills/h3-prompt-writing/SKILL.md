@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-12405c42b2 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-e25901d7f2 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -16,28 +16,29 @@ compatibility: Portable to any agent that can read local files — no external A
 
 | 段 | 内容 | 层级 | 行号 | 什么时候读 |
 |---|---|---|---|---|
-| A | A 铁律与流程 | 基础（已在上面，必读） | L42–L79 | 每次 |
-| B | B 提示词格式与标签 | 基础（已在上面，必读） | L81–L136 | 每次 |
-| D | D 系统声与光幕 | 基础（已在上面，必读） | L138–L155 | 每次 |
-| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L157–L203 | 每次 |
-| C | C 心声 | 分册 | L208–L259 | 有心声 |
-| C2 | C2 心声闭嘴嘴形表 | 分册 | L261–L283 | 有心声 |
-| E | E 人声与台词 | 分册 | L285–L378 | 有台词 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L380–L443 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L445–L460 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L462–L511 | 有运镜、动作、打戏 |
-| H2C | H2C 表现通用 | 分册 | L513–L522 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L524–L579 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L581–L593 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L595–L607 | 每次 |
-| J | J 资产与绑定 | 分册 | L609–L653 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L655–L683 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L685–L726 | 用到时再查 |
-| Q | Q 审片 | 分册 | L728–L854 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L856–L1032 | 用到时再查 |
+| A | A 铁律与流程 | 基础（已在上面，必读） | L43–L89 | 每次 |
+| B | B 提示词格式与标签 | 基础（已在上面，必读） | L91–L146 | 每次 |
+| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L148–L194 | 每次 |
+| C | C 心声 | 分册 | L199–L250 | 有心声 |
+| C2 | C2 心声闭嘴嘴形表 | 分册 | L252–L274 | 有心声 |
+| D | D 系统声与光幕 | 分册 | L276–L293 | 有系统声或光幕 |
+| E | E 人声与台词 | 分册 | L295–L399 | 有台词 |
+| E2 | E2 多人同镜开口（E-001） | 分册 | L401–L411 | 两人及以上 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L413–L494 | 两人及以上、有道具、桌面、车、绑了场景 |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L496–L511 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L513–L575 | 有运镜、动作、打戏 |
+| H2C | H2C 表现通用 | 分册 | L577–L586 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L588–L648 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L650–L662 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L664–L676 | 每次 |
+| J | J 资产与绑定 | 分册 | L678–L722 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L724–L753 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L755–L796 | 用到时再查 |
+| Q | Q 审片 | 分册 | L798–L924 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L926–L1115 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：78D8D9B6
+本段校验码：81F50D26
 
 ## A 铁律与流程
 
@@ -76,7 +77,16 @@ compatibility: Portable to any agent that can read local files — no external A
 - 校验：报告写「旧锁 N 条，保留 N 条，删 0 条」；写库前比对新旧锁标签，丢锁退回（钩子待加）。
 - 正例：只改语气的重写，服装 ID、人数句、场景锁都在。
 - 反例：重写心声窗口时服装 ID 丢了，成片换了衣服。
-本段校验码：F927CA94
+
+### 〔A-007〕 【待测】【通用】写提示词前读本章剧本和原著，照原著的意思和感受写（2026-11-26 用户点出）
+
+- 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著，都要理解才行」「有时候剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。剧本、分镜只是参考。
+- 做法：写或重写一镜前，读 brief 里的本章剧本和原著（IC 正在补这两个字段或读取工具）的对应段落，弄懂谁在场、谁做什么、谁对谁反应、时间地点，以及原著要读者感受到什么（惊讶、窘迫、得意、温情）；再用动作表情、环境光线、节奏、谁先反应传达出来。
+- 要求：动作、站位、视线照原著写；剧本没写出、原著里有的感受要补上，不只把剧本一句翻成英文。分镜与原著冲突以原著为准并报告；台词仍照 `dialogue`（E-004），要改退回分镜。
+- 校验：报告写「已读对应剧本与原著段落」，列出冲突和改法。
+- 正例：原著是清晨散步、见人打太极、老人点头、他站到队尾跟着练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。
+- 反例：只看分镜一句，写成边跑边看、背对人群冲镜头说心声；只写「他在跑步，心声：……」。
+本段校验码：7066E8D4
 
 ## B 提示词格式与标签
 
@@ -134,25 +144,6 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
 本段校验码：5B6C8566
-
-## D 系统声与光幕
-
-#### 〔D-001〕 第2、3集通过后转正：**System UI: short text on the panel; the system's full spoken line goes in `<d>` and H3 speaks it (TR-V04; system voice per Andy 11-23 17:27 本人选择卡原话「按14:55，系统声音在提示词里念完整内容」, which overrides the 16:04 line 「系统声音还是按照原来设计去作业」; panel text per Andy 11-23 14:55 选择卡（总导转述）and 总导 11-23 15:09 / 15:17 裁定; narration 旁白 is unchanged and stays in post).**
-   - **Voice.** When the shot's `dialogue` has a system line (speaker 系统 / 系统音 / 系统声 / 系统提示 / 【系统】), write that line's complete text, word for word, in its own `<d>[Chinese] …</d>` and let H3 speak it; never shorten it to the panel text, never move it to post, never drop it. Use the fixed system-voice sentence of the section "System voice — 系统声写进 `<d>`" below. Where the novel only shows the UI and the system says nothing, write no system `<d>` and do not invent a system line.
-   - **Panel.** The panel enters in the same second the system line starts and stays at least as long as the line. Its background is a plain, even translucent colour with no banners, row frames or grid lines. H3 draws at most 2 short lines on it, each line at most 14 characters (all characters count: Chinese characters, punctuation, letters, digits; manual 0.5 字数口径 ①), large, high contrast, facing camera; take them from the system line's own text (usually its title or key phrase). Put the on-panel text in English double quotes `"…"`, never in 「」, 『』 or 【】, and keep these brackets out of the text itself (drop the novel's 【】 on screen; EP1–10: 「」 was painted as part of the text in 7 shots). A long panel that does not fit in two short lines gets no text: write `the panel shows no readable text`; the system voice in `<d>` carries the full content. The bracket rule also applies to the hint bar (提示条 / light bar): no 「」, 『』 or 【】 on it. In the 贴字表, a no-text panel is registered as 「无字，内容由系统音念」 when the system speaks there, otherwise 「无字」, with `lines: []`. Never a blurred panel.
-   - **Narration (旁白) is not the system.** A 旁白 line is still dubbed in post: no `<d>` for it in the prompt.
-   - Wrong: the panel carries four lines of the system text and no system `<d>`; or the system `<d>` holds only the two panel lines; or a `<d>` is invented for a UI the novel never voices. Right: panel `"交易成功"` / `"获得灵气 +10"`, and `An unseen synthetic system voice (S2) …, says <d>[Chinese] 交易成功，获得灵气+10，当前修为……</d>` with the full original line.
-   -
-
-### 〔D-002〕 System voice — 系统声写进 `<d>`，由 H3 直出
-
-1. **Who.** A dialogue line whose speaker, with brackets removed, is 系统 / 系统音 / 系统声 / 系统提示 / 系统提示音 / 系统女声 / 系统男声 is a system line. 「系统面板：」 or 「主角（系统）：」 are not system lines.
-2. **Fixed sentence (one per series, copied word for word every time; manual M30 item 1 example).** `An unseen synthetic system voice (Sx) that belongs to no one in the frame, a calm, clear, neutral young female synthetic voice with a faint electronic edge, speaking at a moderate pace, says <d>[Chinese] <complete system line, unchanged></d>.` If the shot binds a system-voice audio asset, add `in the same voice referenced from __MINIMAX_H3_REF_N__` after `pace,`. Never give the system a character's voice reference; never write `<Name> says` for it.
-3. **Timing.** The panel (or hint bar) appears in the same second the system `<d>` starts and stays until it ends. The system voice is an off-screen voice, so handbook M33 rule 6 applies: the camera shot (`[Shot N]`) that carries it has no spoken line; spoken lines go in another camera shot after a hard cut, ≥ 0.8 s (in practice ≥ 1 s) away (rule and cut template: skill h3-camera-moves CAM-003「一个 [Shot N] 只有一种人声」, read with skill(name="h3-camera-moves")). It may overlap the listener's action. Speaker IDs follow the order the voices are first heard.
-4. **The listener.** Everyone visible keeps the mouth closed while the system speaks: write `<Listener> listens with his lips closed.` (IC 947e856 listener sentence) and act with eyes / brows / head only; no mouth or breath words.
-5. **Panel text** follows TR-V04 (the "System UI: short text on the panel" item at the top of this section D): ≤ 2 short lines, ≤ 14 characters each, English quotes, taken from the system line.
-6. **Not in scope.** Narration 旁白 and broadcast-style narrators are not changed by this rule; 旁白 stays in post. The workflow manual package r81 that carries the same change is still under review; this section is the IC side only.
-本段校验码：C809D8BD
 
 ## F 一致性（人物、服装、场景、道具、站位、人数）
 

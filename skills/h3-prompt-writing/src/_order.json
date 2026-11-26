@@ -43,9 +43,9 @@
   "file": "D_系统声与光幕.md",
   "id": "D",
   "title": "D 系统声与光幕",
-  "tier": "base",
+  "tier": "volume",
   "when": [
-   "always"
+   "system"
   ],
   "chars": 4439
  },
@@ -68,6 +68,16 @@
    "dialogue"
   ],
   "chars": 10645
+ },
+ {
+  "file": "E2_多人同镜开口.md",
+  "id": "E2",
+  "title": "E2 多人同镜开口（E-001）",
+  "tier": "volume",
+  "when": [
+   "multi"
+  ],
+  "chars": 0
  },
  {
   "file": "F9_一致性细则_待测.md",

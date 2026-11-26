@@ -18,12 +18,13 @@
 - 正确写法：
   1. 动作照分镜写：分镜写了什么动作就写什么动作，不换成相近的别的动作，不为了画面热闹加分镜没有的动作（起身、鼓掌、推打、多余的手势）。
   2. 容易被模型演过头的地方加一句明确的限定：该坐着的写明全程坐着，没有肢体冲突的写明两人不接触，具体的手部动作写明是哪一种、不是哪一种。
-  3. 语气照处境写：台词前的情绪、语速、音量（E-007）按人物这时候的处境选；分镜标了语气的照标注写。E-007 说偏向高能量，但退缩、心虚、服软的台词写成低、弱、迟疑，不写成响亮自信。
+  3. 语气照处境写：台词前的情绪、语速、音量（E-007）按人物这时候的处境选；分镜标了语气的照标注写。E-007 说偏向高能量，但退缩、心虚、服软的台词写成轻声、弱、迟疑，不写成响亮自信。
   4. 发现分镜里的动作没有原因、台词听不懂或接不上上文，不在提示词里自己改台词、加剧情；在报告里写明哪一镜、哪里看不懂，退回分镜环节改。
+  5. 本条的「不加戏」指不加原著没有的动作；照 A-007 用表演和环境补出原著已有的感受、动作和站位与原著冲突时按原著写，都不算加戏，冲突在报告里写明。
 - 可用短句：
   - `<Name> stays seated for the whole shot and never stands up.`
   - `<Name A> and <Name B> never touch each other; there is no pushing or hitting in this shot.`
   - `<Name> rubs his palms together slowly in front of his chest; he does not clap.`
-  - `<Name> (Sx), backing down, in a small unsteady voice, slowly, eyes lowered, says <d>[Chinese] …</d>`
+  - `<Name> (Sx), in his usual voice, backing down, quietly and unsteadily, slowly, eyes lowered, says <d>[Chinese] …</d>`
   - 报告句：`Shot <n>: the line / action has no visible cause in the storyboard; returned to storyboard, prompt not written.`
 - 错误案例：见 `C:\Users\usazr\Documents\moviePro\docs\通用规则_错误案例.md` CASE-013、CASE-014、CASE-017、CASE-018

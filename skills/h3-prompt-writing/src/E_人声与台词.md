@@ -1,14 +1,7 @@
 <!-- rulebook: id=E tier=volume when=dialogue -->
 ## E 人声与台词
 
-### 〔E-001〕 Faceless speaker vs a visible face — 看不见脸的人别和露脸的人同镜开口
-
-H3 gives each spoken `<d>` line to whoever *looks like* the speaker on screen and uses that face's voice, even when the line is tagged with the right `(Sx)` and the voice references are correct. 2026-11-16: shot 17, over-the-shoulder with the lead's back in the foreground, and shot 21, the lead at the door with his back to the camera — in both, the shop owner's face was the only face on screen, and the lead's short reply came out in the owner's voice. Speaking with the back turned is a legitimate shot; the problem is only a faceless speaker next to a visible face. For every spoken line (not OS, not a phone voice from the other end):
-
-1. **A speaker whose face can't be seen may speak only when no one else's face is visible in the shot** — a lone figure from behind, an empty frame, a voice from beyond the door or out of frame are all fine.
-2. **If another face is visible, a faceless speaker gets that person's voice.** Fix it one of three ways: the speaker turns his head so at least a profile with the mouth shows while he speaks (`he stops at the door and turns his head over his shoulder, face and mouth in profile to the camera, and says …`); or the line goes into its own shot in which no one else's face is visible; or only the speaker stays in frame. If the storyboard hands you such a shot, change it this way and say so in your report.
-3. **No over-the-shoulder shots at all:** never write an over-the-shoulder or 过肩/越肩 framing, including over the shoulder of someone looking at a phone. A phone being looked at becomes a separate close-up insert of the phone screen; a conversation is single-person shot / reverse shot plus a side two-shot medium shot with both faces in profile. If the storyboard hands you an over-the-shoulder shot, rewrite it this way and say so in your report. (Turning the head *over his shoulder* as an action is fine; this bans the framing only.)
-4. **The listener's lips stay closed** while the other person speaks: `<Listener> listens with his lips closed.`
+E-001（看不见脸的人别和露脸的人同镜开口）2026-11-26 原样移到分卷 E2，两人及以上同镜时读。
 
 #### 〔E-002〕 第2、3集通过后转正：**The caller is a bound character (TR-V02).** In a phone shot the person on the other end is in `character_ids` even when off screen, or IC attaches no voice reference and the voice drifts. Write `It is the same voice in the room and through the phone receiver.`
 
@@ -36,7 +29,7 @@ H3 places each `<d>` line by the time window it is written in and lip-syncs it t
 
 #### 〔E-007〕 台词的情绪、语速、音量描述（原 Output Rules）
 
-- **Annotate every spoken line's delivery (emotion + speech pace + tone/volume) with a bias toward high energy**: before each `<d>…</d>`, after the speaker ID `(Sx)`, explicitly state how the line is spoken — emotion (furious / ecstatic / frantic / explosive / urgent / breathless / anxious / annoyed / amused / sad / nervous / hesitant / calm …), pace (fast / hurried / breathless / rapid-fire / measured / slow / drawn-out / hesitant …), and tone or volume (shout / cry out / whisper / murmur / rising / trembling / flat …). Pick the high-tension end of these lists unless the beat genuinely calls for calm. Never write a bare `S1 says, <d>…</d>` with no delivery description. Vary delivery and intensity between lines, speakers, and emotional turns within the same shot instead of one flat monotone. Follow the delivery wording shown in `references/ref-en.txt` (e.g. `exclaims with light annoyance`, `says in a casual young male voice with a playful tone and an easy conversational pace`, `replies … with an amused cadence`) — and prefer its higher-energy phrasings for conflict, urgency, or strong emotion. **Exception for inner monologue:** the delivery description applies to the voice only; the on-screen face never acts the line with the mouth. For an OS line use the Inner-Monologue rule 8 sentence `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, <timbre> narrates <d>…</d>.` (V2 6#3): no name, no `says` / `in an off-screen voiceover`, nothing about the mouth after `</d>`.
+- **Annotate every spoken line's delivery (emotion + speech pace + tone/volume) with a bias toward high energy**: before each `<d>…</d>`, after the speaker ID `(Sx)`, explicitly state how the line is spoken — emotion (furious / ecstatic / frantic / explosive / urgent / breathless / anxious / annoyed / amused / sad / nervous / hesitant / calm …), pace (fast / hurried / breathless / rapid-fire / measured / slow / drawn-out / hesitant …), and tone or volume (shout / cry out / whisper / murmur / rising / trembling / flat …). Pick the high-tension end of these lists unless the beat genuinely calls for calm. Never write a bare `S1 says, <d>…</d>` with no delivery description. Vary delivery and intensity between lines, speakers, and emotional turns within the same shot instead of one flat monotone. Follow the delivery wording shown in `references/ref-en.txt` (e.g. `exclaims with light annoyance`, `says in his usual voice with a playful tone and an easy conversational pace`, `replies … with an amused cadence`; never pitch or timbre words, see E-014) — and prefer its higher-energy phrasings for conflict, urgency, or strong emotion. **Exception for inner monologue:** the delivery description applies to the voice only; the on-screen face never acts the line with the mouth. For an OS line use the Inner-Monologue rule 8 sentence `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, in his usual voice, narrates <d>…</d>.` (V2 6#3): no name, no `says` / `in an off-screen voiceover`, nothing about the mouth after `</d>`.
 
 #### 〔E-008〕 E-005【待测】音色参考编号按 IC 装配顺序（TR-E01、G12）
 
@@ -92,3 +85,21 @@ dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person i
   - 报告句：`Numbers check: every number inside <d> is written in Chinese characters in its spoken form and equals the dialogue field; values unchanged.`
   - 报告句：`Shot <n>: number / key word rewritten to its spoken form in dialogue, <d> and sub_shots.`
 - 错误案例：见 `C:\Users\usazr\Documents\moviePro\docs\通用规则_错误案例.md` CASE-024、CASE-025
+
+#### 〔E-013〕 【待测】没有台词的时段不写任何人声背景（2026-11-26 用户点出）
+
+- 目的：murmur、chatter、交谈声、谈笑声、低语会被 H3 生成成听不懂的中文胡话。
+- 做法：没有 `<d>` 的时段只写非人声（脚步、餐具、车声、风声），并写 `nobody speaks`；要热闹就写非人声，或请分镜给具体台词（E-004）。
+- 要求：不写 murmur、chatter、background conversation、people talking、whispering 等人声背景；某句 `<d>` 的说法（E-007 的 whisper）不在此列。无台词镜同时写 E-009 静默锁。
+- 校验：交稿前搜上述词，只许出现在某句 `<d>` 的说法里。
+- 正例：`0-3s: nobody speaks; only the clink of cutlery and footsteps are heard.`
+- 反例：`the restaurant is filled with the low murmur of diners`，成片邻桌念出一串胡话。案例：案-E-待建-E23S01-01
+
+#### 〔E-014〕 【待测】台词前只写情绪和语速，不写音高、音色词（2026-11-26 用户点出）
+
+- 目的：音色只来自绑定的音色参考（E-006）；写 low、deep、high，H3 就改嗓子，同一人前后镜声音不同。
+- 做法：`<d>` 前写 `(Sx)`、`in his/her usual voice`、情绪、语速（可加音量 shout / whisper）。同一人每镜这句声音描述固定，后面再加情绪词。
+- 要求：不写 low、deep、high、sharp、husky、raspy、bright、young male voice、低沉、沙哑等音高音色词；心声句的 `<voice quality>`（C-001 第 8 条）、电话声（E-005）同样只填 `in his/her usual voice`，听筒的 tinny 可留；D-002 系统声固定句不受本条限制。
+- 校验：逐句看 `<d>` 前只有情绪、语速、音量和 `in his/her usual voice`。
+- 正例：`She (S2), in her usual voice, annoyed, fast, says <d>…</d>`
+- 反例：上一镜 `in a low husky voice`、下一镜 `in a bright sharp voice`，同一人两种嗓子（两例，案例待建）。

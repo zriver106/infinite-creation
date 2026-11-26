@@ -1,4 +1,4 @@
-<!-- rulebook: id=D tier=base when=always -->
+<!-- rulebook: id=D tier=volume when=system -->
 ## D 系统声与光幕
 
 #### 〔D-001〕 第2、3集通过后转正：**System UI: short text on the panel; the system's full spoken line goes in `<d>` and H3 speaks it (TR-V04; system voice per Andy 11-23 17:27 本人选择卡原话「按14:55，系统声音在提示词里念完整内容」, which overrides the 16:04 line 「系统声音还是按照原来设计去作业」; panel text per Andy 11-23 14:55 选择卡（总导转述）and 总导 11-23 15:09 / 15:17 裁定; narration 旁白 is unchanged and stays in post).**
