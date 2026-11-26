@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-b050dfeb0e 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-d8ddc2c126 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -21,10 +21,10 @@ compatibility: Portable to any agent that can read local files — no external A
 | F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L159–L205 | 每次 |
 | C | C 心声 | 分册 | L210–L261 | 有心声 |
 | C2 | C2 心声闭嘴嘴形表 | 分册 | L263–L285 | 有心声 |
-| D | D 系统声与光幕 | 分册 | L287–L304 | 有系统声或光幕 |
+| D | D 系统声与光幕 | 分册 | L287–L304 | 每次 |
 | E0 | E0 静默与人声背景（E-009、E-013） | 分册 | L306–L319 | 每次 |
 | E | E 人声与台词 | 分册 | L321–L404 | 有台词 |
-| E2 | E2 多人同镜（开口、视线） | 分册 | L406–L420 | 两人及以上 |
+| E2 | E2 多人同镜（开口、视线） | 分册 | L406–L420 | 两人及以上、call |
 | FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L422–L479 | 两人及以上、有道具、桌面、车、绑了场景 |
 | P | P 手机（FX-011、FX-012） | 分册 | L481–L500 | phone |
 | PC | PC 通话声音（E-002、E-005） | 分册 | L502–L510 | call |
@@ -42,7 +42,7 @@ compatibility: Portable to any agent that can read local files — no external A
 | X | X 导出、合成与交付 | 分册 | L946–L1129 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：F310871F
+本段校验码：0DDE356A
 
 ## A 铁律与流程
 
