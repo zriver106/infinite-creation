@@ -241,12 +241,22 @@ export function evaluate(snap) {
   {
     const rows = (snap.extPatches || []).flatMap((g) => g.rows).sort((a, b) => a.ts - b.ts);
     const bind = rows.filter((r) => r.fields.length && r.fields.every((f) => BIND_FIELDS.has(f)));
-    const edited = rows.filter((r) => !bind.includes(r));
+    // 跨镜挪台词通道（src=move，只动 dialogue）：IC 已校验原句不改、相邻镜、整章台词集合不变 → 信息，不报红（主会话 seq2133）
+    const xmove = rows.filter((r) => r.src === 'move' && r.fields.length && r.fields.every((f) => f === 'dialogue'));
+    const edited = rows.filter((r) => !bind.includes(r) && !xmove.includes(r));
     // 改完紧接着交了 IC 重写的（r.ic）不算外部改稿：只记一条「信息」，红色只留给真没走 IC 的（Andy 11-25：红色的问题要重视，这个情况不是问题）
     const movedIc = edited.filter((r) => r.ic && r.moved);
     const viaIc = edited.filter((r) => r.ic && !r.moved);
     const content = edited.filter((r) => !r.ic);
     const span = (rs) => rs.length ? `${ptMDHM(new Date(rs[0].ts))}${rs.length > 1 && ptHM(new Date(rs.at(-1).ts)) !== ptHM(new Date(rs[0].ts)) ? '–' + ptHM(new Date(rs.at(-1).ts)) : ''}` : '';
+    if (xmove.length) {
+      const byCh = {}; for (const r of xmove) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
+      const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} #${[...set].sort((x, y) => x - y).join('、#')}`).join('；');
+      const waiting = xmove.filter((r) => !r.ic).length;
+      add('ext_patch_xmove', 'INFO', 8, `${new Set(xmove.map((r) => r.shot)).size} 镜走 IC「跨镜挪台词」调整了台词位置（原句不改）`,
+        `${span(xmove)}：${chTxt}。IC 校验过原句一字不改、只在相邻镜之间挪、整章台词不变，属于合法操作。${waiting ? `其中 ${waiting} 镜还没看到 IC 重写提示词的任务。` : '随后已交 IC 重写提示词。'}`,
+        { n: xmove.length, last: xmove.at(-1).ts });
+    }
     if (movedIc.length) {
       const byCh = {}; for (const r of movedIc) (byCh[r.ch || '?'] ||= new Set()).add(r.idx);
       const chTxt = Object.entries(byCh).sort((a, b) => (chapterNum(a[0]) ?? 999) - (chapterNum(b[0]) ?? 999)).map(([ch, set]) => `${ch} #${[...set].sort((x, y) => x - y).join('、#')}`).join('；');
@@ -419,7 +429,7 @@ export function eventText(e) {
   return `【看门狗 ${t}·${tag}·${lv}】${e.title}${e.type === 'resolved' ? '' : '：' + e.text}`;
 }
 // 不推到聊天的事件：补绑定（信息级，只在看门狗卡片里显示，避免刷屏）
-export function quietEvent(e) { return e.key === 'ext_bind' || e.key === 'ext_patch_ic' || e.key === 'ext_patch_moved' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
+export function quietEvent(e) { return e.key === 'ext_bind' || e.key === 'ext_patch_xmove' || e.key === 'ext_patch_ic' || e.key === 'ext_patch_moved' || (e.type === 'resolved' && String(e.key).startsWith('ext_patch:')); } // 后者：旧版一镜一条的 PATCH 告警，换新版后陆续消掉，不刷聊天
 
 // 镜头字段 → 中文（看门狗消息用）
 const FIELD_ZH = { character_ids: '人物绑定', scene_ids: '场景绑定', prop_ids: '道具绑定', costume_ids: '服装绑定', age_ids: '年龄绑定', voice_ids: '音色绑定', media_ids: '素材绑定', dialogue: '台词', visual: '画面描述', video_prompt: '提示词', sub_shots: '分镜细节', camera: '运镜', duration: '时长', status: '状态', mode: '出片方式', idx: '镜号', chapter: '章节' };

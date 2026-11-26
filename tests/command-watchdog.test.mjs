@@ -391,6 +391,17 @@ test('2026-11-25（Andy：只是把台词搬进台词栏、不涉及剧情的合
   assert.ok(!f.some((x) => x.level === 'ERROR'));
 });
 
+test('2026-11-26（主会话 seq2133）：走 IC「跨镜挪台词」通道改的台词是信息、不报红；同来源动了别的字段照旧报', () => {
+  const r = (id, idx, extra) => ({ id, ts: NOW - 20000, ch: '第24章', idx, shot: 'shot-' + id, fields: ['dialogue'], src: 'move', ...extra });
+  const f = L.evaluate(snap({ extPatches: [{ group: 'mv1', rows: [r('a', 13, { ic: 'queued', icJob: 'j1' }), r('b', 14)] }] }));
+  const x = f.find((e) => e.key === 'ext_patch_xmove');
+  assert.equal(x.level, 'INFO'); assert.match(x.title, /2 镜走 IC「跨镜挪台词」/); assert.match(x.text, /第24章 #13、#14/); assert.match(x.text, /1 镜还没看到 IC 重写/);
+  assert.ok(!f.some((e) => e.level === 'ERROR'), '不报红');
+  assert.ok(L.quietEvent({ key: 'ext_patch_xmove', type: 'new' }));
+  const g = L.evaluate(snap({ extPatches: [{ group: 'mv2', rows: [r('c', 5, { fields: ['dialogue', 'visual'] })] }] }));
+  assert.ok(!g.some((e) => e.key === 'ext_patch_xmove'), '不只动台词的不算挪台词');
+});
+
 test('2026-11-25：GPU 空闲提示的「上一次出片」按 IC 最后一次出完的出片任务写，不再只认旧链', () => {
   const at = NOW - 4 * 60000;
   const f = L.evaluate(snap({ idle: { sinceMs: NOW - 200000, lastRender: { atMs: at, ch: '第40章', idx: 17 } } }));

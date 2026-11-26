@@ -272,6 +272,8 @@ function sessionCheck(procs, now) {
 
 // ---------- 外部 PATCH 写稿（只读 ic.db，最多 60 秒一次） ----------
 const PATCH_SRC = 'PATCH /api/projects/:id/shots/:sid';
+// 跨镜挪台词通道（2026-11-26 主会话 seq2133）：IC 自己校验过「原句一字不改、相邻镜、整章台词集合不变」，看门狗只记信息、不报红
+const MOVE_SRC = 'POST /api/projects/:id/chapters/:cid/move-dialogue';
 let patchAt = 0;
 // IC 里最后一次出完的出片任务（出片器、IC 页面、链都算）：看门狗「上一次出片」不再只认旧链脚本（2026-11-25：GPU 一直出到 11:39，却报「上一次 05:13」）
 let lastRenderCache = { at: 0, v: null };
@@ -302,11 +304,11 @@ function patchCheck(now, errs) {
   let db;
   try {
     db = new DatabaseSync('file:' + dbPath.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
-    const rows = db.prepare('select id, ts, batch_id, entity_id, before, after from change_logs where source = ? and ts > ? order by ts limit 500').all(PATCH_SRC, state.patch.lastTs);
+    const rows = db.prepare('select id, ts, batch_id, entity_id, source, before, after from change_logs where source in (?, ?) and ts > ? order by ts limit 500').all(PATCH_SRC, MOVE_SRC, state.patch.lastTs);
     for (const r of rows) {
       if (state.patch.seen[r.id]) continue;
       let ch = null, idx = null; try { const a = JSON.parse(r.after || '{}'); ch = a.chapter ?? null; idx = a.idx ?? null; } catch {}
-      state.patch.seen[r.id] = { ts: r.ts, group: r.batch_id || r.id, ch, idx, shot: r.entity_id, fields: L.changedFields(r.before, r.after) };
+      state.patch.seen[r.id] = { ts: r.ts, group: r.batch_id || r.id, ch, idx, shot: r.entity_id, fields: L.changedFields(r.before, r.after), ...(r.source === MOVE_SRC ? { src: 'move' } : {}) };
       if (r.ts > state.patch.lastTs) state.patch.lastTs = r.ts;
     }
     // 2026-11-25（Andy：「这个情况不是问题」）：直接改了台词/画面后，紧接着交给 IC 重写的，算走了 IC。
