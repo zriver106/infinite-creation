@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-e1bd7dad36 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-84f79fedaf 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -38,7 +38,7 @@ compatibility: Portable to any agent that can read local files — no external A
 | X | X 导出、合成与交付 | 分册 | L932–L1121 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：F6D39AC6
+本段校验码：1A8A72D9
 
 ## A 铁律与流程
 
@@ -78,15 +78,15 @@ compatibility: Portable to any agent that can read local files — no external A
 - 正例：只改语气的重写，服装 ID、人数句、场景锁都在。
 - 反例：重写心声窗口时服装 ID 丢了，成片换了衣服。
 
-### 〔A-007〕 【待测】【通用】写提示词前读本章剧本和原著，照原著的意思和感受写（2026-11-26 用户点出）
+### 〔A-007〕 【待测】【通用】写提示词前读本章剧本和原著：剧情事实照原著、镜头设计照分镜、台词照剧本（2026-11-26 用户点出，主会话定口径）
 
-- 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著」「剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。剧本、分镜只是参考。
-- 做法：写或重写一镜前，读 brief 里的本章剧本和原著（IC 正在补这两个字段或读取工具）的对应段落，弄懂谁在场、做什么、谁对谁反应、时间地点，和原著要读者感受到什么（惊讶、窘迫、得意、温情）；用动作表情、环境光线、节奏、谁先反应传达。
-- 要求：动作、站位、视线照原著；原著有、剧本没写出的感受要补，不只把剧本一句翻成英文。分镜与原著冲突以原著为准并报告；台词仍照 `dialogue`（E-004）。
-- 校验：报告写「已读对应剧本与原著」，列出冲突和改法。
+- 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著」「剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。
+- 做法：写或重写一镜前，读 brief 里的 `chapter_script`、`chapter_novel`（每章第一镜带上）和本镜的 `source_rule`，弄懂这场戏和原著要读者感受到什么（惊讶、窘迫、得意、温情）。分三层写：①剧情事实以原著为准：谁在场、做什么动作、有什么反应、时间、天气；②镜头设计照分镜：景别、机位、时长、切点；③台词照剧本（`dialogue`，E-004）。
+- 要求：原著有、剧本没表达出来的感受，在不改镜头设计的前提下，用表情、动作和环境补上，不只把剧本一句翻成英文。剧情事实与原著冲突时按原著写并报告；镜头设计或台词有问题退回分镜。
+- 校验：报告写「已读本章剧本与原著」，列出按原著改了哪些事实。
 - 正例：原著是清晨散步、见人打太极、老人点头、他站到队尾跟练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。
 - 反例：只看分镜一句，写成边跑边看、背对人群冲镜头说心声；只写「他在跑步，心声：……」。
-本段校验码：C32C35A1
+本段校验码：35E2AA50
 
 ## B 提示词格式与标签
 
