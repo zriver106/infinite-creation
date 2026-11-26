@@ -191,6 +191,7 @@ describe('brief / save（prompt-write MCP）', () => {
     assert.match(b1.chapter_novel, /站到队尾跟着练/);
     assert.equal(b1.chapter_script, '江澈：早。');
     assert.match(b1.source_rule, /原著为准/);
+    assert.match(b1.source_rule, /镜头设计照分镜/);
     const b2 = await brief(s2.id);
     assert.equal(b2.chapter_novel, undefined);
     assert.match(b2.chapter_source, /get_chapter/);
