@@ -1,9 +1,9 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-0b855a4b46",
+ "version": "rules-f9e748e8a6",
  "file": "规则全文.md",
- "file_md5": "5DC9C8CB35DF88A72FE09CEFDF51F6D0",
+ "file_md5": "4B216C23003F7C29DF8CD18AA88F3D09",
  "total_lines": 1167,
  "base_end_line": 206,
  "base_chars": 27503,
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 2823,
-   "checksum": "CBD6D42B"
+   "checksum": "BF5F34FA"
   },
   {
    "id": "A",
@@ -180,8 +180,8 @@
    "when": [
     "multi"
    ],
-   "chars": 2959,
-   "checksum": "C8B30F55"
+   "chars": 3470,
+   "checksum": "864B7112"
   },
   {
    "id": "H1",
