@@ -351,7 +351,7 @@ function Overview({ go }) {
       {/* 大数字 */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <section className="panel col-span-2 p-3">
-          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span>{m.episodes.extra?.length ? <span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]" title={`交付目录里还有 ${m.episodes.total} 集以外的文件：` + m.episodes.extra.map((n) => 'EP' + n).join('、')}>+EP{m.episodes.extra.length > 2 ? `${Math.min(...m.episodes.extra)}–${Math.max(...m.episodes.extra)}` : m.episodes.extra.join('、')}</span> : null}</span> : null} />
+          <Head t="章集进度" info={m?.episodes?.note} right={m?.episodes ? <span className="text-xl font-semibold">{m.episodes.delivered}<span className="text-xs font-normal text-[var(--fg-3)]"> / {m.episodes.total} 已交付</span>{m.episodes.twoK ? <span className="ml-2 rounded px-1.5 text-xs font-normal" style={{ background: 'color-mix(in srgb, ' + C.blue + ' 22%, transparent)', color: C.blue }} title="交付目录里短边 ≥1440 的集（ffprobe 实测）">2K {m.episodes.twoK} 集</span> : null}{m.episodes.extra?.length ? <span className="ml-1 text-[10px] font-normal text-[var(--fg-4)]" title={`交付目录里还有 ${m.episodes.total} 集以外的文件：` + m.episodes.extra.map((n) => 'EP' + n).join('、')}>+EP{m.episodes.extra.length > 2 ? `${Math.min(...m.episodes.extra)}–${Math.max(...m.episodes.extra)}` : m.episodes.extra.join('、')}</span> : null}</span> : null} />
           {m?.episodes ? <><EpGrid grid={m.episodes.grid} onPick={(ep) => go('issues', { ep })} /><div className="mt-1.5"><Legend items={[['已交付', C.green], ['2K', C.blue], ['有未完成问题', C.amber], ['未交付', 'var(--line)']]} /></div></> : <NoData />}
         </section>
         <section className="panel p-3">
@@ -1166,19 +1166,20 @@ export default function CommandPage() {
   const cur = SUBS.find((s) => s.id === sub);
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <nav className="panel p-2 lg:w-[180px] lg:shrink-0">
+      {/* 2026-11-26 Andy：「菜单考虑换个地方」「这个长期在这里有点占空间」——子菜单从左侧竖列改成顶部一排标签，内容区用满宽度 */}
+      <div className="flex flex-col gap-3">
+        <nav className="flex flex-wrap items-center gap-1 border-b border-[var(--line)] pb-1" data-cmd-tabs>
           {SUBS.map((s) => {
-            const Icon = s.icon;
+            const Icon = s.icon; const on = sub === s.id;
             return (
-              <button key={s.id} type="button" data-active={sub === s.id} className="nav-item w-full" onClick={() => go(s.jump || s.id)}>
-                <Icon size={14} className={sub === s.id ? 'text-[var(--accent)]' : 'text-[var(--fg-3)]'} />
-                <span className="flex-1 text-left">{s.label}</span>
+              <button key={s.id} type="button" data-active={on} onClick={() => go(s.jump || s.id)}
+                className={'flex items-center gap-1.5 rounded-t px-3 py-1.5 text-sm transition-colors ' + (on ? 'border-b-2 border-[var(--accent)] font-semibold text-[var(--fg)]' : 'border-b-2 border-transparent text-[var(--fg-3)] hover:text-[var(--fg)]')}>
+                <Icon size={14} className={on ? 'text-[var(--accent)]' : ''} />{s.label}
               </button>
             );
           })}
         </nav>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           {sub === 'overview' ? <Overview go={go} /> : null}
           {sub === 'issues' ? <Issues /> : null}
           {sub === 'chat' ? <Chat /> : null}
