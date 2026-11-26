@@ -14,6 +14,7 @@
 
 - 目的：用户原话：「按照正常拍戏，正常使用手机，不要过多考虑摄像头」「最起码要从拨打开始」「从主角后面拍摄，可以看到主角正在做的事」。
 - 做法：人物照常用手机，屏幕朝向持机人自己、通话贴耳。要给观众看手机、电脑屏幕、文件或手上的事，镜头在他身后略高处，看到他手里的东西，他照常看着；和正面拍表情的镜交替用。通话第一镜写拨打（点号码、举到耳边）或接听（来电响、接起）。
+- 正面拍持机人时（含视频通话）：观众只看得到手机背面，看不到屏幕，写 `the back of the phone faces the camera; its screen faces him`（2026-11-26 待测，主会话 seq2044；26#17 稿子只写了屏幕朝他自己，H3 仍把屏幕转向镜头）。要让观众看屏幕，就按上一条从他身后拍，镜头在手机背后那一侧。
 - 要求：手机、屏幕、文件不写 `facing the camera`、`toward the camera`、`toward the lens`，不把它们转过来对着镜头（人物朝向镜头的正常写法不受影响）。身后段不放 `<d>`，也不放心声窗口；心声放在接下来的正面表情段。身后机位只用于单人看自己手里的东西、这一段不说话；用词只写 `from behind <Name>`，不写 over-the-shoulder、OTS、past his shoulder、across his shoulder、越肩、过肩（门禁 r71 不放宽）；前景不出现肩膀或后脑占住画面一侧，不拍成两人对话的过肩镜。视频通话不分格（L-003）；分镜没有拨打或接听就报回补。
 - 校验：通话第一镜有拨打或接听；无屏幕朝镜头的句子。
 - 正例：`0-2s: he taps a contact and lifts the phone to his right ear; 2-3s: the call connects.` 看消息：`from behind <Name>, slightly above, the phone screen in his hands faces him and is in view, glowing`（要读屏上内容，按 L-001 绑屏幕道具），再切他的正面表情。
