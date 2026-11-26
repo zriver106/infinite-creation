@@ -133,6 +133,7 @@ function MiniBars({ rows, field, fmt = (x) => x, max }) {
 function WatchdogCard() {
   const w = usePoll('/api/command/watchdog', 5);
   const [open, setOpen] = useState(false);
+  const [moreLog, setMoreLog] = useState(false);
   const d = w.data;
   const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f((x) => x + 1), 5000); return () => clearInterval(t); }, []);
   const age = d?.heartbeat?.at ? Math.round((Date.now() - new Date(d.heartbeat.at).getTime()) / 1000) : null;
@@ -152,8 +153,9 @@ function WatchdogCard() {
         <button type="button" className="ml-auto rounded border border-[var(--line)] px-2 text-[11px] text-[var(--fg-3)]" onClick={() => setOpen((o) => !o)}>{open ? '收起' : '原文'}</button>
       </div>
       {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px]">{alerts.map((a) => <div key={a.key} className={a.level === 'ERROR' ? 'text-red-400' : a.level === 'INFO' ? 'text-sky-400' : 'text-amber-400'}><span className="mr-1 font-mono text-[var(--fg-3)]">{ptMDHM(a.since)}（{agoTxt(a.since)}）</span>{a.level === 'ERROR' ? '严重' : a.level === 'INFO' ? '信息' : '注意'} · {a.title}<div className="ml-4 text-[var(--fg-3)]">{a.text}</div></div>)}</div> : null}
-      {open ? <div className="mt-2 flex flex-col gap-0.5 font-mono text-[10px] text-[var(--fg-3)]">
-        {(d?.changes || []).map((c, i) => <div key={i}>{c.atPT} {c.msg}</div>)}
+      {open ? <div className="mt-2 flex flex-col gap-0.5 text-[11px] text-[var(--fg-3)]"><div className="font-sans text-[11px] text-[var(--fg-4)]">最近的变化：</div>
+        {(d?.changes || []).slice(0, moreLog ? 50 : 10).map((c, i) => <div key={i} className="border-t border-[var(--line)] py-0.5 first:border-t-0">{c.msg}</div>)}
+        {(d?.changes || []).length > 10 ? <button type="button" className="self-start text-[var(--accent)]" onClick={() => setMoreLog((x) => !x)}>{moreLog ? '只看最近 10 条' : `更多（共 ${(d?.changes || []).length} 条）`}</button> : null}
         <div className="mt-1 font-sans text-[11px]">自动恢复记录：</div>
         {(d?.recoveries || []).length ? d.recoveries.map((r, i) => <div key={'r' + i}>{ptHM(r.at)} {r.chain} {r.ok ? (r.live ? (r.started ? '已重启' : '重启失败') : '条件满足（dry，没执行）') : '不满足：' + (r.reasons || []).join('；')} · {r.cmd}</div>) : <div>无</div>}
       </div> : null}
@@ -1194,7 +1196,7 @@ export default function CommandPage() {
   };
   const cur = SUBS.find((s) => s.id === sub);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-cmd-root>
       {/* 2026-11-26 Andy：「菜单考虑换个地方」「这个长期在这里有点占空间」——子菜单从左侧竖列改成顶部一排标签，内容区用满宽度 */}
       <div className="flex flex-col gap-3">
         <nav className="flex flex-wrap items-center gap-1 border-b border-[var(--line)] pb-1" data-cmd-tabs>

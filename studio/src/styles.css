@@ -302,3 +302,12 @@
 select { color-scheme: dark; }
 select option, select optgroup { background-color: var(--panel); color: var(--fg); }
 select option:checked { background-color: var(--accent, #d4a24c); color: #111; }
+
+/* 2026-11-26 Andy：指挥页「字体太小了 看都看不清」——只在指挥页里把小字号整体放大一档，不动其它页面 */
+[data-cmd-root] .text-\[8px\] { font-size: 11px; }
+[data-cmd-root] .text-\[9px\] { font-size: 11px; }
+[data-cmd-root] .text-\[10px\] { font-size: 12px; }
+[data-cmd-root] .text-\[11px\] { font-size: 13px; }
+[data-cmd-root] .text-\[12px\] { font-size: 14px; }
+[data-cmd-root] .text-xs { font-size: 13px; line-height: 1.25rem; }
+[data-cmd-root] .text-sm { font-size: 15px; }
