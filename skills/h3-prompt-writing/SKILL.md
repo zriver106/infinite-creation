@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-411c47200e 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-06ed81fb1f 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -17,32 +17,32 @@ compatibility: Portable to any agent that can read local files — no external A
 | 段 | 内容 | 层级 | 行号 | 什么时候读 |
 |---|---|---|---|---|
 | A | A 铁律与流程 | 基础（已在上面，必读） | L47–L100 | 每次 |
-| B | B 提示词格式与标签 | 基础（已在上面，必读） | L102–L157 | 每次 |
-| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L159–L205 | 每次 |
-| C | C 心声 | 分册 | L210–L261 | 有心声 |
-| C2 | C2 心声闭嘴嘴形表 | 分册 | L263–L285 | 有心声 |
-| D | D 系统声与光幕 | 分册 | L287–L304 | 每次 |
-| E0 | E0 静默与人声背景（E-009、E-013） | 分册 | L306–L319 | 每次 |
-| E | E 人声与台词 | 分册 | L321–L405 | 有台词 |
-| E2 | E2 多人同镜（开口、视线） | 分册 | L407–L421 | 两人及以上、call |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L423–L511 | 两人及以上、有道具、桌面、车、绑了场景 |
-| P | P 手机（FX-011、FX-012） | 分册 | L513–L534 | phone |
-| PC | PC 通话声音（E-002、E-005） | 分册 | L536–L544 | call |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L546–L565 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L567–L616 | 有运镜、动作、打戏 |
-| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L618–L634 | walk |
-| H2C | H2C 表现通用 | 分册 | L636–L645 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L647–L709 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L711–L723 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L725–L737 | 每次 |
-| J | J 资产与绑定 | 分册 | L739–L783 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L785–L814 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L816–L857 | 用到时再查 |
-| Q | Q 审片 | 分册 | L859–L985 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L987–L1171 | 用到时再查 |
+| B | B 提示词格式与标签 | 基础（已在上面，必读） | L102–L158 | 每次 |
+| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L160–L206 | 每次 |
+| C | C 心声 | 分册 | L211–L262 | 有心声 |
+| C2 | C2 心声闭嘴嘴形表 | 分册 | L264–L286 | 有心声 |
+| D | D 系统声与光幕 | 分册 | L288–L305 | 每次 |
+| E0 | E0 静默与人声背景（E-009、E-013） | 分册 | L307–L320 | 每次 |
+| E | E 人声与台词 | 分册 | L322–L406 | 有台词 |
+| E2 | E2 多人同镜（开口、视线） | 分册 | L408–L422 | 两人及以上、call |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L424–L512 | 两人及以上、有道具、桌面、车、绑了场景 |
+| P | P 手机（FX-011、FX-012） | 分册 | L514–L535 | phone |
+| PC | PC 通话声音（E-002、E-005） | 分册 | L537–L545 | call |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L547–L566 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L568–L617 | 有运镜、动作、打戏 |
+| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L619–L635 | walk |
+| H2C | H2C 表现通用 | 分册 | L637–L646 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L648–L710 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L712–L724 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L726–L738 | 每次 |
+| J | J 资产与绑定 | 分册 | L740–L784 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L786–L815 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L817–L858 | 用到时再查 |
+| Q | Q 审片 | 分册 | L860–L986 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L988–L1172 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：B9E4F05A
+本段校验码：9813104F
 
 ## A 铁律与流程
 
@@ -130,6 +130,7 @@ H3 reads any sentence that ties the shot's look to a reference image as "show th
 1. **Applies to:** every shot and every field that reaches H3 (`subject_definitions`, `summary`, `detailed_description`, `retention_analysis`, sub_shots).
 2. **Never write:** `keep the look of __MINIMAX_H3_REF_n__`, `keeps the rendering style of the reference images`, `stay faithful to the reference image`, `same as (the) reference`, or any paraphrase that asks the shot to look like a reference. Identity already comes from the definition line (`__MINIMAX_H3_REF_k__ is <name>: <clothing ID>`); no extra "keep the look" wording is needed.
 3. **Write instead (when the bound image is a sheet, a multi-view board or has a grey background, or the shot ends on a still beat):** at the start `From the first frame to the last frame this is the live-action <location>; it never turns into a reference image, a blank background or a grey studio backdrop.` and at the end `The last frame is still the same live-action <location>.`
+3a. 【待测】**Style anchor:** if the brief has `project_style_anchor`, write `<anchor> <location>` wherever these rules say `live-action <location>` (here, H2G and elsewhere), e.g. `the semi-realistic 3D animated hospital ward`; never write live-action or photorealistic for that project. No anchor = keep live-action. (2026-11-26)
 4. **Wrong:** `... she turns back to the window, keeping the look of __MINIMAX_H3_REF_1__.` **Right:** `... she turns back to the window. The last frame is still the same live-action seafood buffet restaurant.`
 5. **Check:** h3_prompt_lint ERROR `STYLE_REF_KEEP` (r66, extended r85) already blocks these phrases before rendering. When you rewrite a shot, delete the sentence from that shot. Do not widen a fix to other shots only for this sentence; how existing hits in untouched shots are cleared is decided by 总导.
 
@@ -154,7 +155,7 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 #### 〔B-006〕 【待定】画风基线
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
-本段校验码：E045F7A8
+本段校验码：AFDEAB9D
 
 ## F 一致性（人物、服装、场景、道具、站位、人数）
 
