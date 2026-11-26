@@ -198,5 +198,24 @@ describe('brief / save（prompt-write MCP）', () => {
     assert.match(b2.source_rule, /原著为准/);
     const prompt = PWM.buildPromptWriteAgentPrompt({ project: { name: 'x' }, chapter: '第1章', missing: 1 });
     assert.ok(prompt.includes('chapter_novel') && prompt.includes('以原著为准'));
+    assert.equal(b1.protagonist_stage, undefined, '没有 protagonist_arc.json 时不给阶段');
+  });
+
+  // 2026-11-26（Andy「写稿时按江澈当时所处的阶段来演」）：项目目录有 protagonist_arc.json 时，首镜 brief 按章号带阶段与节点
+  test('brief：protagonist_stage 按章号取阶段和节点；protagonistStageOf 边界', async () => {
+    const arc = { stages: [{ from: 1, to: 30, name: '一 社畜翻身', acting: '赔笑→压着得意' }, { from: 31, to: 200, name: '二 有钱有本事' }],
+      nodes: [{ from: 1, to: 4, title: '节点01 第1–4章：崩溃边缘的社畜', text: '表演提示：赔笑' }, { from: 4, to: 7, title: '节点02 第4–7章', text: 'x' }] };
+    assert.equal(PWM.protagonistStageOf(arc, '第1章').stage.name, '一 社畜翻身');
+    assert.deepEqual(PWM.protagonistStageOf(arc, '第4章').nodes.map((n) => n.title.slice(0, 4)), ['节点01', '节点02']);
+    assert.equal(PWM.protagonistStageOf(arc, '第31章').stage.name, '二 有钱有本事');
+    assert.equal(PWM.protagonistStageOf(arc, '第999章'), null);
+    assert.equal(PWM.protagonistStageOf(arc, '第一回'), null);
+    fs.writeFileSync(path.join(core.projectDir(p.id), 'protagonist_arc.json'), JSON.stringify(arc));
+    PWM._resetPromptWriteSession();
+    const s3 = Shots.create(p.id, { chapter: '第1章', idx: 23, visual: '工位', mode: 'text' });
+    const b3 = await brief(s3.id);
+    assert.equal(b3.protagonist_stage.stage.name, '一 社畜翻身');
+    assert.match(b3.protagonist_stage.nodes[0].text, /赔笑/);
+    assert.match(b3.arc_rule, /表演基调/);
   });
 });
