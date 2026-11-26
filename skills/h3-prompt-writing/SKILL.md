@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-e25901d7f2 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-e1bd7dad36 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -22,23 +22,23 @@ compatibility: Portable to any agent that can read local files — no external A
 | C | C 心声 | 分册 | L199–L250 | 有心声 |
 | C2 | C2 心声闭嘴嘴形表 | 分册 | L252–L274 | 有心声 |
 | D | D 系统声与光幕 | 分册 | L276–L293 | 有系统声或光幕 |
-| E | E 人声与台词 | 分册 | L295–L399 | 有台词 |
-| E2 | E2 多人同镜开口（E-001） | 分册 | L401–L411 | 两人及以上 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L413–L494 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L496–L511 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L513–L575 | 有运镜、动作、打戏 |
-| H2C | H2C 表现通用 | 分册 | L577–L586 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L588–L648 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L650–L662 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L664–L676 | 每次 |
-| J | J 资产与绑定 | 分册 | L678–L722 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L724–L753 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L755–L796 | 用到时再查 |
-| Q | Q 审片 | 分册 | L798–L924 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L926–L1115 | 用到时再查 |
+| E | E 人声与台词 | 分册 | L295–L397 | 有台词 |
+| E2 | E2 多人同镜（开口、视线） | 分册 | L399–L413 | 两人及以上 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L415–L492 | 两人及以上、有道具、桌面、车、绑了场景 |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L494–L509 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L511–L573 | 有运镜、动作、打戏 |
+| H2C | H2C 表现通用 | 分册 | L575–L584 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L586–L646 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L648–L660 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L662–L674 | 每次 |
+| J | J 资产与绑定 | 分册 | L676–L720 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L722–L759 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L761–L802 | 用到时再查 |
+| Q | Q 审片 | 分册 | L804–L930 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L932–L1121 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：81F50D26
+本段校验码：F6D39AC6
 
 ## A 铁律与流程
 
@@ -80,13 +80,13 @@ compatibility: Portable to any agent that can read local files — no external A
 
 ### 〔A-007〕 【待测】【通用】写提示词前读本章剧本和原著，照原著的意思和感受写（2026-11-26 用户点出）
 
-- 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著，都要理解才行」「有时候剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。剧本、分镜只是参考。
-- 做法：写或重写一镜前，读 brief 里的本章剧本和原著（IC 正在补这两个字段或读取工具）的对应段落，弄懂谁在场、谁做什么、谁对谁反应、时间地点，以及原著要读者感受到什么（惊讶、窘迫、得意、温情）；再用动作表情、环境光线、节奏、谁先反应传达出来。
-- 要求：动作、站位、视线照原著写；剧本没写出、原著里有的感受要补上，不只把剧本一句翻成英文。分镜与原著冲突以原著为准并报告；台词仍照 `dialogue`（E-004），要改退回分镜。
-- 校验：报告写「已读对应剧本与原著段落」，列出冲突和改法。
-- 正例：原著是清晨散步、见人打太极、老人点头、他站到队尾跟着练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。
+- 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著」「剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。剧本、分镜只是参考。
+- 做法：写或重写一镜前，读 brief 里的本章剧本和原著（IC 正在补这两个字段或读取工具）的对应段落，弄懂谁在场、做什么、谁对谁反应、时间地点，和原著要读者感受到什么（惊讶、窘迫、得意、温情）；用动作表情、环境光线、节奏、谁先反应传达。
+- 要求：动作、站位、视线照原著；原著有、剧本没写出的感受要补，不只把剧本一句翻成英文。分镜与原著冲突以原著为准并报告；台词仍照 `dialogue`（E-004）。
+- 校验：报告写「已读对应剧本与原著」，列出冲突和改法。
+- 正例：原著是清晨散步、见人打太极、老人点头、他站到队尾跟练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。
 - 反例：只看分镜一句，写成边跑边看、背对人群冲镜头说心声；只写「他在跑步，心声：……」。
-本段校验码：7066E8D4
+本段校验码：C32C35A1
 
 ## B 提示词格式与标签
 

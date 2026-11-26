@@ -88,18 +88,16 @@ dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person i
 
 #### 〔E-013〕 【待测】没有台词的时段不写任何人声背景（2026-11-26 用户点出）
 
-- 目的：murmur、chatter、交谈声、谈笑声、低语会被 H3 生成成听不懂的中文胡话。
+- 目的：murmur、chatter、交谈声、低语会被 H3 生成成听不懂的中文胡话。
 - 做法：没有 `<d>` 的时段只写非人声（脚步、餐具、车声、风声），并写 `nobody speaks`；要热闹就写非人声，或请分镜给具体台词（E-004）。
 - 要求：不写 murmur、chatter、background conversation、people talking、whispering 等人声背景；某句 `<d>` 的说法（E-007 的 whisper）不在此列。无台词镜同时写 E-009 静默锁。
 - 校验：交稿前搜上述词，只许出现在某句 `<d>` 的说法里。
-- 正例：`0-3s: nobody speaks; only the clink of cutlery and footsteps are heard.`
-- 反例：`the restaurant is filled with the low murmur of diners`，成片邻桌念出一串胡话。案例：案-E-待建-E23S01-01
+- 正例：`0-3s: nobody speaks; only the clink of cutlery and footsteps are heard.` 反例：`the restaurant is filled with the low murmur of diners`，成片邻桌念出一串胡话。案例：案-E-待建-E23S01-01
 
 #### 〔E-014〕 【待测】台词前只写情绪和语速，不写音高、音色词（2026-11-26 用户点出）
 
-- 目的：音色只来自绑定的音色参考（E-006）；写 low、deep、high，H3 就改嗓子，同一人前后镜声音不同。
+- 目的：音色只来自音色参考（E-006）；写 low、deep，H3 就改嗓子，前后镜声音不同。
 - 做法：`<d>` 前写 `(Sx)`、`in his/her usual voice`、情绪、语速（可加音量 shout / whisper）。同一人每镜这句声音描述固定，后面再加情绪词。
 - 要求：不写 low、deep、high、sharp、husky、raspy、bright、young male voice、低沉、沙哑等音高音色词；心声句的 `<voice quality>`（C-001 第 8 条）、电话声（E-005）同样只填 `in his/her usual voice`，听筒的 tinny 可留；D-002 系统声固定句不受本条限制。
-- 校验：逐句看 `<d>` 前只有情绪、语速、音量和 `in his/her usual voice`。
-- 正例：`She (S2), in her usual voice, annoyed, fast, says <d>…</d>`
+- 校验：逐句看 `<d>` 前只有情绪、语速、音量和 usual voice。正例：`She (S2), in her usual voice, annoyed, fast, says <d>…</d>`
 - 反例：上一镜 `in a low husky voice`、下一镜 `in a bright sharp voice`，同一人两种嗓子（两例，案例待建）。

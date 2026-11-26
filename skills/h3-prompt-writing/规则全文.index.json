@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-e25901d7f2",
+ "version": "rules-e1bd7dad36",
  "file": "规则全文.md",
- "file_md5": "1F3C49EFB44253AC3E902E14955DDA21",
- "total_lines": 1115,
+ "file_md5": "E6ADDFC7E39ABFD7885D96BFB5FA9A10",
+ "total_lines": 1121,
  "base_end_line": 195,
- "base_chars": 26849,
+ "base_chars": 26819,
  "base_budget_chars": 40000,
  "budget_chars": 84000,
  "budget_mode": "total",
@@ -21,8 +21,8 @@
    "when": [
     "always"
    ],
-   "chars": 2604,
-   "checksum": "81F50D26"
+   "chars": 2602,
+   "checksum": "F6D39AC6"
   },
   {
    "id": "A",
@@ -33,8 +33,8 @@
    "when": [
     "always"
    ],
-   "chars": 2914,
-   "checksum": "7066E8D4"
+   "chars": 2886,
+   "checksum": "C32C35A1"
   },
   {
    "id": "B",
@@ -69,8 +69,8 @@
    "when": [
     "os"
    ],
-   "chars": 11006,
-   "checksum": "9A777BE5"
+   "chars": 10865,
+   "checksum": "6DE9B019"
   },
   {
    "id": "C2",
@@ -101,45 +101,45 @@
    "title": "E 人声与台词",
    "tier": "volume",
    "start": 295,
-   "end": 399,
+   "end": 397,
    "when": [
     "dialogue"
    ],
-   "chars": 11725,
-   "checksum": "9C4CD542"
+   "chars": 11692,
+   "checksum": "08D3B0E3"
   },
   {
    "id": "E2",
-   "title": "E2 多人同镜开口（E-001）",
+   "title": "E2 多人同镜（开口、视线）",
    "tier": "volume",
-   "start": 401,
-   "end": 411,
+   "start": 399,
+   "end": 413,
    "when": [
     "multi"
    ],
-   "chars": 2128,
-   "checksum": "9D2F5F1E"
+   "chars": 2503,
+   "checksum": "7559FEF5"
   },
   {
    "id": "FX",
    "title": "F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具）",
    "tier": "volume",
-   "start": 413,
-   "end": 494,
+   "start": 415,
+   "end": 492,
    "when": [
     "multi",
     "prop",
     "scene"
    ],
-   "chars": 4075,
-   "checksum": "7D13403A"
+   "chars": 4226,
+   "checksum": "B2443C87"
   },
   {
    "id": "F5V",
    "title": "F5 多人同场多视角定义图（_MV）",
    "tier": "volume",
-   "start": 496,
-   "end": 511,
+   "start": 494,
+   "end": 509,
    "when": [
     "multi"
    ],
@@ -150,8 +150,8 @@
    "id": "H1",
    "title": "H1 镜头、运镜与打戏节奏",
    "tier": "volume",
-   "start": 513,
-   "end": 575,
+   "start": 511,
+   "end": 573,
    "when": [
     "motion"
    ],
@@ -162,8 +162,8 @@
    "id": "H2C",
    "title": "H2C 表现通用",
    "tier": "volume",
-   "start": 577,
-   "end": 586,
+   "start": 575,
+   "end": 584,
    "when": [
     "expression_any"
    ],
@@ -174,20 +174,20 @@
    "id": "H2",
    "title": "H2 Q版与特效",
    "tier": "volume",
-   "start": 588,
-   "end": 648,
+   "start": 586,
+   "end": 646,
    "when": [
     "expression_qv"
    ],
-   "chars": 10389,
-   "checksum": "E65DE292"
+   "chars": 10086,
+   "checksum": "F13456CC"
   },
   {
    "id": "H2L",
    "title": "H2L 流行语与谐音",
    "tier": "volume",
-   "start": 650,
-   "end": 662,
+   "start": 648,
+   "end": 660,
    "when": [
     "expression_slang"
    ],
@@ -198,8 +198,8 @@
    "id": "H2G",
    "title": "H2G 开场画面与光幕位置（每镜必读）",
    "tier": "volume",
-   "start": 664,
-   "end": 676,
+   "start": 662,
+   "end": 674,
    "when": [
     "always"
    ],
@@ -210,8 +210,8 @@
    "id": "J",
    "title": "J 资产与绑定",
    "tier": "volume",
-   "start": 678,
-   "end": 722,
+   "start": 676,
+   "end": 720,
    "when": [
     "binding",
     "scene"
@@ -223,20 +223,20 @@
    "id": "L",
    "title": "L 现实逻辑与剧情",
    "tier": "volume",
-   "start": 724,
-   "end": 753,
+   "start": 722,
+   "end": 759,
    "when": [
     "logic"
    ],
-   "chars": 1875,
-   "checksum": "684A7147"
+   "chars": 2141,
+   "checksum": "0D2E9595"
   },
   {
    "id": "B2",
    "title": "B2 生成模式、全参考与多段（冷门）",
    "tier": "volume",
-   "start": 755,
-   "end": 796,
+   "start": 761,
+   "end": 802,
    "when": [
     "rare"
    ],
@@ -247,8 +247,8 @@
    "id": "Q",
    "title": "Q 审片",
    "tier": "volume",
-   "start": 798,
-   "end": 924,
+   "start": 804,
+   "end": 930,
    "when": [
     "rare"
    ],
@@ -259,8 +259,8 @@
    "id": "X",
    "title": "X 导出、合成与交付",
    "tier": "volume",
-   "start": 926,
-   "end": 1115,
+   "start": 932,
+   "end": 1121,
    "when": [
     "rare"
    ],

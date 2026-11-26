@@ -28,3 +28,11 @@
   - `<Name> (Sx), in his usual voice, backing down, quietly and unsteadily, slowly, eyes lowered, says <d>[Chinese] …</d>`
   - 报告句：`Shot <n>: the line / action has no visible cause in the storyboard; returned to storyboard, prompt not written.`
 - 错误案例：见 `C:\Users\usazr\Documents\moviePro\docs\通用规则_错误案例.md` CASE-013、CASE-014、CASE-017、CASE-018
+
+#### 〔L-005〕 【待测】日常动作按现实常识写，能力提升不改日常行为（2026-11-26 用户点出）
+
+- 目的：用户原话：「一定要符合常识，除非特殊能力赋予的东西可以表现不一样」「主角能力提升了，手机使用姿势也不会变」。
+- 做法：用手机、开车、吃饭、走路、开门，照现实里普通人的做法写（手机见 FX-012）。
+- 要求：只有剧情明确交代的特殊能力或系统效果才可不同；能力提升不改日常行为。
+- 校验：自问现实里有人这样做吗。
+- 正例：升级后照常低头看手机、开门上车。反例：手机举到脸前屏幕朝外；车无故倒着进来。
