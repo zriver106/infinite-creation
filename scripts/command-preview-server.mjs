@@ -386,7 +386,9 @@ async function liveList() {
       let title = titleCache.get(file); if (title === undefined) { title = await readHeadTitle(file, provider); titleCache.set(file, title); }
       const r0 = reg.find((x) => x.cliSessionId && String(s.id).includes(x.cliSessionId));
       let status = null; try { const t = await readTail(file, 96 * 1024); const objs = []; for (const ln of t.lines.slice(-40)) { try { objs.push(JSON.parse(ln)); } catch {} } status = liveStatus(objs, provider, t.st.mtimeMs); } catch {}
-      out.push({ provider, id: s.id, project: s.project, size: s.size, mtime: s.mtime, title: r0 ? `聊天·${r0.title}` : title || '(没有找到第一条指令)', chat: r0 ? r0.id : null, status });
+      // 2026-11-26：优先用会话名（custom-title）；IC 内部写稿 Agent 归一组；都没有才退回第一条指令
+      const nm = r0 ? `聊天·${r0.title}` : s.name || (s.group === 'ic' ? 'IC 内部写稿 Agent' : null);
+      out.push({ provider, id: s.id, project: s.project, size: s.size, mtime: s.mtime, title: nm || (provider === 'codex' ? 'Codex 会话 ' : '会话 ') + String(s.id).split('/').pop().replace(/^rollout-[\dT:-]+-/, '').slice(0, 8), named: !!nm, firstLine: title || '', group: s.group || 'desk', chat: r0 ? r0.id : null, status });
     }
   }
   out.sort((a, b) => b.mtime.localeCompare(a.mtime));

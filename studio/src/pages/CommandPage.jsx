@@ -6,11 +6,10 @@ import { MessageCircle, Pencil, Activity, BookCheck, ClipboardList, Cpu, Databas
 const SUBS = [
   { id: 'overview', label: '总览', icon: Activity, phase: 1 },
   { id: 'issues', label: '问题', icon: Pencil, phase: 1 },
-  { id: 'chat', label: '聊天', icon: MessageCircle, phase: 1 },
-  { id: 'sessions', label: '会话', icon: MessagesSquare, phase: 1 },
+  { id: 'chat', label: '会话', icon: MessagesSquare, phase: 1 }, // 聊天和会话合成一页（Andy 11-26）
   { id: 'settings', label: '设置', icon: SettingsIcon, phase: 1 },
 ];
-const READY = new Set(['overview', 'issues', 'chat', 'sessions', 'settings']);
+const READY = new Set(['overview', 'issues', 'chat', 'settings']);
 
 const PLACEHOLDER = {
   writes: { phase: '第二期', desc: '写库包 before/after_expected 逐字段 diff、非目标镜漂移检查、回读 md5 对比。第三期才加「确认写库」（人点）。' },
@@ -253,7 +252,7 @@ function SessionsMini({ go, rk = 0 }) {
       {!d ? <NoData /> : (
         <div className="flex flex-col">
           {chat.map((s) => <Row key={'c' + s.id} dot={s.status === 'busy' ? C.green : C.gray} name={s.role === 'main' ? '主会话（指挥）' : s.title} sub={s.status === 'busy' ? '正在回复' : '空闲'} at={s.lastActivity} onClick={() => go('chat', { sid: s.id })} />)}
-          {desk.slice(0, 6).map((s) => <Row key={s.id} dot={C.green} name={s.name} at={s.mtime} />)}
+          {desk.slice(0, 6).map((s) => <Row key={s.id} dot={C.green} name={s.name} at={s.mtime} onClick={() => go('chat', { live: `${s.provider}:${s.id}` })} />)}
           {ic.length ? <Row dot={C.blue} name={`IC 内部写稿 Agent × ${ic.length}`} sub="IC 自带" at={ic.map((x) => x.mtime).sort().pop()} /> : null}
           {!chat.length && !desk.length && !ic.length ? <span className="text-[11px] text-[var(--fg-4)]">最近 10 分钟没有会话在动</span> : null}
         </div>)}
@@ -1038,6 +1037,32 @@ function ChatPanel({ sid, summary, onClose }) {
     </section>
   );
 }
+// 会话记录里的一条（2026-11-26 Andy：「该折叠的折叠」）：工具调用/工具结果默认收成一行，点开看原文；对话照常显示
+function toolHead(text) {
+  const m = /^\[工具调用 ([^\]]+)\]\s*([\s\S]*)$/.exec(text || ''); if (!m) return null;
+  let desc = ''; try { const j = JSON.parse(m[2]); desc = j.description || j.query || j.file_path || j.pattern || j.url || (j.command ? String(j.command).split('\n')[0] : '') || ''; } catch { const g = (k) => { const r = new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"').exec(m[2]); return r ? r[1].replace(/\\n/g, ' ') : ''; }; desc = g('description') || g('file_path') || g('pattern') || g('command').split(' ').slice(0, 8).join(' ') || (((/"command"\s*:\s*"(.{0,60})/.exec(m[2]) || [])[1] || '').replace(/\\n.*$/, '') + '…'); }
+  return { tool: m[1], desc: String(desc).slice(0, 90) };
+}
+function LiveMsg({ m }) {
+  const t = String(m.text || '');
+  const call = toolHead(t);
+  const isResult = t.startsWith('[工具结果]');
+  if (call || isResult) {
+    const body = isResult ? t.replace(/^\[工具结果\]\s*/, '') : t;
+    return (
+      <details className="group mb-0.5 rounded px-1.5 text-[11px] text-[var(--fg-3)] hover:bg-[var(--line)]">
+        <summary className="cursor-pointer list-none truncate py-0.5">{call ? <><span className="text-[var(--accent)]">🔧 {call.tool}</span>{call.desc ? `：${call.desc}` : ''}</> : <span className="text-[var(--fg-4)]">↳ 结果（{body.length} 字）</span>}<span className="float-right text-[9px] text-[var(--fg-4)]">{m.ts ? ptHM(m.ts) : ''}</span></summary>
+        <div className="mb-1 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-[var(--line)] p-1.5 font-mono text-[10px]">{body}</div>
+      </details>);
+  }
+  const who = ({ user: 'Andy / 指令', assistant: '会话', summary: '摘要', meta: '开始' })[m.role] || m.role;
+  const mine = m.role === 'user';
+  return (
+    <div className={'my-1.5 rounded-lg px-2.5 py-1.5 ' + (mine ? 'ml-8 bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]' : 'mr-8 bg-[var(--panel-2,var(--line))]')}>
+      <div className="mb-0.5 text-[9px] text-[var(--fg-4)]">{who} · {m.ts ? ptHM(m.ts) : ''}</div>
+      <div className="whitespace-pre-wrap break-words text-[12px] leading-relaxed">{t}</div>
+    </div>);
+}
 function LivePanel({ s, onClose }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState(null);
@@ -1079,84 +1104,88 @@ function LivePanel({ s, onClose }) {
       </div>
       <Err e={err} />
       <div ref={boxRef} className="max-h-[70vh] overflow-auto">
-        {(d?.messages || []).map((m, i) => (
-          <div key={i} className={'mb-1 rounded border border-[var(--line)] p-1.5 ' + (m.role === 'user' ? 'bg-[rgba(59,130,246,0.08)]' : m.role === 'tool' ? 'opacity-80' : '')}>
-            <div className="text-[9px] text-[var(--fg-4)]">{({ user: '指令/工具结果', assistant: '会话', tool: '工具', summary: '摘要', meta: '开始' })[m.role] || m.role} · {m.ts ? fmtTime(m.ts) : ''}</div>
-            <div className="whitespace-pre-wrap break-all text-[11px]">{m.text}</div>
-          </div>
-        ))}
+        {(d?.messages || []).map((m, i) => <LiveMsg key={i} m={m} />)}
       </div>
     </div>
   );
 }
 
+// 会话（2026-11-26 Andy：「聊天和会话合并」「做的漂亮一些」「会话要能直接聊天发信息」「选中只能选中一个，不要多选」）
+// 左：一列会话（指挥聊天在上、能直接发消息；桌面/Codex 会话在下、只读看；IC 内部写稿 Agent 和更早的会话收起）。右：只显示选中的那一个。
 function Chat() {
+  const q0 = new URLSearchParams(window.location.search);
   const list = useJson('/api/chat/sessions');
-  const [open, setOpen] = useState(() => { const sid = new URLSearchParams(window.location.search).get('sid'); return sid && sid !== 'main' ? ['main', sid] : ['main']; });
+  const live = useJson('/api/command/live');
+  const hist = useJson('/api/command/sessions?provider=claude&days=3');
+  useEffect(() => { const t = setInterval(list.reload, 5000); return () => clearInterval(t); }, [list.reload]);
+  useEffect(() => { const t = setInterval(live.reload, 10000); return () => clearInterval(t); }, [live.reload]);
+  const [sel, setSel] = useState(() => {
+    const v = q0.get('live'); if (v) { const i = v.indexOf(':'); if (i > 0) return { kind: 'live', provider: v.slice(0, i), id: v.slice(i + 1) }; }
+    return { kind: 'chat', id: q0.get('sid') || 'main' };
+  });
   const [form, setForm] = useState({ title: '', provider: 'claude', instruction: '' });
   const [msg, setMsg] = useState(null);
-  useEffect(() => { const t = setInterval(list.reload, 5000); return () => clearInterval(t); }, [list.reload]);
-  const live = useJson('/api/command/live');
-  useEffect(() => { const t = setInterval(live.reload, 10000); return () => clearInterval(t); }, [live.reload]);
-  const [liveOpen, setLiveOpen] = useState(() => { const v = new URLSearchParams(window.location.search).get('live'); if (!v) return null; const i = v.indexOf(':'); return i > 0 ? { provider: v.slice(0, i), id: v.slice(i + 1), title: v.slice(i + 1) } : null; });
-  const byId = Object.fromEntries((list.data?.sessions || []).map((s) => [s.id, s]));
-  const toggle = (id) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id].slice(-MAX_OPEN)));
+  const chats = (list.data?.sessions || []).filter((s) => s.status !== 'stopped');
+  const liveAll = live.data?.sessions || [];
+  const liveDesk = liveAll.filter((x) => !x.chat && x.group !== 'ic');
+  const liveIc = liveAll.filter((x) => x.group === 'ic');
+  const liveIds = new Set(liveAll.map((x) => x.id));
+  const older = (hist.data?.sessions || []).filter((x) => x.group !== 'ic' && x.name && !liveIds.has(x.id)).slice(0, 20);
+  const isSel = (kind, id) => sel && sel.kind === kind && sel.id === id;
   const openAux = async () => {
     setMsg(null);
     const r = await fetch('/api/chat/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, parent: 'Andy（手动）' }) });
     const j = await r.json().catch(() => ({}));
-    setMsg(r.ok ? (j.queued ? `已排队：${j.reason}` : `已开启 ${j.id}`) : j.error); list.reload();
-    if (r.ok && j.id) setOpen((o) => [...o, j.id].slice(-MAX_OPEN));
+    setMsg(r.ok ? (j.queued ? `已排队：${j.reason}` : '已开启') : j.error); list.reload();
+    if (r.ok && j.id) setSel({ kind: 'chat', id: j.id });
   };
+  const Row = ({ on, dot, name, sub, at, onClick, tag }) => (
+    <button type="button" onClick={onClick} className={'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors ' + (on ? 'bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--fg)]' : 'hover:bg-[var(--line)]')}>
+      <Dot c={dot} />
+      <span className="min-w-0 flex-1"><span className="block truncate font-medium" title={name}>{name}</span>{sub ? <span className="block truncate text-[10px] text-[var(--fg-4)]">{sub}</span> : null}</span>
+      {tag ? <span className="shrink-0 rounded border border-[var(--line)] px-1 text-[9px] text-[var(--fg-3)]">{tag}</span> : null}
+      <span className="shrink-0 tabular-nums text-[10px] text-[var(--fg-3)]">{at ? ptHM(at) : ''}</span>
+    </button>);
+  const Group = ({ t, children, right }) => <div className="mb-2"><div className="mb-0.5 flex items-center px-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--fg-4)]">{t}<span className="ml-auto font-normal normal-case">{right}</span></div>{children}</div>;
+  const selLive = sel?.kind === 'live' ? (liveAll.find((x) => x.id === sel.id) || (hist.data?.sessions || []).find((x) => x.id === sel.id) || sel) : null;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="panel p-3 text-xs">
-        <b>聊天（预览）</b>：一个固定主会话统一接收 Andy 的指令；辅助会话由主会话按需开启（回复里写 [[开辅助:标题:指令]]），用完停。
-        辅助会话上限 <b>{list.data?.maxAux ?? '—'}</b> 个（现开 {list.data?.activeAux ?? '—'}），空闲 <b>{list.data?.idleMinutes ?? '—'}</b> 分钟自动停；同时最多展开 {MAX_OPEN} 个会话，折叠即卸载。
-        会话只有只读工具（Read/Grep/Glob），工作目录限在聊天沙箱；不写库、不提交 GPU。各方分工照旧，真实工作不切到这里。
-      </div>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-        <div className="panel p-2 lg:w-[250px] lg:shrink-0">
-          <p className="section-label px-1 pb-1">正在干活的会话（只读，10 分钟内有动静）</p>
-          {live.error ? <Err e={live.error} /> : null}
-          {(live.data?.sessions || []).map((x) => (
-            <button key={x.provider + x.id} type="button" data-live-item={x.id} onClick={() => setLiveOpen(liveOpen && liveOpen.id === x.id ? null : x)} className={'mb-1 w-full rounded-lg border p-1.5 text-left text-[11px] ' + (liveOpen && liveOpen.id === x.id ? 'border-[var(--accent)]' : 'border-[var(--line)]')}>
-              <div className="flex items-center gap-1"><span className={'inline-block h-2 w-2 rounded-full ' + (x.status?.busy ? 'bg-green-500' : 'bg-[var(--fg-4)]')} /><b className="flex-1 truncate">{x.title}</b><span className="text-[9px]">{x.provider}</span></div>
-              <div className="truncate text-[9px] text-[var(--fg-4)]">{x.status ? `${x.status.state} · ${x.status.ageSec} 秒前` : '状态不明'}</div>
-            </button>
-          ))}
-          {live.data && !live.data.sessions.length ? <p className="px-1 text-[10px] text-[var(--fg-4)]">10 分钟内没有会话在写入</p> : null}
-          <p className="section-label mt-2 px-1 pb-1">聊天会话（只拉摘要）</p>
-          {(list.data?.sessions || []).map((s) => (
-            <button key={s.id} type="button" onClick={() => toggle(s.id)} data-session={s.id} className={'mb-1 w-full rounded-lg border p-1.5 text-left text-[11px] ' + (open.includes(s.id) ? 'border-[var(--accent)]' : 'border-[var(--line)]')}>
-              <div className="flex items-center gap-1"><b className="flex-1 truncate">{s.title}</b><span className="text-[9px]">{s.role === 'main' ? '主' : '辅'}·{s.provider}</span></div>
-              <div className="text-[9px] text-[var(--fg-4)]">{s.status === 'busy' ? '回复中' : s.status === 'stopped' ? '已停' : '空闲'} · {s.msgCount} 条 · {fmtTime(s.lastActivity)}</div>
-              <div className="truncate text-[10px] text-[var(--fg-3)]">{s.lastSnippet}</div>
-            </button>
-          ))}
-          {list.data?.pending?.length ? <div className="mt-1 text-[10px] text-[#d97706]">排队中：{list.data.pending.map((q) => `「${q.title}」${q.reason}`).join('；')}</div> : null}
-          <div className="mt-2 border-t border-[var(--line)] pt-2 text-[11px]">
-            <p className="section-label pb-1">手动开辅助会话（演示用）</p>
-            <input className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" placeholder="标题" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <select className="mb-1 w-full rounded border border-[var(--line)] bg-transparent" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option value="claude">Claude</option><option value="codex" disabled>Codex（聊天里暂停：缺读取限制）</option><option value="kimi">Kimi（未启用）</option></select>
-            <textarea className="mb-1 w-full rounded border border-[var(--line)] bg-transparent px-1" rows={2} placeholder="第一条指令（可空）" value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
-            <button type="button" className="rounded border border-[var(--line)] px-2" onClick={openAux}>开启</button>
-            {msg ? <p className="mt-1 text-[10px]">{msg}</p> : null}
+    <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]" data-sessions-merged>
+      <aside className="panel flex max-h-[calc(100vh-180px)] flex-col overflow-auto p-2">
+        <Group t="指挥聊天 · 可以发消息">
+          {chats.map((s) => <Row key={s.id} on={isSel('chat', s.id)} dot={s.status === 'busy' ? C.green : C.gray} name={s.role === 'main' ? '主会话（指挥）' : s.title} sub={s.status === 'busy' ? '正在回复' : `空闲 · ${s.msgCount} 条`} at={s.lastActivity} onClick={() => setSel({ kind: 'chat', id: s.id })} />)}
+          {list.data && !chats.length ? <p className="px-2 text-[10px] text-[var(--fg-4)]">没有开着的聊天会话</p> : null}
+        </Group>
+        <Group t="正在干活 · 只读" right={liveAll.length ? `10 分钟内 ${liveDesk.length + liveIc.length}` : ''}>
+          {liveDesk.map((x) => <Row key={x.provider + x.id} on={isSel('live', x.id)} dot={x.status?.busy ? C.green : C.gray} name={x.title} sub={x.status ? x.status.state : ''} tag={x.provider === 'codex' ? 'Codex' : null} at={x.mtime} onClick={() => setSel({ kind: 'live', provider: x.provider, id: x.id })} />)}
+          {liveIc.length ? <details className="px-2 text-[11px]"><summary className="cursor-pointer py-1 text-[var(--fg-3)]">IC 内部写稿 Agent × {liveIc.length}</summary>{liveIc.map((x) => <Row key={x.id} on={isSel('live', x.id)} dot={x.status?.busy ? C.blue : C.gray} name={'写稿 Agent ' + x.id.split('/').pop().slice(0, 8)} sub={x.status ? x.status.state : ''} at={x.mtime} onClick={() => setSel({ kind: 'live', provider: x.provider, id: x.id })} />)}</details> : null}
+          {live.data && !liveDesk.length && !liveIc.length ? <p className="px-2 text-[10px] text-[var(--fg-4)]">10 分钟内没有会话在动</p> : null}
+        </Group>
+        {older.length ? <details className="mb-2 px-0.5"><summary className="cursor-pointer px-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--fg-4)]">更早的会话（3 天内 · {older.length}）</summary>
+          {older.map((x) => <Row key={x.id} on={isSel('live', x.id)} dot={C.gray} name={x.name} sub={ptMDHM(x.mtime)} onClick={() => setSel({ kind: 'live', provider: 'claude', id: x.id })} />)}
+        </details> : null}
+        <details className="mt-auto border-t border-[var(--line)] px-2 pt-2 text-[11px]">
+          <summary className="cursor-pointer text-[var(--fg-3)]">＋ 开一个辅助会话</summary>
+          <div className="mt-1 flex flex-col gap-1">
+            <input className="rounded border border-[var(--line)] bg-transparent px-1.5 py-0.5" placeholder="标题" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <select className="rounded border border-[var(--line)] bg-transparent" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option value="claude">Claude</option><option value="codex">Codex</option></select>
+            <textarea className="rounded border border-[var(--line)] bg-transparent px-1.5" rows={2} placeholder="第一条指令（可空）" value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
+            <button type="button" className="self-start rounded border border-[var(--accent)] px-2 text-[var(--accent)]" onClick={openAux}>开启</button>
+            {msg ? <p className="text-[10px]">{msg}</p> : null}
           </div>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-3 xl:flex-row">
-          {liveOpen ? <LivePanel key={liveOpen.provider + liveOpen.id} s={(live.data?.sessions || []).find((x) => x.id === liveOpen.id) || liveOpen} onClose={() => setLiveOpen(null)} /> : null}
-          {open.map((id) => <ChatPanel key={id} sid={id} summary={byId[id]} onClose={() => toggle(id)} />)}
-          {!open.length && !liveOpen ? <p className="text-xs text-[var(--fg-3)]">点左边的会话展开。</p> : null}
-        </div>
-      </div>
+        </details>
+      </aside>
+      <section className="min-w-0">
+        {sel?.kind === 'chat' ? <ChatPanel key={'c' + sel.id} sid={sel.id} summary={chats.find((s) => s.id === sel.id)} onClose={() => setSel({ kind: 'chat', id: 'main' })} /> : null}
+        {selLive ? <LivePanel key={'l' + selLive.id} s={selLive} onClose={() => setSel({ kind: 'chat', id: 'main' })} /> : null}
+      </section>
     </div>
   );
 }
 
+
 export default function CommandPage() {
   const init = new URLSearchParams(window.location.search).get('sub');
-  const [sub, setSub] = useState(init === 'episodes' ? 'issues' : SUBS.some((s) => s.id === init) ? init : 'overview'); // 旧链接（派工/证据/占位页）一律回总览
+  const [sub, setSub] = useState(init === 'episodes' ? 'issues' : init === 'sessions' ? 'chat' : SUBS.some((s) => s.id === init) ? init : 'overview'); // 旧链接（派工/证据/占位页）一律回总览
   const go = (id, extra) => {
     setSub(id);
     const q = new URLSearchParams(); q.set('mode', 'command'); q.set('sub', id);
@@ -1183,7 +1212,6 @@ export default function CommandPage() {
           {sub === 'overview' ? <Overview go={go} /> : null}
           {sub === 'issues' ? <Issues /> : null}
           {sub === 'chat' ? <Chat /> : null}
-          {sub === 'sessions' ? <Sessions /> : null}
           {sub === 'settings' ? <Settings /> : null}
         </div>
       </div>
