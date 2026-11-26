@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-fb8ee263a7 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-0b855a4b46 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -25,24 +25,24 @@ compatibility: Portable to any agent that can read local files — no external A
 | E0 | E0 静默与人声背景（E-009、E-013） | 分册 | L306–L319 | 每次 |
 | E | E 人声与台词 | 分册 | L321–L405 | 有台词 |
 | E2 | E2 多人同镜（开口、视线） | 分册 | L407–L421 | 两人及以上、call |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L423–L507 | 两人及以上、有道具、桌面、车、绑了场景 |
-| P | P 手机（FX-011、FX-012） | 分册 | L509–L530 | phone |
-| PC | PC 通话声音（E-002、E-005） | 分册 | L532–L540 | call |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L542–L557 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L559–L608 | 有运镜、动作、打戏 |
-| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L610–L626 | walk |
-| H2C | H2C 表现通用 | 分册 | L628–L637 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L639–L701 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L703–L715 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L717–L729 | 每次 |
-| J | J 资产与绑定 | 分册 | L731–L775 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L777–L806 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L808–L849 | 用到时再查 |
-| Q | Q 审片 | 分册 | L851–L977 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L979–L1163 | 用到时再查 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L423–L511 | 两人及以上、有道具、桌面、车、绑了场景 |
+| P | P 手机（FX-011、FX-012） | 分册 | L513–L534 | phone |
+| PC | PC 通话声音（E-002、E-005） | 分册 | L536–L544 | call |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L546–L561 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L563–L612 | 有运镜、动作、打戏 |
+| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L614–L630 | walk |
+| H2C | H2C 表现通用 | 分册 | L632–L641 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L643–L705 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L707–L719 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L721–L733 | 每次 |
+| J | J 资产与绑定 | 分册 | L735–L779 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L781–L810 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L812–L853 | 用到时再查 |
+| Q | Q 审片 | 分册 | L855–L981 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L983–L1167 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：B0B70254
+本段校验码：CBD6D42B
 
 ## A 铁律与流程
 
