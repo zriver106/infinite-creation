@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-d470fc7832 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-b29022a6e4 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -30,19 +30,19 @@ compatibility: Portable to any agent that can read local files — no external A
 | PC | PC 通话声音（E-002、E-005） | 分册 | L531–L539 | call |
 | F5V | F5 多人同场多视角定义图（_MV） | 分册 | L541–L556 | 两人及以上 |
 | H1 | H1 镜头、运镜与打戏节奏 | 分册 | L558–L607 | 有运镜、动作、打戏 |
-| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L609–L624 | walk |
-| H2C | H2C 表现通用 | 分册 | L626–L635 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L637–L699 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L701–L713 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L715–L727 | 每次 |
-| J | J 资产与绑定 | 分册 | L729–L773 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L775–L804 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L806–L847 | 用到时再查 |
-| Q | Q 审片 | 分册 | L849–L975 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L977–L1161 | 用到时再查 |
+| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L609–L625 | walk |
+| H2C | H2C 表现通用 | 分册 | L627–L636 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L638–L700 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L702–L714 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L716–L728 | 每次 |
+| J | J 资产与绑定 | 分册 | L730–L774 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L776–L805 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L807–L848 | 用到时再查 |
+| Q | Q 审片 | 分册 | L850–L976 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L978–L1162 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：79DF509B
+本段校验码：6E556F07
 
 ## A 铁律与流程
 
