@@ -36,7 +36,7 @@ When the bound scene reference image is a wide or establishing shot and this sho
   1. 读场景资产描述里的用途、必须有的标志物、不能像的场所，和这一镜分镜写的地点、这场戏要做的事对一遍。对得上才写。
   2. 对不上，或图里明显有别的场所才有的结构：不绑着它硬写，也不靠一句「只当布局参考」去压；在报告里写明，退回换图或补资产（adapt-rules J-002、J-003）。
   3. 提示词里的场所描述照图和资产描述写，不写图里没有的标志物，不写和图冲突的场所名。
-  4. 同一个场景的各镜绑同一张合格的图、写同一句场所句（F-005）；不因为这一镜的图不合适就单独换一张别处的图顶替。一个地点全剧只认一个场景资产（adapt-rules J-004）；地点名和登记表对不上的，报告。
+  4. 同一个场景、同一剧情阶段的各镜绑同一张合格的图（阶段变了按 adapt J-006 换登记过的阶段变体）、写同一句场所句（F-005）；不因为这一镜的图不合适就单独换一张别处的图顶替。一个地点全剧只认一个场景资产（adapt-rules J-004）；地点名和登记表对不上的，报告。
   5. 场所句只起加固作用，可以点出这是哪类场所、有哪两三样标志物；不能拿它当图不合格的补救。
 - 可用短句：
   - `The scene is <an ordinary open-plan office area>: <rows of desks with monitors, a filing cabinet, a potted plant by the window>; it stays this same place from the first frame to the last.`
