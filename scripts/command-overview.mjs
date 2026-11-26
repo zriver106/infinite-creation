@@ -88,7 +88,7 @@ async function getPart(name, fn, project = PROJECT, force = false) {
 const openRo = () => new DatabaseSync('file:' + DB.replace(/\\/g, '/') + '?mode=ro', { readOnly: true });
 function projectList() {
   let db; try { db = openRo();
-    return db.prepare("select p.id, p.name, (select count(*) from shots s where s.project_id = p.id) shots, (select count(distinct s2.chapter) from shots s2 where s2.project_id = p.id and coalesce(s2.chapter, '') <> '') chapters from projects p order by (p.id = ?) desc, p.updated_at desc").all(PROJECT).filter((r) => r.shots > 0 || r.id === PROJECT).map((r) => ({ id: r.id, name: r.name, shots: r.shots, chapters: r.chapters, isDefault: r.id === PROJECT, hasIssues: r.id === PROJECT })); // 只列有镜头的项目（Andy 11-25：项目就 4 个；工具用的空项目不列）
+    return db.prepare("select p.id, p.name, (select count(*) from shots s where s.project_id = p.id) shots, (select count(distinct s2.chapter) from shots s2 where s2.project_id = p.id and coalesce(s2.chapter, '') <> '') chapters, (select count(*) from chapters c2 where c2.project_id = p.id and length(coalesce(c2.novel, '')) > 0) novel_chapters from projects p order by (p.id = ?) desc, p.updated_at desc").all(PROJECT).filter((r) => r.shots > 0 || r.novel_chapters > 0 || r.id === PROJECT).map((r) => ({ id: r.id, name: r.name, shots: r.shots, chapters: r.chapters, isDefault: r.id === PROJECT, hasIssues: r.id === PROJECT })); // 只列有镜头、或已导入原著（有章节正文）的项目（Andy 11-25：工具用的空项目不列；11-26「没更新 v3」：新开还没拆镜的项目也要列）
   } finally { try { db?.close(); } catch {} }
 }
 function projectInfo(project) {
