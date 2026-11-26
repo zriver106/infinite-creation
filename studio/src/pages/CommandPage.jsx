@@ -300,9 +300,9 @@ function UsageCard({ m }) {
   if (!src || src.pending) body = <span className="text-[11px] text-[var(--fg-4)]">统计中…</span>;
   else if (!src.windows) body = <NoData />;
   else if (tab === 'gpu') {
-    const ws = src.windows; const h = (x) => (x >= 100 ? x.toFixed(0) : x.toFixed(1)) + ' 小时';
+    const ws = src.windows; const h = (x) => (x >= 100 ? x.toFixed(0) : x.toFixed(1));
     body = <table className="w-full text-xs tabular-nums">{th(ws)}<tbody>
-      {row('占用时长', ws, (w) => h(w.busyH), true)}
+      {row('占用（小时）', ws, (w) => h(w.busyH), true)}
       {row('占用率', ws, (w) => Math.round(w.util * 100) + '%')}
       {row('出片（条）', ws, (w) => w.renders)}
       {row('失败（条）', ws, (w) => w.failed)}
@@ -317,7 +317,8 @@ function UsageCard({ m }) {
   }
   return (
     <section className="panel p-3" data-usage-card>
-      <Head t={tab === 'gpu' ? '用量（显卡）' : '用量（tokens）'} info={info} right={seg} />
+      <Head t={tab === 'gpu' ? '用量（显卡）' : '用量（tokens）'} info={info} />
+      <div className="-mt-1 mb-2">{seg}</div>
       {body}
     </section>);
 }
