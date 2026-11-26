@@ -74,9 +74,12 @@ test('② 其他技能里带 prompt_when 的段按条件加入 extra_ranges，�
 test('③ 加载条件扫 visual + sub_shots + dialogue；noDialogueScan 只扫前两个；特效标记同时触发 H1（motion）', () => {
   const c1 = RB.shotConditions({ visual: '站着', sub_shots: '0-3秒 江澈走向门口', dialogue: '' }, null);
   assert.ok(c1.has('walk'), 'sub_shots 里的走向');
-  const c2 = RB.shotConditions({ visual: '对坐', dialogue: '江澈：这笔交易成了。' }, null);
-  assert.ok(c2.has('logic'), '台词里的交易');
-  assert.ok(!RB.shotConditions({ visual: '对坐', dialogue: '江澈：这笔交易成了。' }, null, { noDialogueScan: true }).has('logic'));
+  // 主会话 seq2246 误触发修正：台词里说到的事不等于画面里在做——logic / walk / motion / prop 只看 visual + sub_shots
+  assert.ok(!RB.shotConditions({ visual: '对坐', dialogue: '江澈：这笔交易成了。' }, null).has('logic'), '台词里的交易不触发 L');
+  assert.ok(RB.shotConditions({ visual: '对坐，两人当面交易金条', dialogue: '' }, null).has('logic'), '画面里的交易触发 L');
+  assert.ok(!RB.shotConditions({ visual: '江澈打开交易系统面板', dialogue: '' }, null).has('logic'), '「交易系统」是系统名');
+  assert.ok(!RB.shotConditions({ visual: '对峙', sub_shots: '4-6秒 出拳前一刻（接下一镜）', dialogue: '' }, null).has('motion'), '接下一镜的小句不算本镜');
+  assert.ok(RB.shotConditions({ visual: '对坐', dialogue: '江澈：给我打电话。' }, null).has('call'), '台词仍给 call');
   assert.ok(RB.shotConditions({ visual: '桌上', sub_shots: '江澈拿起手机', dialogue: '' }, null).has('phone'));
   const fx = RB.shotConditions({ visual: '【表现】P3｜特效·G01 金光眼｜江澈眼中金光一闪', dialogue: '' }, {}, { switches: { vfx: true } });
   assert.ok(fx.has('expression_qv')); assert.ok(fx.has('motion'), '特效镜读 H1');
