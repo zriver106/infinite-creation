@@ -12,6 +12,14 @@ test('「挥拳起哄」不触发 motion', () => {
 test('真打戏照样触发 motion：打斗、出拳、扇、踹', () => {
   for (const v of ['两人在巷口打斗', '他猛地出拳', '她扇了他一巴掌', '一脚踹开门']) assert.equal(motion(v), true, v);
 });
+test('行进中的戏触发 walk、camera MOVE/ONE-TAKE 触发 motion（2026-11-26 H1-005）', () => {
+  const walk = (v) => shotConditions({ chapter: '第1章', idx: 1, camera: 'FIXED', visual: v, dialogue: '', character_ids: [] }, P, {}).has('walk');
+  for (const v of ['他沿着小区散步', '他边跑边看', '主角在小区慢跑', '他开车回家', '车缓缓驶入停车场', '他走进店里']) assert.equal(walk(v), true, v);
+  assert.equal(walk('他坐着说话'), false);
+  assert.equal(motion('他坐着说话', 'MOVE｜前方后退跟拍'), true);
+  assert.equal(motion('他坐着说话', 'ONE-TAKE'), true);
+  assert.equal(motion('他坐着说话'), false);
+});
 test('运镜写在 camera 里照样触发', () => {
   assert.equal(motion('他坐着说话', '缓慢推近'), true);
 });

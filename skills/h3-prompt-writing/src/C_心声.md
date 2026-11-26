@@ -24,11 +24,11 @@ An inner-monologue line is a character's silent thought heard as voice-over. The
 
 **6. No eating, food, chopsticks, spoon, cup or drink actions during an OS window.** Inside an OS window the hands do not pick up, peel, turn, lift or bring food, chopsticks, a spoon, a cup or a glass anywhere; nothing goes toward the face. If the story needs eating or drinking, put it in a time block that does not overlap the OS window, or let the hands rest still (on the table / out of frame). Story props that stay away from the face (a phone held at chest level, a document) are fine.
 
-**7. Framing.** For every OS block: frontal or near-frontal (within ±30°) close-up or medium close-up of the OS speaker, face and mouth clearly visible in the centre of frame, camera steady or a slow push-in. This overrides any general preference for angled/side views. Do not hide the mouth (no hand over mouth, no back to camera, no wide shot, no head bowed, no cup at the lips) — the closed mouth must be visible. Anyone else in frame stays silent with a closed mouth and is in the background, out of focus or in profile. (IC 4690428 old method, restored 2026-11-24 main seq1320)
+**7. Framing.** For every OS block: frontal or near-frontal (within ±30°) close-up or medium close-up of the OS speaker, face and mouth clearly visible in the centre of frame, camera steady or a slow push-in (walking: the camera may track backward ahead of him, H1-005). This overrides any general preference for angled/side views. Do not hide the mouth (no hand over mouth, no back to camera, no wide shot, no head bowed, no cup at the lips) — the closed mouth must be visible. Anyone else in frame stays silent with a closed mouth and is in the background, out of focus or in profile. (IC 4690428 old method, restored 2026-11-24 main seq1320)
 
 **8. Fixed voice sentences — copy verbatim, only fill the `<…>` slots (IC 4690428 old method, restored 2026-11-24 main seq1320).**
 - Voice reference line: `__MINIMAX_H3_REF_n__ is <Name>'s voice (S1), used only as an off-screen inner voice-over, not spoken by anyone on screen.`
-- Each OS line: `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, <voice quality>, narrates <d>[Chinese] <original line, unchanged></d>. Nobody on screen is speaking; <Name> only listens to his own thoughts with his lips closed.` (use `female` / `her` for a female speaker.)
+- Each OS line: `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, <voice quality>, narrates <d>[Chinese] <original line, unchanged></d>. Nobody on screen is speaking; <Name> only listens to his own thoughts with his lips closed.` (use `female` / `her` for a female speaker.) `<voice quality>` = `in his/her usual voice` (E-014).
 - **Inner-voice (OS) shots: lips closed throughout, no mouthing.** Besides the official `while his lips remain completely closed`, write `his lips stay closed throughout the shot; he does not mouth the words` for every OS line. The face may react (eyes, brows, breath); the mouth never moves in time with the voice. (IC 947e856 “Inner voice, hand props and glasses” rule 1)
 - No name, no `<Subject k>` before `(Sx)`; the only verb is `narrates` (never `says`, `in an off-screen voiceover`).
 - Emotion turn inside one line: `at <t>s his expression shifts to <emotion B>, mouth still closed: <mouth phrase B>.`
@@ -43,9 +43,9 @@ An inner-monologue line is a character's silent thought heard as voice-over. The
 
 #### 〔C-002〕 第2、3集通过后转正：**Inner voice runs over action and stays short (TR-V09).** In conflict or fight shots the inner-voice line plays while the action continues; nobody stands still to "listen" to it, and a long line may be shortened to the novel's meaning (change dialogue, `<d>` and sub_shots together).
 
-#### 〔C-004〕 C-009【待测】每个心声窗口写明起止秒（续轮6 补，总导 20:33 心声门禁）
+#### 〔C-004〕 【待测】每个心声窗口写明起止秒（续轮6 补，总导 20:33 心声门禁）
 
-每个心声时间段里必须写一句 `The inner voice runs from <起>s to <止>s.`，起止取整秒，和该句 `<d>` 的实际位置一致。门禁按这句算第8条的 0.8 秒间隔和第12条的字/秒；没写这句，门禁按整个时间段估计，常常误判超时。正例：`4-9s: his eyeballs dart left and right, his brows knot together and his right hand slowly sinks. The inner voice runs from 4s to 8s. An off-screen male inner-monologue voice (S1), baffled, speeding up, a tense low voice, narrates <d>[Chinese] …</d>. Nobody on screen is speaking; He only listens to his own thoughts with his lips closed. his lips stay closed throughout the shot; he does not mouth the words` 反例：只写 `4-9s:`，不写 runs from 句。
+每个心声时间段里必须写一句 `The inner voice runs from <起>s to <止>s.`，起止取整秒，和该句 `<d>` 的实际位置一致。门禁按这句算第8条的 0.8 秒间隔和第12条的字/秒；没写这句，门禁按整个时间段估计，常常误判超时。正例：`4-9s: his eyeballs dart left and right, his brows knot together and his right hand slowly sinks. The inner voice runs from 4s to 8s. An off-screen male inner-monologue voice (S1), baffled, speeding up, in his usual voice, narrates <d>[Chinese] …</d>. Nobody on screen is speaking; He only listens to his own thoughts with his lips closed. his lips stay closed throughout the shot; he does not mouth the words` 反例：只写 `4-9s:`，不写 runs from 句。
 
 #### 〔C-005〕 心声修复和以后所有改稿全程走 IC（Andy 2026-11-24 18:48；同 A-002 第6条）
 

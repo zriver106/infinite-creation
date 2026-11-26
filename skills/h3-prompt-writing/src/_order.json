@@ -43,9 +43,9 @@
   "file": "D_系统声与光幕.md",
   "id": "D",
   "title": "D 系统声与光幕",
-  "tier": "base",
+  "tier": "volume",
   "when": [
-   "always"
+   "system"
   ],
   "chars": 4439
  },
@@ -60,6 +60,16 @@
   "chars": 10923
  },
  {
+  "file": "E0_静默与人声背景.md",
+  "id": "E0",
+  "title": "E0 静默与人声背景（E-009、E-013）",
+  "tier": "volume",
+  "when": [
+   "always"
+  ],
+  "chars": 0
+ },
+ {
   "file": "E_人声与台词.md",
   "id": "E",
   "title": "E 人声与台词",
@@ -68,6 +78,16 @@
    "dialogue"
   ],
   "chars": 10645
+ },
+ {
+  "file": "E2_多人同镜开口.md",
+  "id": "E2",
+  "title": "E2 多人同镜（开口、视线）",
+  "tier": "volume",
+  "when": [
+   "multi"
+  ],
+  "chars": 0
  },
  {
   "file": "F9_一致性细则_待测.md",
@@ -80,6 +100,26 @@
    "scene"
   ],
   "chars": 1613
+ },
+ {
+  "file": "P_手机与通话.md",
+  "id": "P",
+  "title": "P 手机（FX-011、FX-012）",
+  "tier": "volume",
+  "when": [
+   "phone"
+  ],
+  "chars": 0
+ },
+ {
+  "file": "PC_通话声音.md",
+  "id": "PC",
+  "title": "PC 通话声音（E-002、E-005）",
+  "tier": "volume",
+  "when": [
+   "call"
+  ],
+  "chars": 0
  },
  {
   "file": "F5_多视角定义图.md",
@@ -100,6 +140,16 @@
    "motion"
   ],
   "chars": 4578
+ },
+ {
+  "file": "H1W_行进与静态.md",
+  "id": "H1W",
+  "title": "H1W 行进中的戏与静态对话（H1-005）",
+  "tier": "volume",
+  "when": [
+   "walk"
+  ],
+  "chars": 0
  },
  {
   "file": "H2C_表现手段通用.md",

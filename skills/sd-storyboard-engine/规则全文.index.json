@@ -1,14 +1,15 @@
 {
  "skill": "sd-storyboard-engine",
  "set": "sd-storyboard-engine",
- "version": "rules-3b637a3fba",
+ "version": "rules-85888a4197",
  "file": "规则全文.md",
- "file_md5": "2C083F57505F798CBA0F5CDA28E4B944",
+ "file_md5": "98656B95D48E83304E32101F08358201",
  "total_lines": 574,
  "base_end_line": 469,
- "base_chars": 29504,
+ "base_chars": 29706,
  "base_budget_chars": 40000,
- "budget_chars": 40000,
+ "budget_chars": 84000,
+ "budget_mode": "total",
  "section_max_chars": 20000,
  "sections": [
   {
@@ -21,7 +22,7 @@
     "always"
    ],
    "chars": 2108,
-   "checksum": "AFE4D837"
+   "checksum": "223FAA99"
   },
   {
    "id": "S01",
@@ -140,8 +141,8 @@
    "when": [
     "always"
    ],
-   "chars": 10774,
-   "checksum": "A5A28431"
+   "chars": 10976,
+   "checksum": "627763A1"
   },
   {
    "id": "S11",

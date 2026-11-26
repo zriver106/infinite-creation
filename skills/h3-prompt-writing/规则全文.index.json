@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-12405c42b2",
+ "version": "rules-b050dfeb0e",
  "file": "规则全文.md",
- "file_md5": "5B1066D579F296BBE01C12B794267D84",
- "total_lines": 1032,
- "base_end_line": 204,
- "base_chars": 30692,
+ "file_md5": "0CFC5181763912CA6B16374B0284598E",
+ "total_lines": 1129,
+ "base_end_line": 206,
+ "base_chars": 27503,
  "base_budget_chars": 40000,
  "budget_chars": 84000,
  "budget_mode": "total",
@@ -17,79 +17,67 @@
    "title": "地图",
    "tier": "map",
    "start": 1,
-   "end": 40,
+   "end": 45,
    "when": [
     "always"
    ],
-   "chars": 2557,
-   "checksum": "78D8D9B6"
+   "chars": 2823,
+   "checksum": "F310871F"
   },
   {
    "id": "A",
    "title": "A 铁律与流程",
    "tier": "base",
-   "start": 42,
-   "end": 79,
+   "start": 47,
+   "end": 100,
    "when": [
     "always"
    ],
-   "chars": 2391,
-   "checksum": "F927CA94"
+   "chars": 3293,
+   "checksum": "51FBD233"
   },
   {
    "id": "B",
    "title": "B 提示词格式与标签",
    "tier": "base",
-   "start": 81,
-   "end": 136,
+   "start": 102,
+   "end": 157,
    "when": [
     "always"
    ],
-   "chars": 9009,
-   "checksum": "5B6C8566"
-  },
-  {
-   "id": "D",
-   "title": "D 系统声与光幕",
-   "tier": "base",
-   "start": 138,
-   "end": 155,
-   "when": [
-    "always"
-   ],
-   "chars": 4412,
-   "checksum": "C809D8BD"
+   "chars": 9004,
+   "checksum": "E045F7A8"
   },
   {
    "id": "F",
    "title": "F 一致性（人物、服装、场景、道具、站位、人数）",
    "tier": "base",
-   "start": 157,
-   "end": 203,
+   "start": 159,
+   "end": 205,
    "when": [
     "always"
    ],
-   "chars": 12318,
-   "checksum": "6A697B6B"
+   "chars": 12379,
+   "checksum": "DAC2E861"
   },
   {
    "id": "C",
    "title": "C 心声",
    "tier": "volume",
-   "start": 208,
-   "end": 259,
+   "start": 210,
+   "end": 261,
    "when": [
     "os"
    ],
-   "chars": 10749,
-   "checksum": "4D37188F"
+   "chars": 10861,
+   "checksum": "3E99F387"
   },
   {
    "id": "C2",
    "title": "C2 心声闭嘴嘴形表",
    "tier": "volume",
-   "start": 261,
-   "end": 283,
+   "start": 263,
+   "end": 285,
    "when": [
     "os"
    ],
@@ -97,37 +85,97 @@
    "checksum": "3A9D8C1C"
   },
   {
+   "id": "D",
+   "title": "D 系统声与光幕",
+   "tier": "volume",
+   "start": 287,
+   "end": 304,
+   "when": [
+    "system"
+   ],
+   "chars": 4412,
+   "checksum": "C809D8BD"
+  },
+  {
+   "id": "E0",
+   "title": "E0 静默与人声背景（E-009、E-013）",
+   "tier": "volume",
+   "start": 306,
+   "end": 319,
+   "when": [
+    "always"
+   ],
+   "chars": 841,
+   "checksum": "67257000"
+  },
+  {
    "id": "E",
    "title": "E 人声与台词",
    "tier": "volume",
-   "start": 285,
-   "end": 378,
+   "start": 321,
+   "end": 404,
    "when": [
     "dialogue"
    ],
-   "chars": 12582,
-   "checksum": "3999F247"
+   "chars": 9381,
+   "checksum": "C5AA8EDC"
+  },
+  {
+   "id": "E2",
+   "title": "E2 多人同镜（开口、视线）",
+   "tier": "volume",
+   "start": 406,
+   "end": 420,
+   "when": [
+    "multi"
+   ],
+   "chars": 2685,
+   "checksum": "A5F6BC20"
   },
   {
    "id": "FX",
    "title": "F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具）",
    "tier": "volume",
-   "start": 380,
-   "end": 443,
+   "start": 422,
+   "end": 479,
    "when": [
     "multi",
     "prop",
     "scene"
    ],
-   "chars": 3233,
-   "checksum": "C0C7CB41"
+   "chars": 3177,
+   "checksum": "A3A9D81A"
+  },
+  {
+   "id": "P",
+   "title": "P 手机（FX-011、FX-012）",
+   "tier": "volume",
+   "start": 481,
+   "end": 500,
+   "when": [
+    "phone"
+   ],
+   "chars": 1244,
+   "checksum": "EEA891C9"
+  },
+  {
+   "id": "PC",
+   "title": "PC 通话声音（E-002、E-005）",
+   "tier": "volume",
+   "start": 502,
+   "end": 510,
+   "when": [
+    "call"
+   ],
+   "chars": 1743,
+   "checksum": "5948554A"
   },
   {
    "id": "F5V",
    "title": "F5 多人同场多视角定义图（_MV）",
    "tier": "volume",
-   "start": 445,
-   "end": 460,
+   "start": 512,
+   "end": 527,
    "when": [
     "multi"
    ],
@@ -138,56 +186,68 @@
    "id": "H1",
    "title": "H1 镜头、运镜与打戏节奏",
    "tier": "volume",
-   "start": 462,
-   "end": 511,
+   "start": 529,
+   "end": 578,
    "when": [
     "motion"
    ],
-   "chars": 6667,
-   "checksum": "70BC4226"
+   "chars": 7005,
+   "checksum": "EB09B392"
+  },
+  {
+   "id": "H1W",
+   "title": "H1W 行进中的戏与静态对话（H1-005）",
+   "tier": "volume",
+   "start": 580,
+   "end": 595,
+   "when": [
+    "walk"
+   ],
+   "chars": 1031,
+   "checksum": "753B7814"
   },
   {
    "id": "H2C",
    "title": "H2C 表现通用",
    "tier": "volume",
-   "start": 513,
-   "end": 522,
+   "start": 597,
+   "end": 606,
    "when": [
     "expression_any"
    ],
-   "chars": 1588,
-   "checksum": "0D534EFD"
+   "chars": 1770,
+   "checksum": "BA18B500"
   },
   {
    "id": "H2",
    "title": "H2 Q版与特效",
    "tier": "volume",
-   "start": 524,
-   "end": 579,
+   "start": 608,
+   "end": 668,
    "when": [
     "expression_qv"
    ],
-   "chars": 10999,
-   "checksum": "916AB6D3"
+   "chars": 10086,
+   "checksum": "F13456CC"
   },
   {
    "id": "H2L",
    "title": "H2L 流行语与谐音",
    "tier": "volume",
-   "start": 581,
-   "end": 593,
+   "start": 670,
+   "end": 682,
    "when": [
     "expression_slang"
    ],
-   "chars": 1863,
-   "checksum": "F1CFAB77"
+   "chars": 1845,
+   "checksum": "72ED89E4"
   },
   {
    "id": "H2G",
    "title": "H2G 开场画面与光幕位置（每镜必读）",
    "tier": "volume",
-   "start": 595,
-   "end": 607,
+   "start": 684,
+   "end": 696,
    "when": [
     "always"
    ],
@@ -198,8 +258,8 @@
    "id": "J",
    "title": "J 资产与绑定",
    "tier": "volume",
-   "start": 609,
-   "end": 653,
+   "start": 698,
+   "end": 742,
    "when": [
     "binding",
     "scene"
@@ -211,20 +271,20 @@
    "id": "L",
    "title": "L 现实逻辑与剧情",
    "tier": "volume",
-   "start": 655,
-   "end": 683,
+   "start": 744,
+   "end": 773,
    "when": [
     "logic"
    ],
-   "chars": 1777,
-   "checksum": "54A13498"
+   "chars": 1875,
+   "checksum": "5A390252"
   },
   {
    "id": "B2",
    "title": "B2 生成模式、全参考与多段（冷门）",
    "tier": "volume",
-   "start": 685,
-   "end": 726,
+   "start": 775,
+   "end": 816,
    "when": [
     "rare"
    ],
@@ -235,8 +295,8 @@
    "id": "Q",
    "title": "Q 审片",
    "tier": "volume",
-   "start": 728,
-   "end": 854,
+   "start": 818,
+   "end": 944,
    "when": [
     "rare"
    ],
@@ -247,13 +307,13 @@
    "id": "X",
    "title": "X 导出、合成与交付",
    "tier": "volume",
-   "start": 856,
-   "end": 1032,
+   "start": 946,
+   "end": 1129,
    "when": [
     "rare"
    ],
-   "chars": 7563,
-   "checksum": "165ADB15"
+   "chars": 7934,
+   "checksum": "9495F469"
   }
  ]
 }
