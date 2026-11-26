@@ -40,8 +40,15 @@ test('纯函数：台词逐字对剧本；错字/剧本里没有的句子报错�
   assert.equal(checkDialogueAgainstScript('江澈（OS）：光这个背影，就能打九分。', SCRIPT).errors.length, 1);
   assert.equal(checkDialogueAgainstScript('唐知夏：「帅哥， 不好意思给你添麻烦。」', SCRIPT).errors.length, 0);
   assert.equal(checkDialogueAgainstScript('唐知夏：帅哥。', '').errors.length, 1);
-  assert.ok(costumeBindingError({ idx: 3, characters: ['江澈'] }, ['c1'], []));
   assert.equal(costumeBindingError({ idx: 3, characters: [] }, [], []), '');
+  // 2026-11-25 seq1923：单人镜缺服装不拒整批（只报警告）；多人镜照旧拒；costume_base 登记的人物豁免
+  assert.equal(costumeBindingError({ idx: 3, characters: ['江澈'] }, ['c1aaaaaa'], []), '');
+  assert.ok(costumeBindingError({ idx: 3, characters: ['江澈', '唐知夏'] }, ['c1aaaaaa', 'c2bbbbbb'], []));
+  assert.equal(costumeBindingError({ idx: 3, characters: ['江澈', '唐知夏'] }, ['c1aaaaaa', 'c2bbbbbb'], ['co1']), '');
+  const base = [{ character_id: 'c1aaaaaa', chapter: 3, from: null, to: null }, { character_id: 'c2bbbbbb', chapter: 3, from: 1, to: 5 }];
+  assert.equal(costumeBindingError({ idx: 3, characters: ['江澈', '唐知夏'] }, ['c1aaaaaa', 'c2bbbbbb'], [], { costumeBase: base, chapter: '第3章' }), '');
+  assert.ok(costumeBindingError({ idx: 6, characters: ['江澈', '唐知夏'] }, ['c1aaaaaa', 'c2bbbbbb'], [], { costumeBase: base, chapter: '第3章' }), '豁免段外（第6镜）照旧拒');
+  assert.ok(costumeBindingError({ idx: 3, characters: ['江澈', '唐知夏'] }, ['c1aaaaaa', 'c2bbbbbb'], [], { costumeBase: base, chapter: '第4章' }), '别的章不豁免');
 });
 
 test('a：本任务没读 adapt-rules / sd-storyboard-engine → set_storyboard、set_chapter_script 拒；读了才放行，且 rule_usage 记 md5/字数', async () => {
@@ -80,13 +87,22 @@ test('b：改了内容、未出视频的旧镜，旧提示词存档后清空（�
   assert.match(hist, /旧提示词1/);
 });
 
-test('c/d：有人物没服装、错字、剧本里没有的句子 → 整批拒，一镜不写', async () => {
+test('c/d：多人镜有人物没服装、错字、剧本里没有的句子 → 整批拒，一镜不写', async () => {
   const { p, ctx } = setup();
   await loadRules(ctx);
-  await assert.rejects(runTool(ctx, 'set_storyboard', { shots: [shot({ costumes: [] })] }), /costumes 为空/);
+  withWriteContext('test', () => Assets.create(p.id, { category: 'character', name: '唐知夏' }));
+  await assert.rejects(runTool(ctx, 'set_storyboard', { shots: [shot({ characters: ['江澈', '唐知夏'], costumes: [] })] }), /costumes 为空/);
   await assert.rejects(runTool(ctx, 'set_storyboard', { shots: [shot(), shot({ idx: 2, dialogue: '经理：这位是老板的小舒子。' })] }), /剧本里找不到这句原话.*小舒子/);
   await assert.rejects(runTool(ctx, 'set_storyboard', { shots: [shot({ dialogue: '江澈（OS）：光这个背影，就能打九分。' })] }), /剧本里找不到/);
   assert.equal(Shots.list(p.id).length, 0);
+});
+
+test('c2：单人镜缺服装不拒整批，写入后提示补绑（2026-11-25 seq1923，缺图不等图）', async () => {
+  const { p, ctx } = setup();
+  await loadRules(ctx);
+  const out = await runTool(ctx, 'set_storyboard', { shots: [shot({ costumes: [] })] });
+  assert.match(out, /分镜已写入/);
+  assert.equal(Shots.list(p.id).length, 1);
 });
 
 test('f：文本任务里 set_chapter_music 默认跳过，不改配乐', async () => {
