@@ -299,16 +299,40 @@ test('闸门：分镜任务（文本闸门）和出片任务（任务闸门）�
   await v;
 });
 
-test('闸门：文本闸门容量 1', async () => {
+test('闸门：文本闸门同一章（同 key）串行', async () => {
   const a = deferred();
   const events = [];
-  const t1 = rg.runExclusiveText(async () => { events.push('t1'); await a.promise; }, () => false, { jobId: 't-a' });
-  const t2 = rg.runExclusiveText(async () => { events.push('t2'); }, () => false, { jobId: 't-b', queueTimeoutMs: 5000 });
+  const t1 = rg.runExclusiveText(async () => { events.push('t1'); await a.promise; }, () => false, { jobId: 't-a', key: 'ch:p:第1章' });
+  const t2 = rg.runExclusiveText(async () => { events.push('t2'); }, () => false, { jobId: 't-b', key: 'ch:p:第1章', queueTimeoutMs: 5000 });
   await tick();
   assert.deepEqual(events, ['t1']);
   a.resolve();
   await Promise.all([t1, t2]);
   assert.deepEqual(events, ['t1', 't2']);
+});
+
+test('闸门：文本闸门不同章并行，容量缺省 3，第 4 条排队；被同章挡住的不挡后面别的章', async () => {
+  assert.equal(rg.textConcurrencyLimit({}), 3);
+  assert.equal(rg.textConcurrencyLimit({ generation: { textConcurrency: 1 } }), 1);
+  assert.equal(rg.textConcurrencyLimit({ generation: { textConcurrency: 99 } }), 8);
+  const hold = [deferred(), deferred(), deferred()];
+  const events = [];
+  const run = (name, key, d) => rg.runExclusiveText(async () => { events.push(name); if (d) await d.promise; }, () => false, { jobId: 'j-' + name, key, queueTimeoutMs: 5000 });
+  const a = run('A', 'ch:p:1', hold[0]);
+  const b = run('B', 'ch:p:2', hold[1]);
+  const a2 = run('A2', 'ch:p:1');          // 同章：排队
+  const c = run('C', 'ch:p:3', hold[2]);   // 别的章：不被 A2 挡住
+  const d = run('D', 'ch:p:4');            // 容量满：排队
+  await tick();
+  assert.deepEqual(events, ['A', 'B', 'C']);
+  hold[1].resolve(); await b; await tick();
+  assert.deepEqual(events, ['A', 'B', 'C', 'D']); // A2 仍被 A 挡住，D 越过它
+  hold[0].resolve(); await Promise.all([a, a2, d]);
+  assert.deepEqual(events, ['A', 'B', 'C', 'D', 'A2']);
+  hold[2].resolve(); await c; await tick();
+  const st = rg.renderGateStats();
+  assert.equal(st.textSlots, 0);
+  assert.deepEqual(st.textKeys, []);
 });
 
 test('硬条件：文本任务里碰显卡（withGpuAccess）要等出片任务释放任务闸门，绝不同时', async () => {
@@ -389,8 +413,8 @@ test('文本任务的 MCP 子进程（IC_MCP_RENDER_DISABLED=1）：碰显卡一
 
 test('取消：排队中的文本任务能从文本闸门摘掉', async () => {
   const a = deferred();
-  const t1 = rg.runExclusiveText(() => a.promise, () => false, { jobId: 't-hold' });
-  const t2 = rg.runExclusiveText(async () => 'never', () => false, { jobId: 't-cancel', queueTimeoutMs: 5000 });
+  const t1 = rg.runExclusiveText(() => a.promise, () => false, { jobId: 't-hold', key: 'ch:p:x' });
+  const t2 = rg.runExclusiveText(async () => 'never', () => false, { jobId: 't-cancel', key: 'ch:p:x', queueTimeoutMs: 5000 });
   await tick();
   assert.equal(rg.cancelQueuedJob('t-cancel'), true);
   await assert.rejects(t2, /排队中/);
