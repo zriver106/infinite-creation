@@ -60,24 +60,32 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
   const newImageRef = useRef(null);
   const [newScenePicker, setNewScenePicker] = useState(false);
 
+  // 2026-11-26（Andy「成片 / 分镜审查 只能看到当前项目的」）：切项目时上一个项目的请求可能晚到（V2 成片 189 条要逐条 ffprobe），
+  // 回来时项目已经换了就丢掉，不能把别的项目的列表盖到当前项目上；切项目先清空列表。
+  const pidRef = useRef(projectId);
+  pidRef.current = projectId;
   const load = useCallback(() => {
+    const pid = projectId;
+    const keep = (set) => (v) => { if (pidRef.current === pid) set(v); };
+    const warn = (e) => { if (pidRef.current === pid) toast.error(e.message); };
     return Promise.all([
-      api.get('/api/projects/' + projectId + '/shots').then(setShots).catch((e) => toast.error(e.message)),
-      api.get('/api/projects/' + projectId + '/assets').then(setAssets).catch((e) => toast.error(e.message)),
-      api.get('/api/projects/' + projectId).then(setProject).catch(() => {}),
+      api.get('/api/projects/' + pid + '/shots').then(keep(setShots)).catch(warn),
+      api.get('/api/projects/' + pid + '/assets').then(keep(setAssets)).catch(warn),
+      api.get('/api/projects/' + pid).then(keep(setProject)).catch(() => {}),
     ]);
   }, [projectId]);
 
+  useEffect(() => { setShots([]); setAssets([]); }, [projectId]);
+
   // 轮询只拉分镜：素材/项目在生成期间基本不变，每 3 秒全量重拉会让整页（含其他视频）跟着重渲染。
   // 数据没变时直接返回旧数组（引用不变），React 就不会重渲染整张分镜表。
-  const loadShots = useCallback(
-    () =>
-      api
-        .get('/api/projects/' + projectId + '/shots')
-        .then((list) => setShots((prev) => (JSON.stringify(prev) === JSON.stringify(list) ? prev : list)))
-        .catch(() => {}),
-    [projectId],
-  );
+  const loadShots = useCallback(() => {
+    const pid = projectId;
+    return api
+      .get('/api/projects/' + pid + '/shots')
+      .then((list) => { if (pidRef.current === pid) setShots((prev) => (JSON.stringify(prev) === JSON.stringify(list) ? prev : list)); })
+      .catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
     setLoading(true);

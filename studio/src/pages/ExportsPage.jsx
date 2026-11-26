@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpCircle, CaptionsOff, Wand2, CheckCircle2, Download, Film, Play, RefreshCw, Send, Subtitles, Trash2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { exportTitle, fmtBytes, fmtTime, withSession } from '../lib/format.js';
@@ -25,10 +25,18 @@ export default function ExportsPage({ projectId, readOnly = false, canExport = t
   const [postOpen, setPostOpen] = useState(false);
   const [postWatch, setPostWatch] = useState(0);
 
-  const load = useCallback(
-    () => api.get('/api/projects/' + projectId + '/exports').then((r) => setFiles(r.files || [])).catch((e) => toast.error(e.message)),
-    [projectId],
-  );
+  // 2026-11-26（Andy「成片 / 分镜审查 只能看到当前项目的」）：切项目时上一个项目的请求可能晚到（V2 成片 189 条要逐条 ffprobe），
+  // 回来时项目已经换了就丢掉，不能把别的项目的列表盖到当前项目上；切项目先清空列表。
+  const pidRef = useRef(projectId);
+  pidRef.current = projectId;
+  const load = useCallback(() => {
+    const pid = projectId;
+    return api.get('/api/projects/' + pid + '/exports')
+      .then((r) => { if (pidRef.current === pid) setFiles(r.files || []); })
+      .catch((e) => { if (pidRef.current === pid) toast.error(e.message); });
+  }, [projectId]);
+
+  useEffect(() => { setFiles([]); }, [projectId]);
 
   useEffect(() => {
     setLoading(true);
