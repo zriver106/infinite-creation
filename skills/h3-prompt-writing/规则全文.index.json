@@ -1,12 +1,12 @@
 {
  "skill": "h3-prompt-writing",
  "set": "写视频提示词",
- "version": "rules-76d6c9514d",
+ "version": "rules-12405c42b2",
  "file": "规则全文.md",
- "file_md5": "CDF3D5F36B12968D03F289CCB252B0DF",
- "total_lines": 1030,
+ "file_md5": "5B1066D579F296BBE01C12B794267D84",
+ "total_lines": 1032,
  "base_end_line": 204,
- "base_chars": 30150,
+ "base_chars": 30692,
  "base_budget_chars": 40000,
  "budget_chars": 84000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 2557,
-   "checksum": "21574D82"
+   "checksum": "78D8D9B6"
   },
   {
    "id": "A",
@@ -33,8 +33,8 @@
    "when": [
     "always"
    ],
-   "chars": 2327,
-   "checksum": "5995AEBA"
+   "chars": 2391,
+   "checksum": "F927CA94"
   },
   {
    "id": "B",
@@ -45,8 +45,8 @@
    "when": [
     "always"
    ],
-   "chars": 8861,
-   "checksum": "42E1D15F"
+   "chars": 9009,
+   "checksum": "5B6C8566"
   },
   {
    "id": "D",
@@ -69,8 +69,8 @@
    "when": [
     "always"
    ],
-   "chars": 11988,
-   "checksum": "DB805AF7"
+   "chars": 12318,
+   "checksum": "6A697B6B"
   },
   {
    "id": "C",
@@ -119,8 +119,8 @@
     "prop",
     "scene"
    ],
-   "chars": 3114,
-   "checksum": "3A974364"
+   "chars": 3233,
+   "checksum": "C0C7CB41"
   },
   {
    "id": "F5V",
@@ -204,8 +204,8 @@
     "binding",
     "scene"
    ],
-   "chars": 5833,
-   "checksum": "79EE6887"
+   "chars": 5979,
+   "checksum": "A49A6E41"
   },
   {
    "id": "L",
@@ -248,12 +248,12 @@
    "title": "X 导出、合成与交付",
    "tier": "volume",
    "start": 856,
-   "end": 1030,
+   "end": 1032,
    "when": [
     "rare"
    ],
-   "chars": 7396,
-   "checksum": "5A1313EF"
+   "chars": 7563,
+   "checksum": "165ADB15"
   }
  ]
 }

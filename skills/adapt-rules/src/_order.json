@@ -42,10 +42,10 @@
  {
   "file": "J_资产.md",
   "id": "J",
-  "title": "J 资产（派图、场景图名副其实）",
-  "tier": "volume",
+  "title": "J 资产与逐镜绑定（每章写分镜必读）",
+  "tier": "base",
   "when": [
-   "binding"
+   "always"
   ],
   "chars": 329
  },
