@@ -20,10 +20,10 @@ test('规则书：C 心声是分卷（os 才读），合计口径判 too_dense',
   const idx = loadRuleIndex('h3-prompt-writing');
   const C = idx.sections.find((s) => s.id === 'C');
   assert.equal(C.tier, 'volume'); assert.deepEqual(C.when, ['os']);
-  assert.equal(idx.budget_mode, 'total'); assert.equal(idx.budget_chars, 84000);
+  assert.equal(idx.budget_mode, 'total'); assert.equal(idx.budget_chars, 92000); // 主会话 seq2246：84000 → 92000
   const plain = requiredRanges(idx, { chapter: '第1章', idx: 1, camera: 'FIXED', visual: '江澈站在门口。', dialogue: '' }, P, {});
   assert.ok(!plain.required_ranges.some((r) => r.id === 'C'), '没心声的镜不读 C');
   const withOs = requiredRanges(idx, { chapter: '第1章', idx: 1, camera: 'FIXED', visual: '他沉默', dialogue: '江澈（OS）：好家伙' }, P, {});
   assert.ok(withOs.required_ranges.some((r) => r.id === 'C'), '有心声的镜读 C');
-  assert.equal(withOs.too_dense, withOs.required_chars > 84000);
+  assert.equal(withOs.too_dense, withOs.required_chars > 92000);
 });
