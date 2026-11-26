@@ -48,3 +48,16 @@ test('新旧片关系：rootOf / selectedOf 回退规则', () => {
   assert.equal(m.chapterTitleFromExportName('项目_第12章_abcd1234_2k.mp4'), '第12章');
   assert.equal(m.chapterTitleFromExportName('项目_试验.mp4'), '');
 });
+
+// 2026-11-26（主会话 seq2025）：火山轮询状态原文落盘——不带结果下载链接、不带密钥，状态和进度取得到
+test('remoteSnapshot：记状态、进度、去掉 result 的原文', () => {
+  const s = m.remoteSnapshot({ status: 'running', progress: 42, task_id: 'amk-1', result: { video_url: 'https://x/y.mp4?sig=abc' } });
+  assert.equal(s.status, 'running');
+  assert.equal(s.progress, 42);
+  assert.ok(!s.raw.includes('video_url') && !s.raw.includes('sig=abc'));
+  assert.ok(s.raw.includes('amk-1'));
+  const q = m.remoteSnapshot({ status: 'queued' });
+  assert.equal(q.progress, null);
+  assert.equal(m.remoteSnapshot(null).status, '');
+  assert.ok(m.remoteSnapshot({ status: 'running', note: 'x'.repeat(1000) }).raw.length <= 300);
+});
