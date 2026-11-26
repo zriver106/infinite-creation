@@ -179,4 +179,23 @@ describe('brief / save（prompt-write MCP）', () => {
     const prompt = PWM.buildPromptWriteAgentPrompt({ project: { name: 'x' }, chapter: '第1章', missing: 1 });
     assert.ok(prompt.includes('required_ranges') && prompt.includes('ranges_ack') && prompt.includes('report_rule_gap') && prompt.includes('7–8 秒'));
   });
+
+  // 2026-11-26（Andy「写提示词的时候不光要看剧本，还要看原著」）：brief 带本章剧本和原著，每章本任务只给一次全文
+  test('brief：本章第一镜带 chapter_script / chapter_novel，后面的镜只给提示；任务提示词有 2b 步', async () => {
+    PWM._resetPromptWriteSession();
+    const ch = Chapters.list(p.id).find((c) => c.title === '第1章');
+    Chapters.update(ch.id, { novel: '清晨，宋老在公园散步，他点了点头，江澈站到队尾跟着练。', script: '江澈：早。' });
+    const s1 = Shots.create(p.id, { chapter: '第1章', idx: 21, visual: '公园', mode: 'text' });
+    const s2 = Shots.create(p.id, { chapter: '第1章', idx: 22, visual: '队尾', mode: 'text' });
+    const b1 = await brief(s1.id);
+    assert.match(b1.chapter_novel, /站到队尾跟着练/);
+    assert.equal(b1.chapter_script, '江澈：早。');
+    assert.match(b1.source_rule, /原著为准/);
+    const b2 = await brief(s2.id);
+    assert.equal(b2.chapter_novel, undefined);
+    assert.match(b2.chapter_source, /get_chapter/);
+    assert.match(b2.source_rule, /原著为准/);
+    const prompt = PWM.buildPromptWriteAgentPrompt({ project: { name: 'x' }, chapter: '第1章', missing: 1 });
+    assert.ok(prompt.includes('chapter_novel') && prompt.includes('以原著为准'));
+  });
 });
