@@ -1,10 +1,10 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-7a0f69bdca",
+ "version": "rules-09e2b12b23",
  "file": "规则全文.md",
- "file_md5": "657C5F799E82E4A57ED2FF2DDB3F3712",
- "total_lines": 385,
+ "file_md5": "6AFED7DCB9245D772F01257120DDBA88",
+ "total_lines": 389,
  "base_end_line": 286,
  "base_chars": 16465,
  "base_budget_chars": 40000,
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 875,
-   "checksum": "9D58B9AE"
+   "checksum": "E25EB365"
   },
   {
    "id": "A",
@@ -77,19 +77,19 @@
    "title": "J 资产（派图、场景图名副其实）",
    "tier": "volume",
    "start": 290,
-   "end": 359,
+   "end": 363,
    "when": [
     "binding"
    ],
-   "chars": 3252,
-   "checksum": "044A87ED"
+   "chars": 3385,
+   "checksum": "21EE7BAA"
   },
   {
    "id": "H2",
    "title": "H2 表现手段（Q 版、特效、谐音；冷门）",
    "tier": "volume",
-   "start": 361,
-   "end": 385,
+   "start": 365,
+   "end": 389,
    "when": [
     "expression"
    ],

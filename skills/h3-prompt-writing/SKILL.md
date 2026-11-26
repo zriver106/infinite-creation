@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-4768217899 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-75e1136366 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -19,25 +19,25 @@ compatibility: Portable to any agent that can read local files — no external A
 | A | A 铁律与流程 | 基础（已在上面，必读） | L42–L79 | 每次 |
 | B | B 提示词格式与标签 | 基础（已在上面，必读） | L81–L136 | 每次 |
 | D | D 系统声与光幕 | 基础（已在上面，必读） | L138–L155 | 每次 |
-| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L157–L202 | 每次 |
-| C | C 心声 | 分册 | L207–L258 | 有心声 |
-| C2 | C2 心声闭嘴嘴形表 | 分册 | L260–L282 | 有心声 |
-| E | E 人声与台词 | 分册 | L284–L377 | 有台词 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L379–L441 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L443–L458 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L460–L509 | 有运镜、动作、打戏 |
-| H2C | H2C 表现通用 | 分册 | L511–L520 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L522–L577 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L579–L591 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L593–L605 | 每次 |
-| J | J 资产与绑定 | 分册 | L607–L651 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L653–L681 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L683–L724 | 用到时再查 |
-| Q | Q 审片 | 分册 | L726–L852 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L854–L1026 | 用到时再查 |
+| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L157–L203 | 每次 |
+| C | C 心声 | 分册 | L208–L259 | 有心声 |
+| C2 | C2 心声闭嘴嘴形表 | 分册 | L261–L283 | 有心声 |
+| E | E 人声与台词 | 分册 | L285–L378 | 有台词 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L380–L443 | 两人及以上、有道具、桌面、车、绑了场景 |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L445–L460 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L462–L511 | 有运镜、动作、打戏 |
+| H2C | H2C 表现通用 | 分册 | L513–L522 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L524–L579 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L581–L593 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L595–L607 | 每次 |
+| J | J 资产与绑定 | 分册 | L609–L653 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L655–L683 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L685–L726 | 用到时再查 |
+| Q | Q 审片 | 分册 | L728–L854 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L856–L1030 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：0D4B460C
+本段校验码：25987B01
 
 ## A 铁律与流程
 
@@ -174,6 +174,7 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 12. **Gaze lock when three or more people are on screen and someone speaks to a person who is not the lead:** `Gaze lock: whenever <A> speaks to <B> or listens to him, her eyes stay on <B>'s face and her head, shoulders and upper body are turned toward him; she never looks at <C> and never looks into the camera lens.` Add where B is on screen (screen side, standing or sitting) from the blocking.
 13. **Voice references:** every voice IC attaches gets its own reference line, `__MINIMAX_H3_REF_k__ is <name>'s voice (Sx)`, with Sx in speaking order inside this shot (see Output Rules). A voice reference with no definition line is a duplicate-person risk.
 14. **Scene lock:** the first body sentence names the location and two or more visible landmarks. A close-up with a blurred background still names one or two landmarks that remain recognisable in the blur. Use one negation only: `never a plain grey wall or a photo-studio backdrop`. IC always orders references as characters, then scenes, then props. Keep the scene reference early: do not bind background extras who are not needed (or bind a cropped single image, not a grey multi-view board), crop prop images, and never replace a detailed scene image with a rougher one.
+- 案例（项目规则案例库）：案-F-F001-E19S24-01、案-F-F001-E22S12-01、案-F-F001-E17S01-01
 
 #### 〔F-002〕 第2、3集通过后转正：**Face-state lock follows the story (TR-V01).** A visible story state on the face (tiredness, puffy eyelids, eye bags, a fresh look after a win) has a start beat and an end beat from the novel. Before the end beat every shot of that character writes the state; from the end beat on every shot writes the new state and binds the matching state image if an approved one exists. Never write the state in only some shots. Write the state by shape and degree only, never by colour or darkness words around the eyes (manual M50 item 2). Wrong: the tired face written in #3 and #9 only. Right: `<name>'s lower eyelids are puffy and swollen, with clear eye bags.` in every shot before the beat; `<name>'s face is fresh and rested; the lower eyelids are smooth.` in every shot after it.
 
@@ -199,5 +200,5 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 - 校验：缺这句，或写了 suit / tie / badge 而资产没有，门禁报警告（只报不拦）。
 - 正例：售车店里主角照资产穿灰 T 恤，加上面那句。
 - 反例：只写 formal setting，成片主角西装领带。
-本段校验码：E99E60EF
+本段校验码：DB805AF7
 
