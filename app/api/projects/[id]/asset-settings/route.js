@@ -24,9 +24,10 @@ export async function PUT(req, { params }) {
   const p = Projects.get(id);
   if (!p) return NextResponse.json({ error: '项目不存在' }, { status: 404 });
   const writes = [];
+  // 2026-11-26（Andy「这里要给用户设置 使用 muse 还是 本地模型」）：项目设置「出图方式」写这里；inherit = 清掉项目设置、跟随系统设置「资产出图方式」
   if (body.mode !== undefined) {
-    if (!['gap-list', 'auto'].includes(body.mode)) return NextResponse.json({ error: 'mode 只能是 gap-list / auto' }, { status: 400 });
-    writes.push([ASSET_MODE_KEY, body.mode]);
+    if (!['gap-list', 'auto', 'inherit'].includes(body.mode)) return NextResponse.json({ error: 'mode 只能是 gap-list / auto / inherit' }, { status: 400 });
+    writes.push([ASSET_MODE_KEY, body.mode === 'inherit' ? '' : body.mode]);
   }
   // 2026-11-25：项目级资产绑定方式（'ag' = 我方 Agent 绑定 | 'ic' = IC 按名字自动绑定），不设按系统设置。
   if (body.binding !== undefined) {

@@ -8,6 +8,14 @@ import { useToast } from './toast.jsx';
 import StylePicker from './StylePicker.jsx';
 import { EXPRESSION_SWITCHES, expressionSwitchValues } from '@shared';
 
+// 出图方式（Andy 11-26）：项目级覆盖系统设置「资产出图方式」。存 projects.context.asset_mode（PUT /asset-settings）。
+const ASSET_MODE_ITEMS = [
+  { value: 'inherit', label: '跟随系统设置' },
+  { value: 'gap-list', label: 'Muse 出图' },
+  { value: 'auto', label: '本地模型（IC 生图）' },
+];
+const assetModeOf = (project) => { const v = (project && project.context && project.context.asset_mode) || ''; return v === 'gap-list' || v === 'auto' ? v : 'inherit'; };
+
 export default function ProjectSettingsDialog({ open, onOpenChange, project, onSaved }) {
   const toast = useToast();
   const [name, setName] = useState('');
@@ -16,6 +24,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   const [res, setRes] = useState('480P');
   const [ratio, setRatio] = useState('16:9');
   const [imageRes, setImageRes] = useState('1K');
+  const [assetMode, setAssetMode] = useState('inherit');
   const [cw, setCw] = useState('');
   const [ch, setCh] = useState('');
   const [enableBgm, setEnableBgm] = useState(true);
@@ -34,6 +43,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setRes(project.video_resolution || '480P');
     setRatio(project.video_aspect_ratio || '16:9');
     setImageRes(project.image_resolution || '1K');
+    setAssetMode(assetModeOf(project));
     setCw(project.video_width ? String(project.video_width) : '');
     setCh(project.video_height ? String(project.video_height) : '');
     setEnableBgm(project.enable_bgm !== false);
@@ -58,6 +68,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
         auto_script: autoScript,
         ...exprSwitches,
       });
+      if (assetMode !== assetModeOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { mode: assetMode });
       toast.success('项目设置已保存');
       onOpenChange(false);
       onSaved();
@@ -150,6 +161,16 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
             hint="1K / 2K / 4K，按各素材宽高比自动换算像素（32 的倍数）；文生图直接按档位出图，图生图生成后归一化到该档位。"
           >
             <Select value={imageRes} onChange={setImageRes} items={IMAGE_RESOLUTION_ITEMS} />
+          </Field>
+          <Field
+            label="出图方式"
+            hint={assetMode === 'auto'
+              ? '本地模型：IC 用本机 ComfyUI 自己文生图 / 图生图、换装、年龄变体，占显卡。'
+              : assetMode === 'gap-list'
+                ? 'Muse 出图：人物、场景、道具、服装图由 Muse（am）在 IC 外制作入库，IC 不生图，缺的图记进缺件单；音色照常由 IC 生成。'
+                : '跟随「系统设置 → ComfyUI 服务 → 资产出图方式」。'}
+          >
+            <Select value={assetMode} onChange={setAssetMode} items={ASSET_MODE_ITEMS} />
           </Field>
         </FormSection>
 
