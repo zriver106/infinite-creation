@@ -3,7 +3,7 @@ name: h3-prompt-writing
 description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2VA, and Ref2VA. Use when rewriting multimodal requests into H3 prompt structures, composing integrated_multimodal_description, overall_soundscape, and non_diegetic_music, aligning keyframes, or defining reference labels for images, videos, and audio. Also covers storyboard-contract driven multi-segment generation: drafting a storyboard.json from a novel/script with a local or remote LLM, then compiling it into consistent per-segment H3 prompts (Ref2VA/T2VA first segment + FL2VA continuations) with no repeated segments and no positional or identity drift.
 compatibility: Portable to any agent that can read local files — no external API calls, MiniMax Hub tools, or proprietary runtime required. The agents/openai.yaml file only adds optional ChatGPT/Codex UI metadata; it does not restrict the skill to OpenAI agents.
 ---
-<!-- rulebook:generated rules-523b778215 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-b050dfeb0e 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（写视频提示词）：使用方法
 
@@ -16,29 +16,33 @@ compatibility: Portable to any agent that can read local files — no external A
 
 | 段 | 内容 | 层级 | 行号 | 什么时候读 |
 |---|---|---|---|---|
-| A | A 铁律与流程 | 基础（已在上面，必读） | L43–L89 | 每次 |
-| B | B 提示词格式与标签 | 基础（已在上面，必读） | L91–L146 | 每次 |
-| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L148–L194 | 每次 |
-| C | C 心声 | 分册 | L199–L250 | 有心声 |
-| C2 | C2 心声闭嘴嘴形表 | 分册 | L252–L274 | 有心声 |
-| D | D 系统声与光幕 | 分册 | L276–L293 | 有系统声或光幕 |
-| E | E 人声与台词 | 分册 | L295–L397 | 有台词 |
-| E2 | E2 多人同镜（开口、视线） | 分册 | L399–L413 | 两人及以上 |
-| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L415–L492 | 两人及以上、有道具、桌面、车、绑了场景 |
-| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L494–L509 | 两人及以上 |
-| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L511–L573 | 有运镜、动作、打戏 |
-| H2C | H2C 表现通用 | 分册 | L575–L584 | 有【表现】行 |
-| H2 | H2 Q版与特效 | 分册 | L586–L646 | 【表现】Q版/特效 |
-| H2L | H2L 流行语与谐音 | 分册 | L648–L660 | 【表现】流行语/谐音/段子 |
-| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L662–L674 | 每次 |
-| J | J 资产与绑定 | 分册 | L676–L720 | 绑定、参考图有疑问、绑了场景 |
-| L | L 现实逻辑与剧情 | 分册 | L722–L759 | 有交易、冲突、回忆 |
-| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L761–L802 | 用到时再查 |
-| Q | Q 审片 | 分册 | L804–L930 | 用到时再查 |
-| X | X 导出、合成与交付 | 分册 | L932–L1121 | 用到时再查 |
+| A | A 铁律与流程 | 基础（已在上面，必读） | L47–L100 | 每次 |
+| B | B 提示词格式与标签 | 基础（已在上面，必读） | L102–L157 | 每次 |
+| F | F 一致性（人物、服装、场景、道具、站位、人数） | 基础（已在上面，必读） | L159–L205 | 每次 |
+| C | C 心声 | 分册 | L210–L261 | 有心声 |
+| C2 | C2 心声闭嘴嘴形表 | 分册 | L263–L285 | 有心声 |
+| D | D 系统声与光幕 | 分册 | L287–L304 | 有系统声或光幕 |
+| E0 | E0 静默与人声背景（E-009、E-013） | 分册 | L306–L319 | 每次 |
+| E | E 人声与台词 | 分册 | L321–L404 | 有台词 |
+| E2 | E2 多人同镜（开口、视线） | 分册 | L406–L420 | 两人及以上 |
+| FX | F9 一致性细则（待测：前景半截头肩、机位景别、座位姿态、桌面道具、背景人群、视线、开场状态句、关键道具） | 分册 | L422–L479 | 两人及以上、有道具、桌面、车、绑了场景 |
+| P | P 手机（FX-011、FX-012） | 分册 | L481–L500 | phone |
+| PC | PC 通话声音（E-002、E-005） | 分册 | L502–L510 | call |
+| F5V | F5 多人同场多视角定义图（_MV） | 分册 | L512–L527 | 两人及以上 |
+| H1 | H1 镜头、运镜与打戏节奏 | 分册 | L529–L578 | 有运镜、动作、打戏 |
+| H1W | H1W 行进中的戏与静态对话（H1-005） | 分册 | L580–L595 | walk |
+| H2C | H2C 表现通用 | 分册 | L597–L606 | 有【表现】行 |
+| H2 | H2 Q版与特效 | 分册 | L608–L668 | 【表现】Q版/特效 |
+| H2L | H2L 流行语与谐音 | 分册 | L670–L682 | 【表现】流行语/谐音/段子 |
+| H2G | H2G 开场画面与光幕位置（每镜必读） | 分册 | L684–L696 | 每次 |
+| J | J 资产与绑定 | 分册 | L698–L742 | 绑定、参考图有疑问、绑了场景 |
+| L | L 现实逻辑与剧情 | 分册 | L744–L773 | 有交易、冲突、回忆 |
+| B2 | B2 生成模式、全参考与多段（冷门） | 分册 | L775–L816 | 用到时再查 |
+| Q | Q 审片 | 分册 | L818–L944 | 用到时再查 |
+| X | X 导出、合成与交付 | 分册 | L946–L1129 | 用到时再查 |
 
 地图结束。下面是基础规则。
-本段校验码：68D41C2F
+本段校验码：F310871F
 
 ## A 铁律与流程
 
@@ -81,12 +85,19 @@ compatibility: Portable to any agent that can read local files — no external A
 ### 〔A-007〕 【待测】【通用】写提示词前读本章剧本和原著：剧情事实照原著、镜头设计照分镜、台词照剧本（2026-11-26 用户点出，主会话定口径）
 
 - 目的：用户原话：「写提示词的时候不光要看剧本，还要看原著」「剧本并不能很好地呈现原著表达的东西，这个时候就要去思考了」。
-- 做法：写或重写一镜前，读 brief 里的 `chapter_script`、`chapter_novel`（每章第一镜带上）和本镜的 `source_rule`，弄懂这场戏和原著要读者感受到什么（惊讶、窘迫、得意、温情）。分三层写：①剧情事实以原著为准：谁在场、做什么动作、有什么反应、时间、天气；②镜头设计照分镜：景别、机位、时长、切点；③台词照剧本（`dialogue`，E-004）。
-- 要求：原著有、剧本没表达出来的感受，在不改镜头设计的前提下，用表情、动作和环境补上，不只把剧本一句翻成英文。剧情事实与原著冲突时按原著写并报告；镜头设计或台词有问题退回分镜。
+- 做法：写或重写一镜前，读 brief 里的 `chapter_script`、`chapter_novel`（已在线上 brief 里，每章第一镜带上）和本镜的 `source_rule`，弄懂原著要读者感受到什么（惊讶、窘迫、得意、温情）。分三层写：①剧情事实以原著为准：谁在场、做什么动作、有什么反应、时间、天气；②镜头设计照分镜：景别、机位、时长、切点；③台词照剧本（`dialogue`，E-004）。
+- 要求：原著有、剧本没表达出来的感受，在不改镜头设计的前提下，用表情、动作和环境补上，不只把剧本一句翻成英文。剧情事实与原著冲突时提示词按原著写，报告列镜号，由管理会话开 visual 重写任务把 visual、sub_shots 改齐（A-004 三处同改）；镜头设计或台词有问题退回分镜。
 - 校验：报告写「已读本章剧本与原著」，列出按原著改了哪些事实。
-- 正例：原著是清晨散步、见人打太极、老人点头、他站到队尾跟练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。
-- 反例：只看分镜一句，写成边跑边看、背对人群冲镜头说心声；只写「他在跑步，心声：……」。
-本段校验码：35E2AA50
+- 正例：原著是清晨散步、见人打太极、他站到队尾跟练，就照这个写；原著写「换成以前早气喘如狗了」，就写他跑完轻松调匀呼吸、低头看手、嘴角带笑。反例：只看分镜一句写成边跑边看；只写「他在跑步，心声：……」。
+
+### 〔L-005〕 【待测】日常动作按现实常识写，能力提升不改日常行为（2026-11-26 用户点出）
+
+- 目的：用户原话：「一定要符合常识，除非特殊能力赋予的东西可以表现不一样」「主角能力提升了，手机使用姿势也不会变」。
+- 做法：用手机、开车、吃饭、走路、开门，照现实里普通人的做法写（手机见 FX-012）。
+- 要求：只有剧情明确交代的特殊能力或系统效果才可不同；能力提升不改日常行为。
+- 校验：自问现实里有人这样做吗。
+- 正例：升级后照常低头看手机、开门上车。反例：手机举到脸前屏幕朝外；车无故倒着进来。
+本段校验码：51FBD233
 
 ## B 提示词格式与标签
 
@@ -140,10 +151,10 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 
 `N-Ms:` 时间段、`runs from` 句里的秒数一律写整数；不写 0.5s 这类小数。
 
-#### 〔B-006〕 B-008【待定】画风基线
+#### 〔B-006〕 【待定】画风基线
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
-本段校验码：5B6C8566
+本段校验码：E045F7A8
 
 ## F 一致性（人物、服装、场景、道具、站位、人数）
 
@@ -159,9 +170,9 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 6. **Wide and crowd shots:** the named leads are at least medium size or in the foreground, with their clothing IDs; extras are described as "other guests" and must not wear a lead's colour.
 7. **Who does the action comes from the novel/script, not from a similar-looking extra.** If the visual line names a character (e.g. "支架青年 deletes the clip"), the reference bound for that action must be that character; flag the shot if the binding names someone else.
 8. **Headcount lock in every multi-person shot:** besides the count in the first sentence, write once in the body: `Exactly <N> people are in this shot and each of them appears only once: <A> (__MINIMAX_H3_REF_a__) in <clothing ID>; <B> (__MINIMAX_H3_REF_b__), a different man with a different face, <clothing ID>, never in <A's garment>. There is never a second <A> or any look-alike of him in the frame.` N counts only people on screen (voice-only and off-screen people are named as off screen).
-9. **No limb without an owner, no second copy of anyone:** every body part at the frame edge or in the foreground belongs to a named, bound person on screen (name the owner, e.g. `<A>'s half-cropped head and right shoulder at the screen-left edge`; never as an over-the-shoulder or foreground-shoulder phrase, which the no-over-the-shoulder rule (section E, "Faceless speaker" item 3) and the gate r71 OFF_OTS_BANNED reject; never use the lead as that half-cropped edge figure while he is also elsewhere in the frame, see ic-lessons TR-B09). Never write a shoulder, arm, hand or back of a head that has no owner in the story, and never a second copy of anyone: `No stray shoulder, hand or arm without an owner enters the frame, and nobody appears twice.` This item does not decide whether an over-the-shoulder framing is allowed; that is section E "Faceless speaker" item 3 and the gate's own OFF_OTS_BANNED.
+9. **No limb without an owner, no second copy of anyone:** every body part at the frame edge or in the foreground belongs to a named, bound person on screen (name the owner, e.g. `<A>'s half-cropped head and right shoulder at the screen-left edge`; never as an over-the-shoulder or foreground-shoulder phrase, which the no-over-the-shoulder rule (E2 volume, E-001 item 3) and the gate r71 OFF_OTS_BANNED reject; never use the lead as that half-cropped edge figure while he is also elsewhere in the frame, see ic-lessons TR-B09). Never write a shoulder, arm, hand or back of a head that has no owner in the story, and never a second copy of anyone: `No stray shoulder, hand or arm without an owner enters the frame, and nobody appears twice.` This item does not decide whether an over-the-shoulder framing is allowed; that is section E "Faceless speaker" item 3 and the gate's own OFF_OTS_BANNED.
 10. **Per-shot lock inside a scene:** items 2, 8 and 9 apply to every shot of the scene that binds the character, including solo shots, reaction shots and the last shots of the scene, not only the first ones. Solo shots too, in a scene where any shot has two or more people (R22 (2)(b)): a missing clothing ID is to be a gate ERROR (COSTUME_LOCK_MISSING_SOLO, pending).
-11. **Costume change vs. story state:** inside a scene the costume reference and clothing ID stay the same. A **costume change** (changes clothes, puts on or takes off a coat) switches `costume_ids` only from the first shot where the novel or script shows it, and from that shot uses the new clothing ID. A **story state** (injured, dirty, wet, exhausted) is an overlay on the same costume: keep the current `costume_ids` and write the state as words after the clothing ID; bind a state image only when an approved one that matches the novel exists (listed in the trajectory table), and never bind a state image that does not match — words are better than a wrong image. How bad an injury or tiredness looks follows the novel's degree; a user ruling wins (the management session writes it into the task input or the asset's state description). A prop-holding variant (e.g. "holding the bouquet") is not a costume change: keep the costume and bind the prop. Read the costume-state trajectory table when one exists.
+11. **Costume change vs. story state:** inside a scene the costume reference and clothing ID stay the same. A **costume change** (changes clothes, puts on or takes off a coat) switches `costume_ids` only from the first shot where the novel or script shows it (or where the costume track logs an activity change as 常识推断, adapt S-023), and from that shot uses the new clothing ID. A **story state** (injured, dirty, wet, exhausted) is an overlay on the same costume: keep the current `costume_ids` and write the state as words after the clothing ID; bind a state image only when an approved one that matches the novel exists (listed in the trajectory table), and never bind a state image that does not match — words are better than a wrong image. How bad an injury or tiredness looks follows the novel's degree; a user ruling wins (the management session writes it into the task input or the asset's state description). A prop-holding variant (e.g. "holding the bouquet") is not a costume change: keep the costume and bind the prop. Read the costume-state trajectory table when one exists.
 12. **Gaze lock when three or more people are on screen and someone speaks to a person who is not the lead:** `Gaze lock: whenever <A> speaks to <B> or listens to him, her eyes stay on <B>'s face and her head, shoulders and upper body are turned toward him; she never looks at <C> and never looks into the camera lens.` Add where B is on screen (screen side, standing or sitting) from the blocking. Missing: gate warning only; two people: FX-006.
 13. **Voice references:** every voice IC attaches gets its own reference line, `__MINIMAX_H3_REF_k__ is <name>'s voice (Sx)`, with Sx in speaking order inside this shot (see Output Rules). A voice reference with no definition line is a duplicate-person risk.
 14. **Scene lock:** the first body sentence names the location and two or more visible landmarks. A close-up with a blurred background still names one or two landmarks that remain recognisable in the blur. Use one negation only: `never a plain grey wall or a photo-studio backdrop`. IC always orders references as characters, then scenes, then props. Keep the scene reference early: do not bind background extras who are not needed (or bind a cropped single image, not a grey multi-view board), crop prop images, and never replace a detailed scene image with a rougher one.
@@ -191,5 +202,5 @@ H3 only draws people who have a reference and are named in the prompt, and it fr
 - 校验：这类场合（按场景资产用途判定）缺这句，或写了 suit / tie / badge 而资产没有，门禁报警告（只报不拦）。
 - 正例：售车店里主角照资产穿灰 T 恤，加上面那句。
 - 反例：只写 formal setting，成片主角西装领带。
-本段校验码：6A697B6B
+本段校验码：DAC2E861
 

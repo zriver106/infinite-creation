@@ -1,9 +1,7 @@
 <!-- rulebook: id=E tier=volume when=dialogue -->
 ## E 人声与台词
 
-E-001（看不见脸的人别和露脸的人同镜开口）2026-11-26 原样移到分卷 E2，两人及以上同镜时读。
-
-#### 〔E-002〕 第2、3集通过后转正：**The caller is a bound character (TR-V02).** In a phone shot the person on the other end is in `character_ids` even when off screen, or IC attaches no voice reference and the voice drifts. Write `It is the same voice in the room and through the phone receiver.`
+E-001 移到分卷 E2（两人及以上同镜时读）；E-009 静默锁、E-013 无台词时段不写人声背景移到分卷 E0（每镜都读）；E-002、E-005（电话那头的人和声音）移到分卷 PC（打电话、视频通话时读）。2026-11-26。
 
 ### 〔E-003〕 Dialogue window = visible speaking mouth — 台词时间窗与可见开口对齐
 
@@ -20,24 +18,15 @@ H3 places each `<d>` line by the time window it is written in and lip-syncs it t
    - Mixed shots (spoken dialogue + OS): the OS line uses the fixed OS sentence of the Inner-Monologue section (`An off-screen male/female inner-monologue voice (Sx), … narrates <d>…</d>. Nobody on screen is speaking; <Name> only listens to his/her own thoughts with his/her lips closed.`). Give it its own time block, written as closed-mouth acting with the face and closed mouth visible; put each spoken line in its own block before or after, never interleaved, with ≥ 0.8 s between blocks (2026-11-22; time fields are whole seconds, so in practice ≥ 1 s). Speaker IDs follow the order the voices are first heard in the shot.
    - No batch edit, lint fix or template may delete or skip a `<d>` line. After any batch edit, compare every shot's `<d>` text with its `dialogue` field before writing back.
 
-#### 〔E-005〕 **Phone voices (the far end of a call) are voiced by H3 too.** Write the caller's line as a `<d>` line with the caller's own speaker ID, described as the voice heard through the phone, e.g. `the caller's voice (S2) comes faintly through the phone's earpiece, tinny and slightly compressed, <emotion>, <pace>: <d>[Chinese] …</d>`, and bind the caller's own voice reference (`__MINIMAX_H3_REF_n__ is <Caller>'s voice (S2)`), so the timbre stays the same in every shot of the call.
-   - The on-screen call-taker acts normally: phone at the ear, listening reactions (brows, gaze, nod, free hand), and their own spoken replies as normal `<d>` lines with visible mouth. While the far end talks, the call-taker's lips rest closed.
-   - The far end may be shown: either as its own shot in the caller's location, or inside the call shot with hard cuts to the caller (at most 2 cuts per shot, every cut at least 1 s, each cut shows exactly one person). When the caller is on screen her line is an ordinary spoken line with her mouth visible; when she is not, it is the earpiece voice above. Bind the caller in `character_ids` and her location in `scene_ids`, and use the same voice reference in both cases. Never a split screen or an inset.
-   - Rule 9 of the Inner-Monologue section (listening wording, banned call/conversation words) still applies to an OS speaker on the phone.
-
 #### 〔E-006〕 **Voice references keep one timbre per person.** A character's voice reference is the same sample for every line they have in any shot (spoken, OS, phone), so the voice never changes between shots. Never bind two different samples to one character.
 
 #### 〔E-007〕 台词的情绪、语速、音量描述（原 Output Rules）
 
-- **Annotate every spoken line's delivery (emotion + speech pace + tone/volume) with a bias toward high energy**: before each `<d>…</d>`, after the speaker ID `(Sx)`, explicitly state how the line is spoken — emotion (furious / ecstatic / frantic / explosive / urgent / breathless / anxious / annoyed / amused / sad / nervous / hesitant / calm …), pace (fast / hurried / breathless / rapid-fire / measured / slow / drawn-out / hesitant …), and tone or volume (shout / cry out / whisper / murmur / rising / trembling / flat …). Pick the high-tension end of these lists unless the beat genuinely calls for calm. Never write a bare `S1 says, <d>…</d>` with no delivery description. Vary delivery and intensity between lines, speakers, and emotional turns within the same shot instead of one flat monotone. Follow the delivery wording shown in `references/ref-en.txt` (e.g. `exclaims with light annoyance`, `says in his usual voice with a playful tone and an easy conversational pace`, `replies … with an amused cadence`; never pitch or timbre words, see E-014) — and prefer its higher-energy phrasings for conflict, urgency, or strong emotion. **Exception for inner monologue:** the delivery description applies to the voice only; the on-screen face never acts the line with the mouth. For an OS line use the Inner-Monologue rule 8 sentence `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, in his usual voice, narrates <d>…</d>.` (V2 6#3): no name, no `says` / `in an off-screen voiceover`, nothing about the mouth after `</d>`.
+- **Annotate every spoken line's delivery (emotion + speech pace + tone/volume) with a bias toward high energy**: before each `<d>…</d>`, after the speaker ID `(Sx)`, explicitly state how the line is spoken — emotion (furious / ecstatic / frantic / explosive / urgent / breathless / anxious / annoyed / amused / sad / nervous / hesitant / calm …), pace (fast / hurried / breathless / rapid-fire / measured / slow / drawn-out / hesitant …), and tone or volume (shout / cry out / whisper / murmur / rising / trembling / flat …). Pick the high-tension end of these lists unless the beat genuinely calls for calm. Never write a bare `S1 says, <d>…</d>` with no delivery description. Vary delivery and intensity between lines, speakers, and emotional turns within the same shot instead of one flat monotone. Follow the delivery wording shown in `references/ref-en.txt` (e.g. `exclaims with light annoyance`, `says in his usual voice with a playful tone and an easy conversational pace`, `replies … with an amused cadence`; never pitch or timbre words, see E-014; drop the timbre words in the `ref-en.txt` / `base-en.txt` examples) — and prefer its higher-energy phrasings for conflict, urgency, or strong emotion. **Exception for inner monologue:** the delivery description applies to the voice only; the on-screen face never acts the line with the mouth. For an OS line use the Inner-Monologue rule 8 sentence `An off-screen male inner-monologue voice (S1), <emotion>, <pace>, in his usual voice, narrates <d>…</d>.` (V2 6#3): no name, no `says` / `in an off-screen voiceover`, nothing about the mouth after `</d>`.
 
-#### 〔E-008〕 E-005【待测】音色参考编号按 IC 装配顺序（TR-E01、G12）
+#### 〔E-008〕 【待测】音色参考编号按 IC 装配顺序（TR-E01、G12）
 
 IC 装配参考素材的顺序固定为：人物图 → 场景图 → 道具图 → 有台词的说话人的音色。写 `__MINIMAX_H3_REF_n__ is <name>'s voice (Sx)` 时，n 按 brief 里 references 列出的顺序数，不越界、不写反；没有音色参考的角色不写音色句。
-
-#### 〔E-009〕 E-008【待测】无台词镜写静默锁（TR-E03、G15）
-
-dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person in the frame keeps the lips naturally together and still, the jaw relaxed.`，不写诱导张嘴的动作（mouth opens to snap back、starts to say 等）。
 
 #### 〔E-010〕 【待测】`dialogue` 就是字幕原文：逐字校对，改台词后报重新导出（G18，txt L70、L132）
 
@@ -86,18 +75,10 @@ dialogue 为空的镜写 `Silence lock: the whole shot is silent; every person i
   - 报告句：`Shot <n>: number / key word rewritten to its spoken form in dialogue, <d> and sub_shots.`
 - 错误案例：见 `C:\Users\usazr\Documents\moviePro\docs\通用规则_错误案例.md` CASE-024、CASE-025
 
-#### 〔E-013〕 【待测】没有台词的时段不写任何人声背景（2026-11-26 用户点出）
-
-- 目的：murmur、chatter、交谈声、低语会被 H3 生成成听不懂的中文胡话。
-- 做法：没有 `<d>` 的时段只写非人声（脚步、餐具、车声、风声），并写 `nobody speaks`；要热闹就写非人声，或请分镜给具体台词（E-004）。
-- 要求：不写 murmur、chatter、background conversation、people talking、whispering 等人声背景；某句 `<d>` 的说法（E-007 的 whisper）不在此列。无台词镜同时写 E-009 静默锁。
-- 校验：交稿前搜上述词，只许出现在某句 `<d>` 的说法里。
-- 正例：`0-3s: nobody speaks; only the clink of cutlery and footsteps are heard.` 反例：`the restaurant is filled with the low murmur of diners`，成片邻桌念出一串胡话。案例：案-E-待建-E23S01-01
-
 #### 〔E-014〕 【待测】台词前只写情绪和语速，不写音高、音色词（2026-11-26 用户点出）
 
 - 目的：音色只来自音色参考（E-006）；写 low、deep，H3 就改嗓子，前后镜声音不同。
-- 做法：`<d>` 前写 `(Sx)`、`in his/her usual voice`、情绪、语速（可加音量 shout / whisper）。同一人每镜这句声音描述固定，后面再加情绪词。
-- 要求：不写 low、deep、high、sharp、husky、raspy、bright、young male voice、低沉、沙哑等音高音色词；心声句的 `<voice quality>`（C-001 第 8 条）、电话声（E-005）同样只填 `in his/her usual voice`，听筒的 tinny 可留；D-002 系统声固定句不受本条限制。
-- 校验：逐句看 `<d>` 前只有情绪、语速、音量和 usual voice。正例：`She (S2), in her usual voice, annoyed, fast, says <d>…</d>`
+- 做法：`<d>` 前按 `(Sx), <情绪>, <语速>, in his/her usual voice` 的顺序写（同 C-001 第 8 条、E-007）；台词可加音量 shout / whisper，心声句不加；语调 rising / trembling / flat 可用；同一人每镜描述固定。
+- 要求：不写 low、deep、high、sharp、husky、raspy、bright、young male voice、低沉、沙哑；心声句、电话声同样只填 usual voice（听筒 tinny 可留）；D-002 系统声固定句除外。
+- 校验：逐句看 `<d>` 前只有上述词和 usual voice。正例：`She (S2), annoyed, fast, in her usual voice, says <d>…</d>`
 - 反例：上一镜 `in a low husky voice`、下一镜 `in a bright sharp voice`，同一人两种嗓子（两例，案例待建）。

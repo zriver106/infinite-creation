@@ -51,6 +51,6 @@ When `visual` and the prompt disagree, the prompt wins and `visual` is rewritten
 
 `N-Ms:` 时间段、`runs from` 句里的秒数一律写整数；不写 0.5s 这类小数。
 
-#### 〔B-006〕 B-008【待定】画风基线
+#### 〔B-006〕 【待定】画风基线
 
 唯一风格句由总导定稿后写入本条；定稿前不改各镜现有风格句，也不写任何把画面锁到参考图的句子（见本类「不写画风锁定句」）。
