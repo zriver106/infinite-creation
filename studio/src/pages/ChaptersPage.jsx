@@ -243,6 +243,22 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
     }
   }
 
+  // 资产分析（Andy 11-26：章节页加「生成全部资产」「生成资产」）：起 IC 资产分析任务（读规则 → 读原著 → 地点表、戏份说明、缺图单），不出图
+  const [aaSubmitting, setAaSubmitting] = useState('');
+  const chapterNoOf = (c) => { const m = String((c && c.title) || '').match(/第\s*(\d+)\s*章/); return m ? Number(m[1]) : Number(c && c.seq) || 0; };
+  async function submitAssetAnalyze(range, key) {
+    setAaSubmitting(key);
+    try {
+      await api.post('/api/projects/' + projectId + '/assets/analyze', { chapters: range });
+      toast.success('已提交资产分析：第 ' + range[0] + (range[1] !== range[0] ? '–' + range[1] : '') + ' 章（读原著定地点表、戏份说明和缺图单，在「任务」里看进度）');
+      onRefresh && onRefresh();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setAaSubmitting('');
+    }
+  }
+
   async function handleStop(chapter) {
     setStopping(true);
     try {
@@ -308,6 +324,16 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
                 <>
                   <Button variant="secondary" size="md" disabled={!chapters.length || allChaptersRunning} onClick={() => submitRun(null)}>
                     <Play size={13} /> 生成全部章节
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    title="全书资产分析：按场景生命周期读原著，定地点表（一个地点一套资产）、写戏份说明、出缺图单；不出图"
+                    loading={aaSubmitting === '__all__'}
+                    disabled={!chapters.length || !!aaSubmitting}
+                    onClick={() => { const nos = chapters.map(chapterNoOf).filter((n) => n > 0); submitAssetAnalyze([Math.min(...nos), Math.max(...nos)], '__all__'); }}
+                  >
+                    <BookOpen size={13} /> 生成全部资产
                   </Button>
                 </>
               ) : null}
@@ -488,6 +514,17 @@ export default function ChaptersPage({ projectId, chapters, onRefresh, running, 
                               <BookOpen size={11} /> 检查资产
                             </Button>
                           ) : null}
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            className="min-w-[5.5rem] flex-1"
+                            title="本章资产分析：本章出现的场景、人物服装、道具按生命周期读原著，登记地点表、写戏份说明、出缺图单；不出图"
+                            loading={aaSubmitting === c.id}
+                            disabled={!!aaSubmitting || !chapterNoOf(c)}
+                            onClick={() => submitAssetAnalyze([chapterNoOf(c), chapterNoOf(c)], c.id)}
+                          >
+                            <BookOpen size={11} /> 生成资产
+                          </Button>
                         </>
                       ) : null}
                       {canEdit ? (
