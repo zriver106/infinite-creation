@@ -24,9 +24,13 @@ const NOVEL = '江澈正坐在工位上发愣。\n“江澈，上班时间还敢
 test('checkScriptDraft：旁白多 / 旁白长 / 没有 [画面：] / 心声第三人称 / 比原著短 / 原著台词找不到', () => {
   const bad = '【第1场｜上午｜公司办公室】\n出场人物：江澈、韩志成\n旁白：江澈正坐在工位上发愣，脑海里忽然响起一个清晰无比的声音。\n旁白：韩志成走了过来。\n江澈（心声）：江澈心想这下完了。';
   const codes = SG.checkScriptDraft(bad, NOVEL + NOVEL).map((x) => x.code);
-  for (const c of ['NARRATION_MANY', 'NARRATION_LONG', 'NO_PICTURE_LINE', 'OS_THIRD_PERSON', 'SCRIPT_SHORTER', 'NOVEL_LINE_MISSING']) assert.ok(codes.includes(c), c + ' in ' + codes.join(','));
-  const good = '【第1场｜上午｜公司办公室】\n出场人物：江澈、韩志成\n[画面：江澈坐在工位上发愣，盯着屏幕一动不动。韩志成从过道快步走来，脸拉得老长，一掌拍在桌上。]\n韩志成：江澈！上班时间还敢发呆摸鱼，扣两百！\n江澈（心声）：完了，这个月又白干了。她说等工作稳定，我连房租都快交不上。\n[画面：江澈缩了缩脖子，赶紧把手放回键盘。]';
-  assert.deepEqual(SG.checkScriptDraft(good, NOVEL), [], '数字两种写法、「她说」说别人、有画面行都不报');
+  for (const c of ['NARRATION_MANY', 'NARRATION_LONG', 'NO_PICTURE_LINE', 'OS_THIRD_PERSON', 'SCRIPT_SHORTER', 'NOVEL_LINE_MISSING', 'NO_BEAT_TABLE', 'NO_SCENE_LOCK']) assert.ok(codes.includes(c), c + ' in ' + codes.join(','));
+  const LOCK = '**场头锁定**\n- **地点：** 公司办公室\n- **在场：** 江澈、韩志成\n- **服装：** 江澈浅灰衬衫\n- **站位：** 江澈坐中间，韩志成从右后来\n';
+  const good = '## 本章节拍表\n| 拍 | 原著 |\n\n## 【第1场｜上午｜公司办公室】\n' + LOCK + '[画面：江澈坐在工位上发愣，盯着屏幕一动不动。韩志成从过道快步走来，脸拉得老长，一掌拍在桌上。]\n韩志成：江澈！上班时间还敢发呆摸鱼，扣两百！\n江澈（OS）：完了，这个月又白干了。她说等工作稳定，我连房租都快交不上。\n[画面：江澈缩了缩脖子，赶紧把手放回键盘。]\n## 【第2场｜上午｜公司办公室】\n**场头锁定：** 同第 1 场，都不变。\n[画面：江澈拿起手机。]';
+  assert.deepEqual(SG.checkScriptDraft(good, NOVEL), [], '有节拍表、场头锁定（含「同第 1 场」）、数字两种写法、「她说」说别人、有画面行都不报');
+  const runs = SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n' + LOCK + '[画面：江澈躺着。]\n江澈（OS）：一。\n江澈（OS）：二。\n江澈（OS）：三。', '');
+  assert.deepEqual(runs.map((x) => x.code), ['OS_RUN'], '同一场连续 3 句心声');
+  assert.deepEqual(SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n**场头锁定**\n- **地点：** 家\n- **在场：** 江澈\n- **服装：** 睡衣\n[画面：躺着。]', '').map((x) => x.detail.replace(/^.*：/, '')), ['场头锁定缺 站位']);
 });
 
 test('get_chapter：本章还没剧本、规则没读完 → 不给原著正文；读完 adapt-rules + sd-storyboard-engine（开了表现开关还要 H2）才给', async () => {
