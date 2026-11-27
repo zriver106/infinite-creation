@@ -25,5 +25,8 @@ test('兜底视频 / 出图提示词带锚点；别的风格原样', () => {
   assert.match(P.fallbackVideoPrompt({ references: [], style: '写实偏动漫3D', visual: 'v' }), new RegExp('画面风格：写实3D CG（realistic 3D CG render'));
   assert.match(P.fallbackVideoPrompt({ references: [], style: '动漫', visual: 'v' }), /画面风格：动漫(?!（)/);
   const a = P.fallbackAssetPrompt({ type: 'character', name: '江澈', description: 'd', style: '写实偏动漫3D' });
-  assert.ok(JSON.stringify(a).includes('realistic 3D CG render')); assert.ok(!JSON.stringify(a).includes('动漫'));
+  assert.ok(JSON.stringify(a).includes('真人定妆照')); assert.ok(!JSON.stringify(a).includes('动漫'));
+  const sc = JSON.stringify(P.fallbackAssetPrompt({ type: 'scene', name: '餐厅', description: 'd', style: '写实偏动漫3D' }));
+  assert.ok(sc.includes('照片级写实室内或街景摄影')); assert.ok(!/动漫|CG|anime|donghua/.test(sc));
+  assert.equal(S.styleWithAnchor('动漫', 'scene'), '动漫');
 });
