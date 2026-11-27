@@ -121,6 +121,11 @@ test('提交：范围校验、同项目只跑一个、假 Agent 写了地点表�
   const rg = AA.submitAssetAnalyzeJob({ projectId: p.id, runAgentFn: async () => { G0.mergeGapList(p.id, { items: [{ kind: 'prop', name: '只写缺图单的行', requirement: 'x' }] }); } });
   const jg = await wait(rg.job.id, ['done', 'failed']);
   assert.equal(jg.status, 'done', jg.error); assert.match(jg.detail, /缺图单本次有更新/);
+  // 只改资产描述也算成功（总导 11-26：ed07fe1d 8 条 update 都成功，却因没写地点表判失败）
+  const ha = core.Assets.create(p.id, { category: 'character', name: '韩志成', description: '旧' });
+  const rd = AA.submitAssetAnalyzeJob({ projectId: p.id, runAgentFn: async () => { core.Assets.update(ha.id, { description: '三十七八岁，略发福，头发后梳' }); } });
+  const jd = await wait(rd.job.id, ['done', 'failed']);
+  assert.equal(jd.status, 'done', jd.error); assert.match(jd.detail, /资产描述 \/ 资产槽本次有更新/);
   const r3 = AA.submitAssetAnalyzeJob({ projectId: p.id, runAgentFn: () => hold });
   assert.throws(() => AA.submitAssetAnalyzeJob({ projectId: p.id, runAgentFn: async () => {} }), (e) => e.code === 'PROJECT_BUSY');
   release(); await wait(r3.job.id, ['done', 'failed']);
