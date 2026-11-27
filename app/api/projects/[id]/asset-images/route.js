@@ -8,7 +8,8 @@
 // POST { action: 'broadcast', text }           → 口径变了，给每个线程发一句「之前的 X 作废，以本条为准」
 import { NextResponse } from 'next/server';
 import { Projects, withWriteContext } from '@/lib/core/index.js';
-import { loadWork, staleRows, threadsOf, THREADS_KEY } from '@/lib/core/asset-image-work.js';
+import { loadWork, staleRows, threadsOf, rowsWithStatus, THREADS_KEY } from '@/lib/core/asset-image-work.js';
+import { getLocations } from '@/lib/core/locations.js';
 import { setRunning, ensureLoop, tick, summary, broadcast } from '@/lib/agent/asset-image.js';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,9 @@ export async function GET(_req, { params }) {
   ensureLoop(id);
   const w = loadWork(id);
   const items = Object.entries(w.items || {}).map(([aid, it]) => ({ asset_id: aid, name: it.name, lane: it.lane, thread: it.thread, step: it.step, round: it.round, status: it.status, note: it.note || '', approved: Object.keys(it.approved || {}), review_job: it.review_job || '' }));
-  return NextResponse.json({ ...summary(w), threads_config: threadsOf(id), items });
+  // 资产分析的存疑（没定的）也给界面显示（总导 11-26）
+  const doubts = (getLocations(id).doubts || []).filter((d) => d && !String(d.decided || '').trim());
+  return NextResponse.json({ ...summary(w), threads_config: threadsOf(id), items, rows: rowsWithStatus(id, w), doubts });
 }
 
 export async function POST(req, { params }) {

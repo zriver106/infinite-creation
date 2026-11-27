@@ -22,6 +22,7 @@ import { AssetCategoryIcon } from '../components/visuals.jsx';
 import { Badge, Button, EmptyState, Field, Input, SearchInput, Segmented, Select, StatusPill, Textarea } from '../components/ui.jsx';
 import { BusyOverlay, Modal } from '../components/overlays.jsx';
 import PageHeader from '../components/PageHeader.jsx';
+import AssetImagePanel from '../components/AssetImagePanel.jsx';
 import { AssetMedia, ImageLightbox } from '../components/media.jsx';
 import { useToast } from '../components/toast.jsx';
 
@@ -279,6 +280,8 @@ export default function AssetsPage({ projectId, jobs = [], onRefresh, readOnly =
           )
         }
       />
+
+      <AssetImagePanel projectId={projectId} canGenerate={!readOnly && canGenerate} />
 
       <div className="panel flex flex-wrap items-center justify-between gap-3 p-2.5">
         <Segmented

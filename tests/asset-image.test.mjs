@@ -183,3 +183,30 @@ test('站位踩过的坑：am 改了文件名按资产名兜底收图；发送�
   assert.equal(b.length, 2); assert.equal(am.sent.slice(-2).every((x) => /作废/.test(x.text)), true);
   AI.setRunning(p.id, false);
 });
+
+test('返修 3 轮还不过：标「需人工」停在那一行，不再退回，线程让出来；界面行状态：排队 / 需人工', async () => {
+  const p = setup('aimg-6');
+  core.Projects.setContextKey(p.id, W.THREADS_KEY, [{ name: '道具UI', session: 's-prop', lane: 'prop' }]);
+  const a1 = core.Assets.create(p.id, { category: 'prop', name: '银行卡' });
+  const a2 = core.Assets.create(p.id, { category: 'prop', name: '手机' });
+  G.mergeGapList(p.id, { items: [{ kind: 'prop', name: '银行卡', requirement: 'x' }, { kind: 'prop', name: '手机', requirement: 'y' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = a1.id; doc.items[1].asset_id = a2.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const am = fakeAm();
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'return', checks: { ...CHECKS_OK, no_text: { ok: false, note: '有字' } }, return_note: '去掉卡面字' })); };
+  AI.setRunning(p.id, true);
+  await AI.tick(p.id, am);
+  assert.equal(W.rowsWithStatus(p.id).find((r) => r.asset_id === a2.id).status, 'queued');
+  for (let r = 1; r <= 3; r++) {
+    const it = W.loadWork(p.id).items[a1.id];
+    am.outbox[it.prefix + '.png'] = png(path.join(tmp, 'n' + r + '.png'));
+    await AI.tick(p.id, am);
+    await waitFor(() => { const x = W.loadWork(p.id).items[a1.id]; return x.round === r + 1 || x.status === 'needs_human'; });
+  }
+  const it = W.loadWork(p.id).items[a1.id];
+  assert.equal(it.status, 'needs_human'); assert.equal(it.round, 3);
+  assert.equal(am.sent.filter((x) => /【退回/.test(x.text)).length, 2, '只退回了 r2、r3');
+  await AI.tick(p.id, am);
+  assert.ok(W.loadWork(p.id).items[a2.id], '线程让出来，派下一张');
+  assert.equal(W.rowsWithStatus(p.id).find((r) => r.asset_id === a1.id).status, 'needs_human');
+  AI.setRunning(p.id, false);
+});

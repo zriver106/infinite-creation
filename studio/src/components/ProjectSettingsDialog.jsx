@@ -33,6 +33,8 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   // 表现手段开关：Q版插入 / 夸张特效 / 网络流行语与谐音 / 段子与接梗（老项目缺字段视为开）
   const [exprSwitches, setExprSwitches] = useState(() => expressionSwitchValues(null));
   const [saving, setSaving] = useState(false);
+  // am 线程表（资产出图：一个线程一个车道；总导 11-26）
+  const [threads, setThreads] = useState([]);
 
   useEffect(() => {
     if (!open || !project) return;
@@ -50,6 +52,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setEnableSub(project.enable_subtitles !== false);
     setAutoScript(project.auto_script !== false);
     setExprSwitches(expressionSwitchValues(project));
+    setThreads(((project.context && project.context.asset_image_threads) || []).map((t) => ({ ...t })));
   }, [open, project]);
 
   async function save() {
@@ -69,6 +72,10 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
         ...exprSwitches,
       });
       if (assetMode !== assetModeOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { mode: assetMode });
+      const cleanThreads = threads.filter((t) => String(t.name || '').trim() && String(t.session || '').trim());
+      if (cleanThreads.length && JSON.stringify(cleanThreads) !== JSON.stringify((project.context && project.context.asset_image_threads) || [])) {
+        await api.post('/api/projects/' + project.id + '/asset-images', { action: 'threads', threads: cleanThreads });
+      }
       toast.success('项目设置已保存');
       onOpenChange(false);
       onSaved();
@@ -167,10 +174,23 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
             hint={assetMode === 'auto'
               ? '本地模型：IC 用本机 ComfyUI 自己文生图 / 图生图、换装、年龄变体，占显卡。'
               : assetMode === 'gap-list'
-                ? 'Muse 出图：人物、场景、道具、服装图由 Muse（am）在 IC 外制作入库，IC 不生图，缺的图记进缺件单；音色照常由 IC 生成。'
+                ? 'Muse 出图：IC 按缺图单派 am 出图，IC 的审图 Agent 审过就入库、不过自动退回返修（素材库页「资产出图」点按钮）；音色照常由 IC 生成。'
                 : '跟随「系统设置 → ComfyUI 服务 → 资产出图方式」。'}
           >
             <Select value={assetMode} onChange={setAssetMode} items={ASSET_MODE_ITEMS} />
+          </Field>
+          <Field label="am 线程" hint="资产出图派单用的 am 会话：一个线程一个车道（人物 / 场景 / 道具UI），线程数就是并行数。会话 id 用 muse-cli threads 查。">
+            <div className="flex flex-col gap-1.5">
+              {threads.map((t, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <Input className="w-[90px]" value={t.name || ''} placeholder="名称" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+                  <Input className="flex-1" value={t.session || ''} placeholder="am 会话 id" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, session: e.target.value } : x)))} />
+                  <Select className="w-[100px]" value={t.lane || 'person'} onChange={(v) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, lane: v } : x)))} items={[{ value: 'person', label: '人物' }, { value: 'scene', label: '场景' }, { value: 'prop', label: '道具UI' }]} />
+                  <Button variant="ghost" size="sm" onClick={() => setThreads((ts) => ts.filter((_, j) => j !== i))}>删</Button>
+                </div>
+              ))}
+              <Button variant="secondary" size="sm" className="self-start" onClick={() => setThreads((ts) => [...ts, { name: '', session: '', lane: 'person' }])}>加一个线程</Button>
+            </div>
           </Field>
         </FormSection>
 
