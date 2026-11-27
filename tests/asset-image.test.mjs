@@ -93,25 +93,74 @@ test('退回：原线程发「【退回 r2」，轮次 +1；r2 过了才写回',
   AI.setRunning(p.id, false);
 });
 
-test('_MV：A 过 → 同线程带 A 派 B → C → D，D 过后拼 2×2 写回', async () => {
+test('_MV 并行（总导 11-26）：A 过 → B/C/D 拆子单同时派给三个场景线程、各自审图 → 齐了拼 2×2 拼板核对 → 写回；线程不够时等空', async () => {
   const p = setup('aimg-3');
+  core.Projects.setContextKey(p.id, W.THREADS_KEY, [{ name: '场景1', session: 's1', lane: 'scene' }, { name: '场景2', session: 's2', lane: 'scene' }]);
   const mv = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·工位区·多视角定义图' });
   G.mergeGapList(p.id, { items: [{ kind: 'scene', name: 'L01_MV·工位区·多视角定义图', requirement: '空场' }] });
   const doc = G.getGapList(p.id); doc.items[0].asset_id = mv.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
-  const am = fakeAm();
-  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'pass', checks: CHECKS_OK, checklist: [{ item: '工位', expected: '4×4', seen: '4×4', ok: true }] })); };
+  const am = fakeAm(); const reviewed = [];
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; reviewed.push(cp.step); assert.equal(cp.asset_id, mv.id, '审图拿原资产 id'); fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'pass', checks: CHECKS_OK, checklist: [{ item: '工位', expected: '4×4', seen: '4×4', ok: true }] })); };
   AI.setRunning(p.id, true);
-  for (const [i, step] of ['A', 'B', 'C', 'D'].entries()) {
-    await AI.tick(p.id, am);
-    const it = W.loadWork(p.id).items[mv.id];
-    assert.equal(it.step, step); assert.match(am.sent[i].text, new RegExp('只出 ' + step + ' 格'));
-    if (step !== 'A') assert.match(am.sent[i].text, /A 格/);
-    am.outbox[it.prefix + '.png'] = png(path.join(tmp, 'mv_' + step + '.png'), ['red', 'green', 'blue', 'white'][i]);
-    await AI.tick(p.id, am);
-    await waitFor(() => { const x = W.loadWork(p.id).items[mv.id]; return x.status === 'next_step' || x.status === 'passed'; });
-  }
-  assert.equal(W.loadWork(p.id).items[mv.id].status, 'passed');
+  await AI.tick(p.id, am);
+  let it = W.loadWork(p.id).items[mv.id];
+  assert.equal(it.step, 'A'); assert.match(am.sent[0].text, /只出 A 格/);
+  am.outbox[it.prefix + '.png'] = png(path.join(tmp, 'mv_A.png'), 'red');
+  await AI.tick(p.id, am);
+  await waitFor(() => W.loadWork(p.id).items[mv.id].status === 'parallel');
+  assert.deepEqual(W.loadWork(p.id).items[mv.id].children, [mv.id + '#B', mv.id + '#C', mv.id + '#D']);
+  // 两个场景线程：B、C 同时派出，D 等线程空
+  await AI.tick(p.id, am);
+  let w = W.loadWork(p.id);
+  assert.equal(w.items[mv.id + '#B'].status, 'sent'); assert.equal(w.items[mv.id + '#C'].status, 'sent'); assert.equal(w.items[mv.id + '#D'].status, 'next_step');
+  assert.notEqual(w.items[mv.id + '#B'].thread, w.items[mv.id + '#C'].thread);
+  assert.equal(w.items[mv.id + '#B'].thread, '场景1', '先给母单原来的线程');
+  assert.match(am.sent[1].text, /只出 B 格/); assert.match(am.sent[1].text, /A 格/); assert.match(am.sent[2].text, /只出 C 格/);
+  const rows = W.rowsWithStatus(p.id);
+  assert.ok(rows.some((r) => r.child && r.asset_id === mv.id + '#B' && r.status === 'sent'), '界面列出子单');
+  for (const [s, c] of [['B', 'green'], ['C', 'blue']]) am.outbox[w.items[mv.id + '#' + s].prefix + '.png'] = png(path.join(tmp, 'mv_' + s + '.png'), c);
+  await AI.tick(p.id, am);
+  await waitFor(() => { const x = W.loadWork(p.id).items; return x[mv.id + '#B'].status === 'passed' && x[mv.id + '#C'].status === 'passed'; });
+  await AI.tick(p.id, am);
+  w = W.loadWork(p.id);
+  assert.equal(w.items[mv.id + '#D'].status, 'sent', '线程空了 D 接着派');
+  am.outbox[w.items[mv.id + '#D'].prefix + '.png'] = png(path.join(tmp, 'mv_D.png'), 'white');
+  await AI.tick(p.id, am);
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[mv.id].status === 'passed'));
+  assert.deepEqual(reviewed.slice(0, 1), ['A']); assert.equal(reviewed[reviewed.length - 1], 'compose');
+  assert.deepEqual(reviewed.slice(1, 4).sort(), ['B', 'C', 'D']);
   assert.match(core.Assets.get(mv.id).image_path, /\.png$/);
+  assert.equal(Object.values(W.loadWork(p.id).threads).filter((t) => t && t.current).length, 0, '线程都让出来了');
+  AI.setRunning(p.id, false);
+});
+
+test('_MV 并行：D 能复用同地点已定稿 _MV 的就直接用，不派 am；子单人工审过交母单', async () => {
+  const p = setup('aimg-3b');
+  core.Projects.setContextKey(p.id, W.THREADS_KEY, [{ name: '场景1', session: 's1', lane: 'scene' }, { name: '场景2', session: 's2', lane: 'scene' }]);
+  const done = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·走廊·多视角定义图' });
+  const mv = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·工位区·多视角定义图' });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: 'L01_MV·走廊·多视角定义图', location_id: 'L01', requirement: 'a' }, { kind: 'scene', name: 'L01_MV·工位区·多视角定义图', location_id: 'L01', requirement: 'b' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = done.id; doc.items[1].asset_id = mv.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const rel = 'assets/scenes/done.png'; png(path.join(core.projectDir(p.id), rel), 'blue'); core.Assets.update(done.id, { image_path: rel });
+  const w0 = W.loadWork(p.id);
+  w0.items[mv.id] = { name: 'L01_MV·工位区·多视角定义图', lane: 'scene', steps: ['A', 'B', 'C', 'D'], stepIdx: 0, step: 'A', round: 1, status: 'needs_human', file: png(path.join(tmp, '3b_a.png'), 'red'), approved: {}, returns: [], history: [], thread: '场景1' };
+  w0.allow = [mv.id];
+  W.saveWork(p.id, w0);
+  const am = fakeAm(); am.runReview = async () => {};
+  const r = AI.manualApprove(p.id, mv.id, { reason: 'A 对' }, am);
+  assert.equal(r.next, 'parallel');
+  let w = W.loadWork(p.id);
+  assert.deepEqual(w.items[mv.id].children, [mv.id + '#B', mv.id + '#C'], 'D 复用，不拆子单');
+  assert.ok(w.items[mv.id].approved.D); assert.ok(w.items[mv.id].history.some((h) => h.action === 'reuse_d' && h.from === done.id));
+  AI.setRunning(p.id, true);
+  await AI.tick(p.id, am);
+  assert.equal(am.sent.length, 2); assert.ok(am.sent.every((m) => !/只出 D 格/.test(m.text)));
+  w = W.loadWork(p.id);
+  w.items[mv.id + '#B'].status = 'needs_human'; w.items[mv.id + '#B'].file = png(path.join(tmp, '3b_b.png'), 'green'); W.saveWork(p.id, w);
+  assert.equal(AI.manualApprove(p.id, mv.id + '#B', { reason: 'B 对' }, am).next, 'child_done');
+  w = W.loadWork(p.id);
+  assert.ok(w.items[mv.id].approved.B); assert.equal(w.items[mv.id].status, 'parallel'); assert.match(w.items[mv.id].note, /还差 C/);
+  assert.ok(fs.existsSync(path.join(W.roundsDir(p.id, mv.id), 'review_B_r1_manual.json')), '人工审过记录放原资产目录');
   AI.setRunning(p.id, false);
 });
 

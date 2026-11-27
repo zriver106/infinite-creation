@@ -21,7 +21,7 @@ before(async () => {
 
 test('上限：默认值；项目设置覆盖；规整拒绝不认识的类型和越界值', () => {
   const p = core.Projects.create({ name: 'lim' });
-  assert.deepEqual(L.agentLimitsOf(p.id), { script: 2, storyboard: 3, prompt: 3, asset: 1, review: 2 });
+  assert.deepEqual(L.agentLimitsOf(p.id), { script: 2, storyboard: 3, prompt: 3, asset: 1, review: 3 });
   core.Projects.setContextKey(p.id, L.AGENT_LIMITS_KEY, { storyboard: 5, prompt: 99 });
   assert.equal(L.agentLimit(p.id, 'storyboard'), 5); assert.equal(L.agentLimit(p.id, 'prompt'), 8);
   const n = L.normalizeAgentLimits({ script: 3, foo: 1, review: 0 });

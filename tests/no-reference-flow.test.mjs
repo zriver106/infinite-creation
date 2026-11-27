@@ -72,15 +72,21 @@ test('没有参考项目：资产分析建人物 → 音色交新设计 → 出�
     },
   };
   AI.setRunning(p.id, true, { allow: [mvRow.asset_id] });
-  for (const step of ['A', 'B', 'C', 'D']) {
+  // _MV 并行（总导 11-26）：A 过后 B/C/D 拆子单各自派线程；线程不够就轮着来。每拍把在途的单都交图
+  const seenSteps = new Set();
+  for (let i = 0; i < 20 && W.loadWork(p.id).items[mvRow.asset_id]?.status !== 'passed'; i++) {
     await AI.tick(p.id, am);
-    const it = W.loadWork(p.id).items[mvRow.asset_id];
-    assert.equal(it.step, step);
-    assert.doesNotMatch(sent[sent.length - 1], /前作定稿底图/, '没有底图就不提图生图');
-    outbox[it.prefix + '.png'] = png(path.join(tmp, step + '.png'));
+    const items = W.loadWork(p.id).items;
+    for (const [k, it] of Object.entries(items)) {
+      if (!k.startsWith(mvRow.asset_id) || it.status !== 'sent' || outbox[it.prefix + '.png']) continue;
+      seenSteps.add(it.step);
+      assert.doesNotMatch(sent[sent.length - 1], /前作定稿底图/, '没有底图就不提图生图');
+      outbox[it.prefix + '.png'] = png(path.join(tmp, it.step + '.png'));
+    }
     await AI.tick(p.id, am);
-    await waitFor(() => ['next_step', 'passed'].includes(W.loadWork(p.id).items[mvRow.asset_id].status));
+    await waitFor(() => !Object.entries(W.loadWork(p.id).items).some(([k, x]) => k.startsWith(mvRow.asset_id) && x.status === 'reviewing'));
   }
+  assert.deepEqual([...seenSteps].sort(), ['A', 'B', 'C', 'D']);
   assert.ok(await waitFor(() => W.loadWork(p.id).items[mvRow.asset_id].status === 'passed'), '拼板核对过了写回');
   assert.ok(core.Assets.get(mvRow.asset_id).image_path);
   AI.setRunning(p.id, false);

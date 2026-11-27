@@ -16,6 +16,7 @@ const STATUS = {
   stale: ['待对账（20 分钟没回图）', 'danger'],
   reviewing: ['待审', 'accent'],
   next_step: ['下一格排队', 'info'],
+  parallel: ['B/C/D 并行出图', 'accent'],
   review_failed: ['审图没交结论', 'danger'],
   needs_human: ['需人工', 'danger'],
   return_queued: ['排队退回（重审没过）', 'info'],
@@ -147,7 +148,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                   <td className="p-1.5 text-[var(--fg-3)]">{KIND[r.kind] || r.kind}</td>
                   <td className="p-1.5"><Badge tone={st.tone} dot={r.status === 'sent' || r.status === 'reviewing'}>{st.text}</Badge>{r.note && ALERT.has(r.status) ? <div className="mt-0.5 text-[10.5px] text-[var(--danger)]">{r.note}</div> : null}</td>
                   <td className="p-1.5 text-[var(--fg-3)]">{r.step && r.step !== 'main' ? r.step + ' 格 · ' : ''}{r.round ? 'r' + r.round : ''}</td>
-                  <td className="p-1.5">{/_MV/.test(r.name) && canGenerate && (dSources(r).length || (r.versions || []).length) ? (
+                  <td className="p-1.5">{/_MV/.test(r.name) && !r.child && canGenerate && (dSources(r).length || (r.versions || []).length) ? (
                     <select className="rounded border border-[var(--line)] bg-transparent p-0.5 text-[11px]" value="" disabled={!!busy} onChange={(e) => setD(r, e.target.value)}>
                       <option value="">人工指定 D…</option>
                       {dSources(r).map((x) => <option key={x.asset_id} value={x.asset_id}>取「{x.name}」的 D</option>)}
@@ -155,7 +156,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                     </select>
                   ) : <span className="text-[var(--fg-4)]">—</span>}</td>
                   <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
-                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && ['sent', 'unconfirmed', 'stale_warn', 'stale', 'return_queued'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setCxl({ row: r, reason: '' })}>撤回</Button> : null}{canGenerate && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: '' })}>人工退回</Button> : null}</td>
+                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && ['sent', 'unconfirmed', 'stale_warn', 'stale', 'return_queued'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setCxl({ row: r, reason: '' })}>撤回</Button> : null}{canGenerate && !r.child && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: r.child ? r.step : '' })}>人工退回</Button> : null}</td>
                 </tr>
               );
             })}
@@ -198,10 +199,10 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
         {apv ? <textarea className="min-h-[100px] w-full rounded border border-[var(--line)] bg-transparent p-2 text-[12px]" placeholder="理由（记成人工审核记录），例：审图误判，C 格和 A 是同一车厢，门在右侧" value={apv.reason} onChange={(e) => setApv((x) => ({ ...x, reason: e.target.value }))} /> : null}
       </Modal>
 
-      <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || (/_MV/.test(ret.row.name) && !ret.step) || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
+      <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || (/_MV/.test(ret.row.name) && !ret.row.child && !ret.step) || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
         {ret ? (
           <div className="flex flex-col gap-2 text-[12px]">
-            {/_MV/.test(ret.row.name) ? (
+            {/_MV/.test(ret.row.name) && !ret.row.child ? (
               <label className="flex items-center gap-2">退哪一格
                 <select className="rounded border border-[var(--line)] bg-transparent p-1" value={ret.step} onChange={(e) => setRet((x) => ({ ...x, step: e.target.value }))}>
                   <option value="" disabled>请选择（必选）</option>
