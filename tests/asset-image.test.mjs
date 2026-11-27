@@ -157,3 +157,29 @@ test('派单模板（技能参考文件）占位符填好；asset-image 技能�
   const sk = SE.loadSkill('asset-image');
   assert.ok(sk && String(sk.content || sk.body || JSON.stringify(sk)).length < 40000);
 });
+
+test('站位踩过的坑：am 改了文件名按资产名兜底收图；发送没确认先查 history，不重发；broadcast 每个线程发一句', async () => {
+  const p = setup('aimg-5');
+  const a1 = core.Assets.create(p.id, { category: 'character', name: '外卖骑手' });
+  G.mergeGapList(p.id, { items: [{ kind: 'character', name: '外卖骑手', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = a1.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const am = fakeAm(); let confirmNext = false; const asked = [];
+  am.send = async (session, text) => { am.sent.push({ session, text }); return { ok: true, confirmed: confirmNext }; };
+  am.historyHas = async (s, marker) => { asked.push(marker); return true; };
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'pass', checks: CHECKS_OK })); };
+  AI.setRunning(p.id, true);
+  await AI.tick(p.id, am);
+  assert.equal(W.loadWork(p.id).items[a1.id].status, 'unconfirmed');
+  await AI.tick(p.id, am);
+  assert.equal(W.loadWork(p.id).items[a1.id].status, 'sent', '下一拍对账查到了算发出');
+  assert.equal(am.sent.length, 1, '没重发'); assert.match(asked[0], /ic_out/);
+  // am 自己起了名字（带行号和 _V2），按资产名兜底收
+  am.outbox['27_外卖骑手_V2.png'] = png(path.join(tmp, 'q1.png'));
+  am.list = async () => ({ ok: true, files: [{ name: '27_外卖骑手_V2.png', size: 1, modifiedAt: new Date().toISOString() }] });
+  await AI.tick(p.id, am);
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[a1.id].status === 'passed'));
+  confirmNext = true;
+  const b = await AI.broadcast(p.id, '之前的「国漫」段作废，以本条为准', am);
+  assert.equal(b.length, 2); assert.equal(am.sent.slice(-2).every((x) => /作废/.test(x.text)), true);
+  AI.setRunning(p.id, false);
+});
