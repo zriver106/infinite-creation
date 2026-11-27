@@ -58,5 +58,15 @@
    "expression"
   ],
   "chars": 2383
+ },
+ {
+  "file": "J2_资产制作.md",
+  "id": "J2",
+  "title": "J2 资产制作（资产分析、派图、审图时读）",
+  "tier": "volume",
+  "when": [
+   "asset"
+  ],
+  "chars": 0
  }
 ]

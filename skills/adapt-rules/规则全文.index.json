@@ -1,12 +1,12 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-615fe0fc3a",
+ "version": "rules-fed8ced248",
  "file": "规则全文.md",
- "file_md5": "26F3C6BD4A534B3846D21EEFF63D9DFD",
- "total_lines": 686,
- "base_end_line": 658,
- "base_chars": 37968,
+ "file_md5": "F2848FDFBB8915CE9AB1EF2B96AF7EED",
+ "total_lines": 647,
+ "base_end_line": 564,
+ "base_chars": 33582,
  "base_budget_chars": 40000,
  "budget_chars": 92000,
  "budget_mode": "total",
@@ -17,19 +17,19 @@
    "title": "地图",
    "tier": "map",
    "start": 1,
-   "end": 24,
+   "end": 25,
    "when": [
     "always"
    ],
-   "chars": 879,
-   "checksum": "6DD4EE00"
+   "chars": 935,
+   "checksum": "357F60F7"
   },
   {
    "id": "A",
    "title": "A 铁律与流程",
    "tier": "base",
-   "start": 26,
-   "end": 83,
+   "start": 27,
+   "end": 84,
    "when": [
     "always"
    ],
@@ -40,8 +40,8 @@
    "id": "R",
    "title": "R 剧本（台词读法、心声长短）",
    "tier": "base",
-   "start": 85,
-   "end": 234,
+   "start": 86,
+   "end": 235,
    "when": [
     "always"
    ],
@@ -52,8 +52,8 @@
    "id": "S",
    "title": "S 分镜（同场锁、换装、站位、节奏、参考图）",
    "tier": "base",
-   "start": 236,
-   "end": 448,
+   "start": 237,
+   "end": 449,
    "when": [
     "always"
    ],
@@ -64,8 +64,8 @@
    "id": "C",
    "title": "C 分镜层心声",
    "tier": "base",
-   "start": 450,
-   "end": 464,
+   "start": 451,
+   "end": 465,
    "when": [
     "always"
    ],
@@ -76,25 +76,37 @@
    "id": "J",
    "title": "J 资产与逐镜绑定（每章写分镜必读）",
    "tier": "base",
-   "start": 466,
-   "end": 657,
+   "start": 467,
+   "end": 563,
    "when": [
     "always"
    ],
-   "chars": 10664,
-   "checksum": "B2379E13"
+   "chars": 6222,
+   "checksum": "4C384336"
   },
   {
    "id": "H2",
    "title": "H2 表现手段（Q 版、特效、谐音；冷门）",
    "tier": "volume",
-   "start": 662,
-   "end": 686,
+   "start": 568,
+   "end": 592,
    "when": [
     "expression"
    ],
    "chars": 2554,
    "checksum": "2BA22B07"
+  },
+  {
+   "id": "J2",
+   "title": "J2 资产制作（资产分析、派图、审图时读）",
+   "tier": "volume",
+   "start": 594,
+   "end": 647,
+   "when": [
+    "asset"
+   ],
+   "chars": 3255,
+   "checksum": "B439BE4E"
   }
  ]
 }
