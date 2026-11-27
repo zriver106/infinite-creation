@@ -232,3 +232,38 @@ test('合并缺图单：同名同类替换、voids 标作废不留冲突行、�
   r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'save_gap_list', { items: [{ kind: 'scene', name: '城市公交车·车内', note_key: 'L05', need_image: false, reason: '已有通用公交图' }] }));
   assert.equal(r.coverage, '全部戏份说明都已在缺图单里');
 });
+
+test('create_asset_slots：按缺图单建资产槽——服装/光幕版式挂在角色下、同名复用、归档不复用、写回 asset_id', async () => {
+  const p = core.Projects.create({ name: 'aa-slots', auto_script: false });
+  const ctx = { projectId: p.id, jobId: 'jslot' };
+  const old = core.Assets.create(p.id, { category: 'character', name: '江澈' });
+  const archivedOld = core.Assets.create(p.id, { category: 'scene', name: '江澈公司办公室·上班满员' });
+  core.Projects.setContextKey(p.id, AM.ARCHIVED_ASSETS_KEY, [archivedOld.id]);
+  SN.saveSceneNote(p.id, '系统', '# 角色：系统\n生命周期 范围 功能 状态');
+  const G = await import('../lib/core/asset-gaps.js');
+  G.mergeGapList(p.id, { items: [
+    { kind: 'costume', name: '江澈·第一天9块9T恤装', note_key: '江澈·服装', requirement: '灰蓝T恤' },
+    { kind: 'character', name: '系统·光幕A版·面板未检测到物品', note_key: '系统', requirement: '光幕A' },
+    { kind: 'character', name: '系统·音色', note_key: '系统', need_image: false, reason: '交音色' },
+    { kind: 'scene', name: '江澈公司办公室·上班满员', location_id: 'L01', requirement: '满员' },
+    { kind: 'prop', name: '金砖', requirement: '一公斤金砖' },
+    { kind: 'scene', name: '作废行', requirement: 'x' },
+  ], voids: [{ name: '作废行', reason: '测试' }] });
+  const r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'create_asset_slots', {}));
+  assert.equal(r.skipped.length, 1); assert.match(r.skipped[0].reason, /不出图/);
+  const doc = G.getGapList(p.id);
+  const byName = (n) => doc.items.find((x) => x.name === n);
+  const costume = core.Assets.get(byName('江澈·第一天9块9T恤装').asset_id);
+  assert.equal(costume.category, 'costume'); assert.equal(costume.parent_id, old.id, '复用已有角色江澈');
+  const panel = core.Assets.get(byName('系统·光幕A版·面板未检测到物品').asset_id);
+  const sys = core.Assets.get(panel.parent_id);
+  assert.equal(panel.category, 'costume'); assert.equal(sys.category, 'character'); assert.equal(sys.name, '系统'); assert.match(sys.description, /角色：系统/);
+  assert.notEqual(byName('江澈公司办公室·上班满员').asset_id, archivedOld.id, '已归档的不复用');
+  assert.equal(core.Assets.get(byName('金砖').asset_id).category, 'prop');
+  assert.equal(byName('作废行').asset_id, undefined);
+  // 再跑一次全部复用，不重建
+  const n = core.Assets.list(p.id).length;
+  const r2 = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'create_asset_slots', {}));
+  assert.equal(r2.created, 0); assert.equal(core.Assets.list(p.id).length, n);
+  assert.match(fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8'), /资产 ID/);
+});
