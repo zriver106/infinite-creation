@@ -210,3 +210,30 @@ test('返修 3 轮还不过：标「需人工」停在那一行，不再退回�
   assert.equal(W.rowsWithStatus(p.id).find((r) => r.asset_id === a1.id).status, 'needs_human');
   AI.setRunning(p.id, false);
 });
+
+test('阶段变体自动挂本项目 _MV 的 A 格做底图（V3 定稿优先）；拼板按格裁；审图场景行 same_space / base_image 不许 na，取不到交需人工；手工线定稿补登后 view_approved 取得到', async () => {
+  const p = setup('aimg-7');
+  const mv = core.Assets.create(p.id, { category: 'scene', name: 'L05_MV·城市公交车·多视角定义图' });
+  const st = core.Assets.create(p.id, { category: 'scene', name: '城市公交车·白天有乘客' });
+  G.mergeGapList(p.id, { items: [
+    { kind: 'scene', name: 'L05_MV·城市公交车·多视角定义图', location_id: 'L05', requirement: '空场' },
+    { kind: 'scene', name: '城市公交车·白天有乘客', location_id: 'L05', requirement: '约12人', base_ref: { project_id: 'v2', asset_id: 'v2asset', name: 'S367' } },
+  ] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = mv.id; doc.items[1].asset_id = st.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  assert.equal(W.applyStageBaseRefs(p.id), 0, '_MV 还没有图：保留原来的 V2 底图');
+  const rel = 'assets/scenes/mv.png'; png(path.join(core.projectDir(p.id), rel), 'red'); core.Assets.update(mv.id, { image_path: rel, source: 'uploaded' });
+  assert.equal(W.applyStageBaseRefs(p.id), 1);
+  const row = G.getGapList(p.id).items.find((x) => x.asset_id === st.id);
+  assert.equal(row.base_ref.asset_id, mv.id); assert.equal(row.base_ref.cell, 'A');
+  const a = W.baseRefAbs(p.id, row.base_ref); assert.match(a.replace(/\\/g, '/'), /cells\/A_/); assert.ok(fs.existsSync(a));
+  // 审图规则
+  const naSpace = { ...CHECKS_OK, same_space: { ok: 'na', note: '-' } };
+  assert.match(RV.validateReview({ verdict: 'pass', checks: naSpace }, { isScene: true, hasBase: true }), /same_space 不能填 na/);
+  assert.match(RV.validateReview({ verdict: 'pass', checks: { ...CHECKS_OK, base_image: { ok: 'na', note: '-' } } }, { hasBase: true }), /base_image 不能填 na/);
+  assert.equal(RV.validateReview({ verdict: 'needs_human', checks: {}, return_note: '取不到底图' }), '');
+  assert.match(RV.validateReview({ verdict: 'needs_human', checks: {} }), /写清/);
+  // 手工线补登
+  fs.mkdirSync(W.roundsDir(p.id, mv.id), { recursive: true });
+  fs.writeFileSync(path.join(W.roundsDir(p.id, mv.id), 'imported_approved.json'), JSON.stringify({ source: W.IMPORTED_SOURCE, image_path: rel }));
+  assert.equal(W.importedApprovedOf(p.id, mv.id).source, '手工线·站位审');
+});
