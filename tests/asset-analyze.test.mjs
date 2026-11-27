@@ -148,3 +148,61 @@ test('地点表用起来：binding-check 报绑错地点 / 未登记资产（W�
   const b = JSON.parse(await pwm.runPromptWriteExtraTool({ projectId: p.id, jobId: 'jb', chapter: '第1章', project: core.Projects.get(p.id), cfg: {} }, 'get_shot_prompt_brief', { shot_id: sh.id }));
   assert.equal(b.location.id, 'L01'); assert.deepEqual(b.location.assets.map((a) => a.name).sort(), ['五缘金店·店内', '五缘金店·店外']);
 });
+
+test('只写剧本：只能写本章且强制覆盖；重写模式 get_chapter 不给旧剧本、先读规则才给原著；提交后剧本变了才算完成', async () => {
+  const SW = await import('../lib/agent/script-write.js');
+  const tools = await import('../lib/agent/tools.js');
+  const SG2 = await import('../lib/agent/stage-guards.js');
+  const p = core.Projects.create({ name: 'sw', auto_script: true });
+  const c1 = core.Chapters.list(p.id)[0];
+  core.Chapters.update(c1.id, { novel: '江澈走进五缘金店。', script: '旧剧本' });
+  const ctx = { projectId: p.id, chapter: c1.title };
+  assert.deepEqual(SW.guardScriptWrite(ctx, 'set_chapter_script', { script: 'x' }), { script: 'x', chapter: c1.title, overwrite: true });
+  assert.throws(() => SW.guardScriptWrite(ctx, 'set_chapter_script', { chapter: '第9章', script: 'x' }), /只能重写/);
+  const names = SW.scriptWriteToolDefinitions(TOOLS).map((t) => t.function.name);
+  assert.ok(names.includes('set_chapter_script') && names.includes('get_locations') && !names.includes('set_storyboard'));
+  const rt = tools.createToolRuntime({ projectId: p.id, jobId: 'jsw', chapter: c1.title });
+  rt.scriptRewrite = true;
+  const r1 = JSON.parse(await tools.runTool(rt, 'get_chapter', { chapter: c1.title }));
+  assert.equal(r1.novel, ''); assert.notEqual(r1.script, '旧剧本');
+  SG2.noteSkillServed(rt, 'adapt-rules'); SG2.noteSkillServed(rt, 'sd-storyboard-engine'); SG2.noteSkillLinesServed(rt, 'adapt-rules', ['H2']);
+  for (const ref of ['剧本样稿.md', '叙述转换方法.md']) await tools.runTool(rt, 'skill_reference', { name: 'adapt-rules', ref });
+  const r2 = JSON.parse(await tools.runTool(rt, 'get_chapter', { chapter: c1.title }));
+  assert.equal(r2.novel, '江澈走进五缘金店。'); assert.equal(r2.script, ''); assert.match(r2.script_note, /重写模式/);
+  const wait = async (id) => { for (let i = 0; i < 150; i++) { const j = core.Jobs.get(id); if (['done', 'failed'].includes(j.status)) return j; await new Promise((x) => setTimeout(x, 20)); } return core.Jobs.get(id); };
+  const ch = core.Chapters.get(c1.id);
+  const ok = SW.submitScriptWriteJob({ projectId: p.id, chapter: ch, runAgentFn: async () => { core.Chapters.update(c1.id, { script: '新剧本' }); } });
+  assert.equal((await wait(ok.job.id)).status, 'done');
+  const same = SW.submitScriptWriteJob({ projectId: p.id, chapter: core.Chapters.get(c1.id), runAgentFn: async () => {} });
+  const j = await wait(same.job.id); assert.equal(j.status, 'failed'); assert.match(j.error, /没有写入新剧本/);
+  assert.match(SW.buildScriptWriteAgentPrompt({ project: { name: 'V3' }, chapter: '第1章' }), /节拍表 → 叙述转换表/);
+});
+
+test('归档资产：资产分析的 list_assets 不列；接口只记 id、不删资产', async () => {
+  const p = core.Projects.create({ name: 'arch', auto_script: false });
+  const a = core.Assets.create(p.id, { category: 'scene', name: '旧公司' });
+  const b = core.Assets.create(p.id, { category: 'scene', name: '新场景' });
+  const R = await import('../app/api/projects/[id]/assets/archive/route.js');
+  const put = await R.PUT(new Request('http://x/', { method: 'PUT', body: JSON.stringify({ ids: [a.id] }) }), { params: Promise.resolve({ id: p.id }) });
+  assert.deepEqual((await put.json()).archived, [a.id]);
+  const res = JSON.parse(await AM.runAssetAnalyzeExtraTool({ projectId: p.id, jobId: 'x' }, 'list_assets', {}));
+  assert.deepEqual(res.assets.map((x) => x.id), [b.id]); assert.equal(res.archived_hidden, 1);
+  assert.ok(core.Assets.get(a.id), '资产还在');
+});
+
+test('关了自动承接：列表 / 分镜卡的 lead_in 显示不接（原因写明），手动接照常', async () => {
+  const LC = await import('../lib/agent/lead-in-ctx.js');
+  const p = core.Projects.create({ name: 'li-auto', auto_script: false });
+  const sc = core.Assets.create(p.id, { category: 'scene', name: '办公室' });
+  core.Shots.create(p.id, { chapter: '第1章', idx: 1, visual: 'v', dialogue: '', scene_ids: [sc.id] });
+  const b = core.Shots.create(p.id, { chapter: '第1章', idx: 2, visual: 'v', dialogue: '', scene_ids: [sc.id] });
+  const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  assert.equal(LC.leadInContext(p.id, core.Shots.get(b.id)).decision.on, true);
+  fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg, generation: { ...(cfg.generation || {}), leadInAuto: false } }));
+  try {
+    const d = LC.leadInContext(p.id, core.Shots.get(b.id)).decision;
+    assert.equal(d.on, false); assert.match(d.reason, /自动承接已关/);
+    core.Shots.setFrameAnchor(b.id, { first_frame_source: 'prev_clip22' });
+    assert.equal(LC.leadInContext(p.id, core.Shots.get(b.id)).decision.on, true, '手动接照常');
+  } finally { fs.writeFileSync(cfgPath, JSON.stringify(cfg)); }
+});
