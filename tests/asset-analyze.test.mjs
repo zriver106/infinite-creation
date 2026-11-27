@@ -297,5 +297,15 @@ test('人名对齐：get_name_alignment 列出剧本说话人里资产库没有�
   const a2 = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'get_name_alignment', {}));
   assert.deepEqual(a2.chapters[0].speakers_not_in_assets, []);
   await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'rename_asset', { asset_id: nm.id, new_name: '江澈' }), /同名/);
+  // 已归档的同名旧资产不算重名
+  const oldW = core.Assets.create(p.id, { category: 'character', name: '女同事' });
+  const nw = core.Assets.create(p.id, { category: 'character', name: '女同事（江澈右邻）' });
+  core.Projects.setContextKey(p.id, AM.ARCHIVED_ASSETS_KEY, [oldW.id]);
+  JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'rename_asset', { asset_id: nw.id, new_name: '女同事' }));
+  assert.equal(core.Assets.get(nw.id).name, '女同事');
+  // 「在场：」下一行起的子条目、「甲、乙、丙」简写
+  const NA = await import('../lib/core/name-align.js');
+  const sn = NA.scriptNamesOf(['- 在场：', '  - 大厦保安甲、乙、丙；花店店员', '- 地点：门口'].join('\n'));
+  assert.ok(sn.cast[0].includes('大厦保安乙') && sn.cast[0].includes('花店店员'));
   assert.ok(jc.id);
 });
