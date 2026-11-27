@@ -53,6 +53,7 @@ export async function POST(req, { params }) {
   if (asset.category === 'voice') Assets.update(asset.id, { voice_ref: rel, audio_path: rel, source: 'uploaded', status: 'done' });
   else if (isVideo) Assets.update(asset.id, { video_path: rel, source: 'uploaded', status: 'done' });
   else if (isAudio) Assets.update(asset.id, { audio_path: rel, source: 'uploaded', status: 'done' });
-  else Assets.update(asset.id, { image_path: rel, source: 'uploaded', status: 'done' });
+  // 覆盖上传也留旧版（总导 11-26：资产出图收回 IC，审过写回原 asset_id，旧图进 versions 可回滚）
+  else Assets.update(asset.id, { image_path: rel, source: 'uploaded', status: 'done', versions: [...(asset.versions || []), asset.image_path].filter(Boolean) });
   return NextResponse.json({ asset_id: asset.id, path: rel });
 }
