@@ -1,12 +1,12 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-0eb1cc1916",
+ "version": "rules-567cda3694",
  "file": "规则全文.md",
- "file_md5": "C1D3D981760DC76E08CCAA77004CDBDC",
- "total_lines": 619,
- "base_end_line": 591,
- "base_chars": 35231,
+ "file_md5": "DBD7653E33F2152C35AF0BC764679F09",
+ "total_lines": 650,
+ "base_end_line": 622,
+ "base_chars": 36171,
  "base_budget_chars": 40000,
  "budget_chars": 92000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 879,
-   "checksum": "1AFAF40A"
+   "checksum": "D199926E"
   },
   {
    "id": "A",
@@ -77,19 +77,19 @@
    "title": "J 资产与逐镜绑定（每章写分镜必读）",
    "tier": "base",
    "start": 464,
-   "end": 590,
+   "end": 621,
    "when": [
     "always"
    ],
-   "chars": 8263,
-   "checksum": "1973255B"
+   "chars": 9203,
+   "checksum": "8810915E"
   },
   {
    "id": "H2",
    "title": "H2 表现手段（Q 版、特效、谐音；冷门）",
    "tier": "volume",
-   "start": 595,
-   "end": 619,
+   "start": 626,
+   "end": 650,
    "when": [
     "expression"
    ],
