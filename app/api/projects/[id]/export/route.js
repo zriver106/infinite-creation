@@ -1,7 +1,8 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
-import { Shots, Projects, Chapters, Assets, resolveProjectPath, slugify, uid, mergeVideos, resolveSubtitles, deliverChapterExport, chapterMusicForMerge, logSubmitRequest } from '@/lib/core/index.js';
+import { Shots, ShotVideos, Projects, Chapters, Assets, resolveProjectPath, slugify, uid, mergeVideos, resolveSubtitles, deliverChapterExport, chapterMusicForMerge, logSubmitRequest } from '@/lib/core/index.js';
+import { assemblyInputsFor } from '@/lib/core/lead-in.js';
 import { runInlineJob } from '@/lib/agent/index.js';
 import { broadcast } from '@/lib/ws.js';
 import { assertAssembleGate, assembleGateReport, assembleGateReportNeeded, assembleGateWarnText, pendingChaptersText, ASSEMBLE_GATE_CODE } from '@/lib/core/dialogue-d-gate.js';
@@ -30,7 +31,8 @@ export async function POST(req, { params }) {
     done = gateRes.assemble;
     // v6：闸挪到「没有已完成的镜头」检查之前（整章没出完时按章报 409）；原来的 400 文字不变。
     if (!done.length) return NextResponse.json({ error: chapter ? ('章节「' + chapter + '」没有已完成的镜头') : ('没有已完成的分镜' + (gateRes.pendingChapters.length ? '。' + pendingChaptersText(gateRes.pendingChapters) : '')) }, { status: 400 });
-    const inputs = done.map((s) => resolveProjectPath(id, s.video_path)).filter(Boolean);
+    // 承接上一镜 22 帧的候选：先剪掉开头 22 帧再合（lib/core/lead-in.js）
+    const inputs = (await assemblyInputsFor(done, (rel) => resolveProjectPath(id, rel), (s) => ShotVideos.leadInOfShot(s))).filter(Boolean);
     const p = Projects.get(id);
     const base = chapter ? slugify(p.name) + '_' + slugify(chapter) : slugify(p.name);
     const outRel = 'exports/' + base + '_' + uid().slice(0, 8) + '.mp4';

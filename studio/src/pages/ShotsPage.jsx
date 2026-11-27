@@ -215,6 +215,7 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
       setShots((list) => list.map((x) => (x.id === shotId ? { ...x, ...updated, videos: x.videos } : x)));
       if (body.action === 'chain_prev') toast.success('已承接第' + (updated.chained?.prev_idx ?? '?') + '镜最后一帧作为本镜首帧');
       else if (body.action === 'set') toast.success(body.which === 'last' ? '已设置尾帧' : '已设置首帧');
+      else if (body.action === 'lead_in') toast.success(body.value === 'on' ? '本镜开头承接上一镜末 22 帧（含声音）' : body.value === 'off' ? '本镜不承接上一镜' : '承接按默认规则：同场景、时间连续才接');
       else toast.success(body.which === 'last' ? '已清空尾帧' : '已清空首帧');
     } catch (e) {
       toast.error(e.message);
@@ -951,6 +952,7 @@ export default function ShotsPage({ projectId, chapters = [], cursorId, onCursor
                         onChain={() => frameAction(s.id, { action: 'chain_prev' })}
                         onUpload={(which) => pickFrameFile(s.id, which)}
                         onClear={(which) => frameAction(s.id, { action: 'clear', which })}
+                        onLeadIn={(value) => frameAction(s.id, { action: 'lead_in', value })}
                         onPreview={setPreview}
                       />
                     ) : null}
@@ -1338,7 +1340,7 @@ function Detail({ label, value, pre }) {
 
 // ic27 首尾帧衔接：分镜卡片的首帧（可承接上一镜 / 手动上传）+ 可选尾帧槽位。
 // 出片（生成候选 / 批量出片）时作为关键帧锚定叠加在参考素材上；承接上一镜过期时出片前会自动重抽。
-function FrameSlots({ s, projectId, isFirstInChapter, editable, busy, onChain, onUpload, onClear, onPreview }) {
+function FrameSlots({ s, projectId, isFirstInChapter, editable, busy, onChain, onUpload, onClear, onLeadIn, onPreview }) {
   const st = s.first_frame_status || null;
   const hasFirst = !!(s.first_frame_source && s.first_frame_path);
   const hasLast = !!(s.last_frame_source === 'upload' && s.last_frame_path);
@@ -1371,6 +1373,25 @@ function FrameSlots({ s, projectId, isFirstInChapter, editable, busy, onChain, o
             {hasFirst ? <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onClear('first')}>清空首帧</button> : null}
             <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onUpload('last')}>{hasLast ? '换尾帧图' : '上传尾帧（可选）'}</button>
             {hasLast ? <button type="button" className={linkBtn} disabled={!!busy} onClick={() => onClear('last')}>清空尾帧</button> : null}
+          </div>
+        ) : null}
+      </div>
+      {/* 承接上一镜 22 帧（含声音）：开头钉上一镜最后 22 帧，导出时剪掉（2026-11-26 Andy） */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[10.5px] text-[var(--fg-3)]">
+          承接上一镜末 22 帧（含声音）：
+          <span className={s.lead_in?.on ? 'text-[var(--accent)]' : 'text-[var(--fg-4)]'}>{s.lead_in?.on ? '接' : '不接'}</span>
+          <span className="text-[var(--fg-4)]">{'（' + (s.lead_in?.mode === 'manual' ? '手动' : s.lead_in?.mode === 'off' && s.first_frame_source === 'none' ? '手动' : '自动') + (s.lead_in?.reason ? '：' + s.lead_in.reason : '') + '）'}</span>
+          {s.lead_in_frames ? <span className="text-[var(--fg-4)]">{'；当前选中候选开头钉了 ' + s.lead_in_frames + ' 帧，导出时剪掉'}</span> : null}
+        </span>
+        {editable && onLeadIn ? (
+          <div className="flex gap-1">
+            {[['auto', '自动'], ['on', '接'], ['off', '不接']].map(([v, t]) => {
+              const cur = s.first_frame_source === 'prev_clip22' ? 'on' : s.first_frame_source === 'none' ? 'off' : (s.first_frame_source ? '' : 'auto');
+              return (
+                <button key={v} type="button" className={linkBtn + (cur === v ? ' border-[var(--accent)] text-[var(--accent)]' : '')} disabled={!!busy || (v === 'on' && isFirstInChapter)} onClick={() => onLeadIn(v)}>{t}</button>
+              );
+            })}
           </div>
         ) : null}
       </div>

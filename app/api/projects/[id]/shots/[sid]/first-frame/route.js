@@ -3,10 +3,13 @@
 //   POST { action: 'chain_prev' }                    承接上一镜（抽上一镜当前选中候选的最后一帧，CPU ffmpeg，不碰 GPU）
 //   POST { action: 'set', which: 'first'|'last', path } 手动指定（path 为 /media 上传返回的项目内相对路径）
 //   POST { action: 'clear', which: 'first'|'last' }  清空槽位（只清引用，图片文件保留）
+//   POST { action: 'lead_in', value: 'on'|'off'|'auto' } 承接上一镜 22 帧（含声音）：on=接，off=不接，auto=按默认规则（同场景、时间连续才接）
 // 返回更新后的分镜（含 first_frame_status）。
 import { NextResponse } from 'next/server';
 import { Shots, chainFirstFrameFromPrev, setUploadedFrame, clearFrame, firstFrameStatus, resolveProjectPath, withWriteContext } from '@/lib/core/index.js';
 import fs from 'node:fs';
+import { LEAD_IN_SOURCE, LEAD_IN_OFF, leadInDecision } from '@/lib/core/lead-in.js';
+import { prevShotOf } from '@/lib/core/first-frame.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,12 +37,17 @@ export async function POST(req, { params }) {
         setUploadedFrame(id, sid, which, String(body.path));
       } else if (action === 'clear') {
         clearFrame(id, sid, which);
+      } else if (action === 'lead_in') {
+        const v = String(body.value || '');
+        if (!['on', 'off', 'auto'].includes(v)) return NextResponse.json({ error: 'value 只能是 on / off / auto' }, { status: 400 });
+        Shots.setFrameAnchor(sid, { first_frame_source: v === 'on' ? LEAD_IN_SOURCE : v === 'off' ? LEAD_IN_OFF : '', first_frame_path: '', first_frame_from_shot_id: '', first_frame_from_video_id: '' });
       } else {
-        return NextResponse.json({ error: 'action 只能是 chain_prev / set / clear' }, { status: 400 });
+        return NextResponse.json({ error: 'action 只能是 chain_prev / set / clear / lead_in' }, { status: 400 });
       }
       const s = Shots.get(sid);
       const status = firstFrameStatus(s, Shots.list(id), { exists: (rel) => { const a = resolveProjectPath(id, rel); return !!a && fs.existsSync(a); } });
-      return NextResponse.json({ ...s, first_frame_status: status, ...extra });
+      const list = Shots.list(id);
+      return NextResponse.json({ ...s, first_frame_status: status, lead_in: leadInDecision(s, prevShotOf(s, list)), ...extra });
     } catch (e) {
       return NextResponse.json({ error: e.message }, { status: 400 });
     }

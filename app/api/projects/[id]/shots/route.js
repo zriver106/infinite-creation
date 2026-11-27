@@ -1,6 +1,8 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
+import { leadInDecision } from '@/lib/core/lead-in.js';
+import { prevShotOf } from '@/lib/core/first-frame.js';
 import { Shots, ShotVideos, Chapters, Projects, pickShotFields, idxTakenBy, validateShotContent, withWriteContext, firstFrameStatus, resolveProjectPath } from '@/lib/core/index.js';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +19,9 @@ export async function GET(req, { params }) {
     ...s,
     videos: ShotVideos.listByShot(s.id),
     first_frame_status: s.first_frame_source ? firstFrameStatus(s, list, { exists }) : null,
+    // 承接上一镜 22 帧：本镜现在会不会接（手动 / 自动 / 不接 + 原因），以及选中候选里实际钉了几帧
+    lead_in: leadInDecision(s, prevShotOf(s, list)),
+    lead_in_frames: ShotVideos.leadInOfShot(s),
   })));
 }
 
