@@ -66,6 +66,15 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
     catch (e) { toast.error(e.message); }
     finally { setBusy(''); }
   };
+  // 人工退回（缺口第 18 条）：每行、每格填退回意见，按原线程出 rN+1
+  const [ret, setRet] = useState(null);
+  const doReturn = async () => {
+    if (!ret || !ret.note.trim()) return;
+    setBusy('return');
+    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'return', asset_id: ret.row.asset_id, note: ret.note, step: ret.step }); toast.success('已退回：' + (x.step !== 'main' ? x.step + ' 格 ' : '') + 'r' + x.round); setRet(null); await load(); }
+    catch (e) { toast.error(e.message); }
+    finally { setBusy(''); }
+  };
   const toggle = (id, v) => setSel((s) => { const n = new Set(s); if (v) n.add(id); else n.delete(id); return n; });
 
   if (!data) return null;
@@ -93,7 +102,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
       <div className="max-h-[360px] overflow-auto rounded border border-[var(--line)]">
         <table className="w-full text-[11.5px]">
           <thead className="sticky top-0 bg-[var(--bg-2,#111)] text-[var(--fg-3)]">
-            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">D 格</th><th className="p-1.5 text-left">审图结论</th></tr>
+            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">D 格</th><th className="p-1.5 text-left">审图结论</th><th className="p-1.5 text-left">人工</th></tr>
           </thead>
           <tbody>
             {rows.map((r) => {
@@ -112,6 +121,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                     </select>
                   ) : <span className="text-[var(--fg-4)]">—</span>}</td>
                   <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
+                  <td className="p-1.5">{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: /_MV/.test(r.name) ? (r.step && r.step !== 'compose' ? r.step : 'A') : '' })}>人工退回</Button> : null}</td>
                 </tr>
               );
             })}
@@ -127,6 +137,21 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
           ))}
         </div>
       ) : null}
+
+      <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
+        {ret ? (
+          <div className="flex flex-col gap-2 text-[12px]">
+            {/_MV/.test(ret.row.name) ? (
+              <label className="flex items-center gap-2">退哪一格
+                <select className="rounded border border-[var(--line)] bg-transparent p-1" value={ret.step} onChange={(e) => setRet((x) => ({ ...x, step: e.target.value }))}>
+                  {['A', 'B', 'C', 'D'].map((s) => <option key={s} value={s}>{s} 格</option>)}
+                </select>
+              </label>
+            ) : null}
+            <textarea className="min-h-[120px] rounded border border-[var(--line)] bg-transparent p-2" placeholder="退回意见：哪一处、照什么改（左右先写清机位朝向）" value={ret.note} onChange={(e) => setRet((x) => ({ ...x, note: e.target.value }))} />
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal open={!!detail} onOpenChange={(o) => !o && setDetail(null)} title={detail ? '审图记录：' + detail.row.name : ''} size="lg">
         {detail ? (

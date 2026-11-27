@@ -21,7 +21,7 @@ before(async () => {
 });
 
 const png = (f, color = 'gray') => { fs.mkdirSync(path.dirname(f), { recursive: true }); execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=' + color + ':s=64x36', '-frames:v', '1', f]); return f; };
-const CHECKS_OK = Object.fromEntries(Object.keys({ same_space: 1, style_vs_sample: 1, ethnicity: 1, base_image: 1, count_orientation: 1, no_text: 1 }).map((k) => [k, { ok: true, note: '看过' }]));
+const CHECKS_OK = Object.fromEntries(Object.keys({ same_space: 1, style_vs_sample: 1, ethnicity: 1, base_image: 1, count_orientation: 1, no_text: 1, color_temp: 1 }).map((k) => [k, { ok: true, note: '看过' }]));
 
 // 假 am：记下发出的消息；回图靠测试往 outbox 放文件
 function fakeAm() {
@@ -281,8 +281,34 @@ test('同地点第二张 _MV：派 D 时附已定稿 _MV 的 D 格、只加机�
   const w = W.loadWork(p.id);
   w.items[mv2.id] = { name: row2.name, lane: 'scene', steps: ['A', 'B', 'C', 'D'], stepIdx: 3, round: 3, status: 'needs_human', approved: { A: png(path.join(tmp, 'a.png'), 'red'), B: png(path.join(tmp, 'b.png'), 'green'), C: png(path.join(tmp, 'c.png'), 'white') }, returns: [], history: [], thread: '场景1' };
   W.saveWork(p.id, w);
-  const r = AI.setManualD(p.id, mv2.id, mv1.id);
+  const am = fakeAm(); let seen = null;
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; seen = cp.step; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'pass', checks: CHECKS_OK, checklist: [{ item: '门', expected: '南', seen: '南', ok: true }, { item: '饮水机', expected: '东', seen: '东', ok: true }, { item: '机位标注', expected: '本张', seen: '本张', ok: true }] })); };
+  const r = AI.setManualD(p.id, mv2.id, mv1.id, am);
   assert.equal(r.composed, true);
-  assert.equal(W.loadWork(p.id).items[mv2.id].status, 'passed');
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[mv2.id].status === 'passed'), '拼板核对过了才写回');
+  assert.equal(seen, 'compose');
   assert.ok(core.Assets.get(mv2.id).image_path);
+});
+
+test('人工退回：指定格、原线程出 rN+1；拼板核对没过判需人工不写回', async () => {
+  const p = setup('aimg-10');
+  const mv = core.Assets.create(p.id, { category: 'scene', name: 'L02_MV·金店·多视角定义图' });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: 'L02_MV·金店·多视角定义图', location_id: 'L02', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = mv.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const am = fakeAm();
+  const r = await AI.manualReturn(p.id, mv.id, { note: '柜台方向反了', step: 'B' }, am);
+  assert.equal(r.step, 'B'); assert.equal(r.thread, '场景1');
+  assert.match(am.sent[0].text, /【退回 r2·「L02_MV·金店·多视角定义图」B 格】【人工退回】柜台方向反了/);
+  await assert.rejects(AI.manualReturn(p.id, mv.id, { note: '' }, am), /退回意见/);
+  // 拼板核对没过
+  const w = W.loadWork(p.id); const it = w.items[mv.id];
+  it.approved = { A: png(path.join(tmp, 'ra.png'), 'red'), B: png(path.join(tmp, 'rb.png'), 'green'), C: png(path.join(tmp, 'rc.png'), 'blue'), D: png(path.join(tmp, 'rd.png'), 'white') }; it.stepIdx = 3; it.step = 'D'; W.saveWork(p.id, w);
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'needs_human', checks: {}, return_note: 'D 的饮水机在西、A 里在东' })); };
+  const other = core.Assets.create(p.id, { category: 'scene', name: 'L02_MV·金店门外·多视角定义图' });
+  const d2 = G.getGapList(p.id); d2.items.push({ kind: 'scene', name: 'L02_MV·金店门外·多视角定义图', location_id: 'L02', asset_id: other.id, status: 'active', key: 'scene|x' }); fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(d2));
+  const rel = 'assets/scenes/o.png'; png(path.join(core.projectDir(p.id), rel), 'gray'); core.Assets.update(other.id, { image_path: rel });
+  AI.setManualD(p.id, mv.id, other.id, am);
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[mv.id].status === 'needs_human'));
+  assert.equal(core.Assets.get(mv.id).image_path || '', '', '核对没过不写回');
+  assert.match(W.loadWork(p.id).items[mv.id].note, /拼板核对没过/);
 });
