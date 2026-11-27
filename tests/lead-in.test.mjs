@@ -159,3 +159,14 @@ test('跨集：本章第一镜的上一镜是上一章最后一个未作废镜�
   assert.equal(st.stale, true); assert.match(st.stale_reason, /第1章第2镜/);
   assert.equal(L.leadInPrevOf({ id: 'x', chapter: '第1章', idx: 1 }, core.Shots.listInNarrativeOrder(p.id)), null, '全书第一镜没有上一镜');
 });
+
+test('剧本【衔接】→ 承接开关：写「承接」的下一场第一镜接，写别的方式的不接；跨集看上一章末【衔接→下一章】；手动设过的不动', () => {
+  const script = '## 【第1场｜上午｜办公室】\n[画面：a]\n【衔接→第2场】\n- 方式：承接，同一地点时间连续\n\n## 【第2场｜上午｜办公室】\n[画面：b]\n【衔接→第3场】方式：跳时，插入时钟\n\n## 【第3场｜下午｜走廊】\n[画面：c]\n【衔接→下一章】方式：承接';
+  const tr = L.parseScriptTransitions(script);
+  assert.equal(L.transitionLeadInValue(tr.toScene.get(2)), 'on'); assert.equal(L.transitionLeadInValue(tr.toScene.get(3)), 'off'); assert.equal(L.transitionLeadInValue(tr.toNextChapter), 'on');
+  const sh = (idx, scene, extra = {}) => ({ id: 's' + idx, idx, scene_name: '【第' + scene + '场｜上午｜办公室】', ...extra });
+  const shots = [sh(1, 1), sh(2, 1), sh(3, 2), sh(4, 2), sh(5, 3, { first_frame_source: 'prev_clip22' })];
+  const plan = L.planTransitionLeadIns(shots, script, '## 【第9场】\n【衔接→下一章】方式：闪回');
+  assert.deepEqual(plan.map((x) => [x.shot.idx, x.value]), [[1, 'off'], [3, 'on']], '第1镜看上一章末（闪回→不接），第3镜第2场开头接，第5镜手动设过不动');
+  assert.deepEqual(L.planTransitionLeadIns(shots, '', '').map((x) => x.shot.idx), [], '没写衔接的不动');
+});
