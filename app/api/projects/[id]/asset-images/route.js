@@ -5,6 +5,7 @@
 // POST { action: 'start', allow?: [asset_id] } → 开始（allow 给了就只派这些）
 // POST { action: 'pause' }                     → 暂停派新单（在途的照常收图、审图）
 // POST { action: 'tick' }                      → 立刻走一拍（平时每分钟自动一拍）
+// POST { action: 'cancel', asset_id, reason } → 撤回在途的单：原线程补发「作废上一条」，它交回来的图不收；人工退回的撤回恢复退回前的已审格，行标需人工
 // POST { action: 'rereview', asset_ids? | scope: imported|all, on_fail: needs_human|return } → 重审已写回的图：过了不动，不过标需人工或按原线程退回那一格
 // POST { action: 'approve', asset_id, reason, step? } → 人工审过：停住的这一格人工判过（记人工审核记录），接着下一格 / 拼板 / 写回
 // POST { action: 'set_d', ..., from_version }   → D 取本张旧版本（只改局部重出时）
@@ -16,7 +17,7 @@ import { NextResponse } from 'next/server';
 import { Projects, withWriteContext } from '@/lib/core/index.js';
 import { loadWork, staleRows, threadsOf, rowsWithStatus, THREADS_KEY } from '@/lib/core/asset-image-work.js';
 import { getLocations } from '@/lib/core/locations.js';
-import { setRunning, ensureLoop, tick, summary, broadcast, revokeImage, setManualD, manualReturn, manualApprove, reReview } from '@/lib/agent/asset-image.js';
+import { setRunning, ensureLoop, tick, summary, broadcast, revokeImage, setManualD, manualReturn, manualApprove, reReview, cancelInflight } from '@/lib/agent/asset-image.js';
 
 export const dynamic = 'force-dynamic';
 const LANES = ['person', 'scene', 'prop'];
@@ -54,6 +55,9 @@ export async function POST(req, { params }) {
   }
   if (action === 'pause') return NextResponse.json(setRunning(id, false));
   if (action === 'tick') return NextResponse.json(await tick(id));
+  if (action === 'cancel') {
+    try { return NextResponse.json(await cancelInflight(id, String(body.asset_id || ''), { reason: String(body.reason || '') })); } catch (e) { return NextResponse.json({ error: e.message }, { status: 400 }); }
+  }
   if (action === 'rereview') {
     try { const r = await reReview(id, { asset_ids: Array.isArray(body.asset_ids) ? body.asset_ids : null, scope: String(body.scope || ''), on_fail: String(body.on_fail || 'needs_human') }); ensureLoop(id); return NextResponse.json(r); } catch (e) { return NextResponse.json({ error: e.message }, { status: 400 }); }
   }
@@ -76,5 +80,5 @@ export async function POST(req, { params }) {
     if (!text) return NextResponse.json({ error: 'broadcast 要给 text（例：之前的「国漫」段作废，以本条为准）' }, { status: 400 });
     return NextResponse.json({ sent: await broadcast(id, text) });
   }
-  return NextResponse.json({ error: 'action 只能是 plan / threads / start / pause / tick / broadcast / revoke / set_d / return / approve / rereview' }, { status: 400 });
+  return NextResponse.json({ error: 'action 只能是 plan / threads / start / pause / tick / broadcast / revoke / set_d / return / approve / rereview / cancel' }, { status: 400 });
 }

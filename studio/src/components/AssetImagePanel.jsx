@@ -98,6 +98,15 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
     catch (e) { toast.error(e.message); }
     finally { setBusy(''); }
   };
+  // 撤回在途的单（缺口第 13 条）：原线程补发「作废上一条」，它交回来的图不收
+  const [cxl, setCxl] = useState(null);
+  const doCancel = async () => {
+    if (!cxl || !cxl.reason.trim()) return;
+    setBusy('cancel');
+    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'cancel', asset_id: cxl.row.asset_id, reason: cxl.reason }); toast.success(x.notified === false ? '已撤回，但作废通知发送未确认，去线程里核一下' : '已撤回'); setCxl(null); await load(); }
+    catch (e) { toast.error(e.message); }
+    finally { setBusy(''); }
+  };
   const toggle = (id, v) => setSel((s) => { const n = new Set(s); if (v) n.add(id); else n.delete(id); return n; });
 
   if (!data) return null;
@@ -146,7 +155,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                     </select>
                   ) : <span className="text-[var(--fg-4)]">—</span>}</td>
                   <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
-                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: /_MV/.test(r.name) ? (r.step && r.step !== 'compose' ? r.step : 'A') : '' })}>人工退回</Button> : null}</td>
+                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && ['sent', 'unconfirmed', 'stale_warn', 'stale', 'return_queued'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setCxl({ row: r, reason: '' })}>撤回</Button> : null}{canGenerate && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: '' })}>人工退回</Button> : null}</td>
                 </tr>
               );
             })}
@@ -162,6 +171,10 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
           ))}
         </div>
       ) : null}
+
+      <Modal open={!!cxl} onOpenChange={(o) => !o && setCxl(null)} title={cxl ? '撤回在途的单：' + cxl.row.name + (cxl.row.step && cxl.row.step !== 'main' ? '（' + cxl.row.step + ' 格 r' + cxl.row.round + '）' : '') : ''} footer={<><Button variant="ghost" size="md" onClick={() => setCxl(null)}>取消</Button><Button variant="primary" size="md" disabled={!cxl || !cxl.reason.trim() || !!busy} loading={busy === 'cancel'} onClick={doCancel}>撤回，原线程发作废</Button></>}>
+        {cxl ? <div className="flex flex-col gap-2 text-[12px]"><p className="m-0 text-[var(--fg-3)]">在原线程补发一条「作废上一条」，这一单交回来的图不收；人工退回的撤回后恢复退回前已审过的格。这一行标「需人工」，再按正确的格重新退回或审过。</p><textarea className="min-h-[80px] w-full rounded border border-[var(--line)] bg-transparent p-2" placeholder="撤回原因，例：退错格了，意见是改 A 却选了 D" value={cxl.reason} onChange={(e) => setCxl((x) => ({ ...x, reason: e.target.value }))} /></div> : null}
+      </Modal>
 
       <Modal open={!!rr} onOpenChange={(o) => !o && setRr(null)} title={rr ? (rr.ids ? '重审：' + rr.name : '批量重审已写回的图') : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRr(null)}>取消</Button><Button variant="primary" size="md" disabled={!rr || !!busy || (rr.scope === 'sel' && !sel.size)} loading={busy === 'rereview'} onClick={doRereview}>开始重审</Button></>}>
         {rr ? (
@@ -185,12 +198,13 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
         {apv ? <textarea className="min-h-[100px] w-full rounded border border-[var(--line)] bg-transparent p-2 text-[12px]" placeholder="理由（记成人工审核记录），例：审图误判，C 格和 A 是同一车厢，门在右侧" value={apv.reason} onChange={(e) => setApv((x) => ({ ...x, reason: e.target.value }))} /> : null}
       </Modal>
 
-      <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
+      <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || (/_MV/.test(ret.row.name) && !ret.step) || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
         {ret ? (
           <div className="flex flex-col gap-2 text-[12px]">
             {/_MV/.test(ret.row.name) ? (
               <label className="flex items-center gap-2">退哪一格
                 <select className="rounded border border-[var(--line)] bg-transparent p-1" value={ret.step} onChange={(e) => setRet((x) => ({ ...x, step: e.target.value }))}>
+                  <option value="" disabled>请选择（必选）</option>
                   {['A', 'B', 'C', 'D'].map((s) => <option key={s} value={s}>{s} 格</option>)}
                 </select>
               </label>

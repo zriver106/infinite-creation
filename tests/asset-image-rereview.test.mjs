@@ -153,3 +153,38 @@ test('人物外形逐项核（韩志成·上班装）：人物 / 服装 / 年龄
   await assert.rejects(RV.runReviewExtraTool({ projectId: p.id, jobId: j.id }, 'submit_review', ok), /appearance_vs_desc/);
   assert.match(RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'a', step: 'main', round: 1 } }), /年龄段、体型、发型和发际线/);
 });
+
+test('缺口 27：_MV 人工退回不默认选格，没选就拒；缺口 13：退错了能撤回——原线程补发作废、它交回来的图不收、恢复退回前已审的格', async () => {
+  const p = core.Projects.create({ name: 'rr-6', auto_script: false });
+  core.Projects.setContextKey(p.id, W.THREADS_KEY, [{ name: '场景1', session: 's-scene', lane: 'scene' }]);
+  const mv = core.Assets.create(p.id, { category: 'scene', name: 'L09_MV·某地·多视角定义图' });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: 'L09_MV·某地·多视角定义图', location_id: 'L09', requirement: 'a' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = mv.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const cells = { A: png(path.join(tmp, '6a.png'), 'red'), B: png(path.join(tmp, '6b.png'), 'green'), C: png(path.join(tmp, '6c.png'), 'white'), D: png(path.join(tmp, '6d.png'), 'blue') };
+  const w = W.loadWork(p.id);
+  w.items[mv.id] = { name: 'L09_MV·某地·多视角定义图', lane: 'scene', steps: ['A', 'B', 'C', 'D'], stepIdx: 3, step: 'D', round: 1, status: 'needs_human', approved: { ...cells }, returns: [], history: [], thread: '场景1' };
+  W.saveWork(p.id, w);
+  const am = fakeAm(); am.runReview = async () => {};
+  await assert.rejects(AI.manualReturn(p.id, mv.id, { note: '改 A 的门' }, am), /自己选退哪一格/);
+  // 退错格：意见是改 A，却选了 D
+  await AI.manualReturn(p.id, mv.id, { note: '改 A 的门', step: 'D' }, am);
+  let it = W.loadWork(p.id).items[mv.id];
+  assert.equal(it.step, 'D'); assert.equal(it.status, 'sent'); assert.equal(it.approved.D, undefined);
+  const wrongPrefix = it.prefix;
+  await assert.rejects(AI.cancelInflight(p.id, mv.id, {}, am), /撤回原因/);
+  const r = await AI.cancelInflight(p.id, mv.id, { reason: '退错格了，意见是改 A 却选了 D' }, am);
+  assert.equal(r.notified, true);
+  assert.equal(am.sent.length, 2); assert.equal(am.sent[1].session, 's-scene');
+  assert.match(am.sent[1].text, /【作废】上一条指令作废/); assert.ok(am.sent[1].text.includes(wrongPrefix));
+  it = W.loadWork(p.id).items[mv.id];
+  assert.equal(it.status, 'needs_human'); assert.match(it.note, /已撤回/); assert.equal(it.approved.D, cells.D, '恢复退回前已审过的 D');
+  assert.equal(W.loadWork(p.id).threads['场景1'].current, null);
+  // 撤回后重新按正确的格退回；作废那张晚到了也不收
+  await AI.manualReturn(p.id, mv.id, { note: '改 A 的门', step: 'A' }, am);
+  it = W.loadWork(p.id).items[mv.id];
+  am.outbox[wrongPrefix + '_L09.png'] = png(path.join(tmp, '6late.png'), 'yellow');
+  await AI.tick(p.id, am);
+  it = W.loadWork(p.id).items[mv.id];
+  assert.equal(it.status, 'sent', '作废那张不收'); assert.equal(it.step, 'A');
+  await assert.rejects(AI.cancelInflight(p.id, 'nope', { reason: 'x' }, am), /没有在途/);
+});
