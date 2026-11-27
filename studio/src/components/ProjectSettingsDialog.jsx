@@ -43,6 +43,8 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   const [saving, setSaving] = useState(false);
   // am 线程表（资产出图：一个线程一个车道；总导 11-26）
   const [threads, setThreads] = useState([]);
+  // 成片插帧（总导 11-26）：导出整章时 24→30 帧，默认 RIFE 独立版
+  const [interp, setInterp] = useState(null);
   // 写稿并行（各类型同时运行的 Agent 数，总导 11-26）
   const [limits, setLimits] = useState(null);
   const [limitKinds, setLimitKinds] = useState({});
@@ -65,6 +67,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setAutoScript(project.auto_script !== false);
     setExprSwitches(expressionSwitchValues(project));
     setThreads(((project.context && project.context.asset_image_threads) || []).map((t) => ({ ...t })));
+    api.get('/api/projects/' + project.id + '/export-settings').then((r) => setInterp(r)).catch(() => setInterp(null));
     api.get('/api/projects/' + project.id + '/agent-limits').then((r) => { setLimits(r.limits); setLimitKinds(r.kinds || {}); }).catch(() => setLimits(null));
   }, [open, project]);
 
@@ -87,6 +90,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
       if (assetMode !== assetModeOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { mode: assetMode });
       if (assetBinding !== assetBindingOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { binding: assetBinding });
       if (limits) await api.put('/api/projects/' + project.id + '/agent-limits', { limits });
+      if (interp && interp.dirty) await api.put('/api/projects/' + project.id + '/export-settings', { interp: interp.interp });
       const cleanThreads = threads.filter((t) => String(t.name || '').trim() && String(t.session || '').trim());
       if (cleanThreads.length && JSON.stringify(cleanThreads) !== JSON.stringify((project.context && project.context.asset_image_threads) || [])) {
         await api.post('/api/projects/' + project.id + '/asset-images', { action: 'threads', threads: cleanThreads });
@@ -197,6 +201,11 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
           <Field label="资产绑定方式" hint="只改本项目；新建项目的缺省在「系统设置 → 资产绑定方式」。外部绑时 IC 写分镜会忽略绑定字段（并在返回里写明）。">
             <Select value={assetBinding} onChange={setAssetBinding} items={ASSET_BINDING_ITEMS} />
           </Field>
+          {interp ? (
+            <Field label="成片插帧" hint={'出片照旧 24 帧；导出整章时按这里插到 30 帧，同时把 1088 裁成 1080。' + (interp.rife_available ? '' : ' 本机没找到 RIFE 独立版，选了也只裁不插。')}>
+              <Select value={interp.interp} onChange={(v) => setInterp((x) => ({ ...x, interp: v, dirty: true }))} items={[{ value: 'none', label: '不插帧（24）' }, { value: 'rife', label: 'RIFE 独立版（rife-ncnn-vulkan）' }, { value: 'rife-comfyui', label: 'RIFE ComfyUI 版（还没装）' }]} />
+            </Field>
+          ) : null}
           <Field label="am 线程" hint="资产出图派单用的 am 会话：一个线程一个车道（人物 / 场景 / 道具UI），线程数就是并行数。会话 id 用 muse-cli threads 查。">
             <div className="flex flex-col gap-1.5">
               {threads.map((t, i) => (
