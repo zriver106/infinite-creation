@@ -8,8 +8,8 @@
 import { NextResponse } from 'next/server';
 import { Shots, chainFirstFrameFromPrev, setUploadedFrame, clearFrame, firstFrameStatus, resolveProjectPath, withWriteContext } from '@/lib/core/index.js';
 import fs from 'node:fs';
-import { LEAD_IN_SOURCE, LEAD_IN_OFF, leadInDecision } from '@/lib/core/lead-in.js';
-import { prevShotOf } from '@/lib/core/first-frame.js';
+import { LEAD_IN_SOURCE, LEAD_IN_OFF } from '@/lib/core/lead-in.js';
+import { leadInContext, leadInView } from '@/lib/agent/lead-in-ctx.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,8 +46,7 @@ export async function POST(req, { params }) {
       }
       const s = Shots.get(sid);
       const status = firstFrameStatus(s, Shots.list(id), { exists: (rel) => { const a = resolveProjectPath(id, rel); return !!a && fs.existsSync(a); } });
-      const list = Shots.list(id);
-      return NextResponse.json({ ...s, first_frame_status: status, lead_in: leadInDecision(s, prevShotOf(s, list)), ...extra });
+      return NextResponse.json({ ...s, first_frame_status: status, lead_in: leadInView(leadInContext(id, s)), ...extra });
     } catch (e) {
       return NextResponse.json({ error: e.message }, { status: 400 });
     }

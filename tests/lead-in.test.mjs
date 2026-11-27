@@ -126,6 +126,36 @@ test('brief：会承接的镜带 lead_in_frames=22 和说明；本章第一镜�
   const ctx = { projectId: p.id, jobId: 'jl', chapter: '第1章', project: core.Projects.get(p.id), cfg: {} };
   const bb = JSON.parse(await pwm.runPromptWriteExtraTool(ctx, 'get_shot_prompt_brief', { shot_id: b.id }));
   assert.equal(bb.lead_in_frames, 22); assert.match(bb.lead_in_rule, /0\.92 秒之后/);
+  assert.equal(bb.lead_in_content_frames, bb.lead_in_total_frames - 22); assert.equal(bb.lead_in_content_frames % 17, 0); assert.match(bb.lead_in_rule, /正文帧数/);
   const ba = JSON.parse(await pwm.runPromptWriteExtraTool(ctx, 'get_shot_prompt_brief', { shot_id: a.id }));
   assert.equal(ba.lead_in_frames, undefined);
+});
+
+test('跨集：本章第一镜的上一镜是上一章最后一个未作废镜；_MV 和普通场景图算同一地点；上一镜换选片 → 承接过期', async () => {
+  const LC = await import('../lib/agent/lead-in-ctx.js');
+  const p = core.Projects.create({ name: 'li4', auto_script: false });
+  core.Chapters.create(p.id, { title: '第2章', script: 's' });
+  const sc = core.Assets.create(p.id, { category: 'scene', name: 'S095·奥迪4S店展厅', description: '我方资产ID：S095；审核：final；展厅' });
+  const mv = core.Assets.create(p.id, { category: 'scene', name: '奥迪展厅·前区·多视角定义图', description: '我方资产ID：S095_MV；审核：final；' });
+  const a1 = core.Shots.create(p.id, { chapter: '第1章', idx: 1, visual: 'v', dialogue: '', scene_ids: [sc.id] });
+  const a2 = core.Shots.create(p.id, { chapter: '第1章', idx: 2, visual: 'v', dialogue: '', scene_ids: [mv.id] });
+  const a3 = core.Shots.create(p.id, { chapter: '第1章', idx: 3, visual: 'v', dialogue: '', scene_ids: [sc.id] });
+  core.Shots.update(a3.id, { status: 'obsolete' });
+  const b1 = core.Shots.create(p.id, { chapter: '第2章', idx: 1, visual: 'v', dialogue: '', scene_ids: [sc.id] });
+  const b1ctx = LC.leadInContext(p.id, core.Shots.get(b1.id));
+  assert.equal(b1ctx.prev.id, a2.id, '跳过作废镜，取上一章最后一个有效镜');
+  assert.equal(b1ctx.cross, true); assert.equal(b1ctx.decision.on, true, '普通场景图 vs _MV 同一地点');
+  assert.match(b1ctx.decision.reason, /跨集/);
+  assert.equal(LC.leadInContext(p.id, core.Shots.get(a2.id)).decision.on, true, '章内 _MV 与普通图也算同一地点');
+  // 过期：b1 的候选钉的是 a2 的旧候选
+  const old = core.ShotVideos.create(p.id, a2.id, { idx: 0, video_path: 'shots/a2_old.mp4' });
+  core.ShotVideos.setSelected(a2.id, old.id);
+  core.ShotVideos.create(p.id, b1.id, { idx: 0, video_path: 'shots/b1.mp4', lead_in_frames: 22, lead_in_from: old.id });
+  core.Shots.update(b1.id, { video_path: 'shots/b1.mp4' });
+  assert.equal(LC.leadInContext(p.id, core.Shots.get(b1.id)).stale, false);
+  const nw = core.ShotVideos.create(p.id, a2.id, { idx: 1, video_path: 'shots/a2_new.mp4' });
+  core.ShotVideos.setSelected(a2.id, nw.id);
+  const st = LC.leadInContext(p.id, core.Shots.get(b1.id));
+  assert.equal(st.stale, true); assert.match(st.stale_reason, /第1章第2镜/);
+  assert.equal(L.leadInPrevOf({ id: 'x', chapter: '第1章', idx: 1 }, core.Shots.listInNarrativeOrder(p.id)), null, '全书第一镜没有上一镜');
 });

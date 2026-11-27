@@ -1382,14 +1382,16 @@ function FrameSlots({ s, projectId, isFirstInChapter, editable, busy, onChain, o
           承接上一镜末 22 帧（含声音）：
           <span className={s.lead_in?.on ? 'text-[var(--accent)]' : 'text-[var(--fg-4)]'}>{s.lead_in?.on ? '接' : '不接'}</span>
           <span className="text-[var(--fg-4)]">{'（' + (s.lead_in?.mode === 'manual' ? '手动' : s.lead_in?.mode === 'off' && s.first_frame_source === 'none' ? '手动' : '自动') + (s.lead_in?.reason ? '：' + s.lead_in.reason : '') + '）'}</span>
+          {s.lead_in?.cross && s.lead_in?.on ? <span className="text-[var(--fg-4)]">{'；跨集：接' + s.lead_in.prev_chapter + '第' + s.lead_in.prev_idx + '镜'}</span> : null}
           {s.lead_in_frames ? <span className="text-[var(--fg-4)]">{'；当前选中候选开头钉了 ' + s.lead_in_frames + ' 帧，导出时剪掉'}</span> : null}
+          {s.lead_in?.stale ? <span className="text-[var(--danger)]">{'；' + s.lead_in.stale_reason}</span> : null}
         </span>
         {editable && onLeadIn ? (
           <div className="flex gap-1">
             {[['auto', '自动'], ['on', '接'], ['off', '不接']].map(([v, t]) => {
               const cur = s.first_frame_source === 'prev_clip22' ? 'on' : s.first_frame_source === 'none' ? 'off' : (s.first_frame_source ? '' : 'auto');
               return (
-                <button key={v} type="button" className={linkBtn + (cur === v ? ' border-[var(--accent)] text-[var(--accent)]' : '')} disabled={!!busy || (v === 'on' && isFirstInChapter)} onClick={() => onLeadIn(v)}>{t}</button>
+                <button key={v} type="button" className={linkBtn + (cur === v ? ' border-[var(--accent)] text-[var(--accent)]' : '')} disabled={!!busy || (v === 'on' && s.lead_in && s.lead_in.prev_idx == null)} onClick={() => onLeadIn(v)}>{t}</button>
               );
             })}
           </div>

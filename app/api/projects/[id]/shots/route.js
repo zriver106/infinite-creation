@@ -1,9 +1,8 @@
 // SwotAtmk/infinite-creation · 开源地址 https://github.com/SwotAtmk/infinite-creation
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
-import { leadInDecision } from '@/lib/core/lead-in.js';
-import { prevShotOf } from '@/lib/core/first-frame.js';
-import { Shots, ShotVideos, Chapters, Projects, pickShotFields, idxTakenBy, validateShotContent, withWriteContext, firstFrameStatus, resolveProjectPath } from '@/lib/core/index.js';
+import { leadInContext, leadInView } from '@/lib/agent/lead-in-ctx.js';
+import { Shots, ShotVideos, Assets, Chapters, Projects, pickShotFields, idxTakenBy, validateShotContent, withWriteContext, firstFrameStatus, resolveProjectPath } from '@/lib/core/index.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +14,14 @@ export async function GET(req, { params }) {
   // ic27：附带首帧槽位状态（承接上一镜时上一镜换了选中候选 → stale=true，卡片提示「首帧已过期」）
   const list = Shots.list(id, { includeObsolete });
   const exists = (rel) => { const a = resolveProjectPath(id, rel); return !!a && fs.existsSync(a); };
+  const narrative = Shots.listInNarrativeOrder(id);
+  const assets = Assets.list(id);
   return NextResponse.json(list.map((s) => ({
     ...s,
     videos: ShotVideos.listByShot(s.id),
     first_frame_status: s.first_frame_source ? firstFrameStatus(s, list, { exists }) : null,
     // 承接上一镜 22 帧：本镜现在会不会接（手动 / 自动 / 不接 + 原因），以及选中候选里实际钉了几帧
-    lead_in: leadInDecision(s, prevShotOf(s, list)),
+    lead_in: leadInView(leadInContext(id, s, { narrative, assets })),
     lead_in_frames: ShotVideos.leadInOfShot(s),
   })));
 }
