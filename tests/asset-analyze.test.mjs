@@ -206,3 +206,29 @@ test('关了自动承接：列表 / 分镜卡的 lead_in 显示不接（原因�
     assert.equal(LC.leadInContext(p.id, core.Shots.get(b.id)).decision.on, true, '手动接照常');
   } finally { fs.writeFileSync(cfgPath, JSON.stringify(cfg)); }
 });
+
+test('合并缺图单：同名同类替换、voids 标作废不留冲突行、写了戏份说明却没进缺图单的报出来', async () => {
+  const p = core.Projects.create({ name: 'gaps', auto_script: false });
+  SN.saveSceneNote(p.id, '系统', '# 系统\n生命周期 范围 功能 状态');
+  SN.saveSceneNote(p.id, '肥肠盖浇饭外卖', '# 外卖\n生命周期 范围 功能 状态');
+  SN.saveSceneNote(p.id, 'L01', '# 公司\n生命周期 范围 功能 状态');
+  const ctx = { projectId: p.id, jobId: 'jg' };
+  let r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'save_gap_list', { items: [{ kind: 'prop', name: '光幕·不带可读文字', note_key: '系统' }, { kind: 'scene', name: '江澈公司办公室', location_id: 'L01', requirement: '工位区' }] }));
+  assert.deepEqual(r.missing_notes, ['肥肠盖浇饭外卖']);
+  r = JSON.parse(await AM.runAssetAnalyzeExtraTool({ ...ctx, jobId: 'jg2' }, 'save_gap_list', {
+    items: [{ kind: 'character', name: '系统·光幕版式A', note_key: '系统', requirement: '原文全文' }, { kind: 'scene', name: '江澈公司办公室', location_id: 'L01', requirement: '工位区 + 人事部' }, { kind: 'prop', name: '肥肠盖浇饭外卖', note_key: '肥肠盖浇饭外卖', requirement: '外卖盒' }],
+    voids: [{ name: '光幕·不带可读文字', reason: 'J-012：系统是角色，母版字照原文' }],
+  }));
+  assert.deepEqual(r.voided, ['光幕·不带可读文字']); assert.equal(r.coverage, '全部戏份说明都已在缺图单里'); assert.equal(r.active, 3);
+  const doc = (await import('../lib/core/asset-gaps.js')).getGapList(p.id);
+  assert.equal(doc.items.filter((x) => x.name === '江澈公司办公室').length, 1, '同名同类只留一行');
+  assert.equal(doc.items.find((x) => x.name === '江澈公司办公室').requirement, '工位区 + 人事部');
+  const md = fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8');
+  assert.match(md, /## 要出图（3 项）/); assert.match(md, /## 已作废（1 项[\s\S]*光幕·不带可读文字[\s\S]*J-012/); assert.match(md, /J-009/);
+  const got = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'get_gap_list', {}));
+  assert.deepEqual(got.coverage.missing, []);
+  // 不出图的也算覆盖
+  SN.saveSceneNote(p.id, 'L05', '# 公交\n生命周期 范围 功能 状态');
+  r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'save_gap_list', { items: [{ kind: 'scene', name: '城市公交车·车内', note_key: 'L05', need_image: false, reason: '已有通用公交图' }] }));
+  assert.equal(r.coverage, '全部戏份说明都已在缺图单里');
+});
