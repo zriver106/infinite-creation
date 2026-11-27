@@ -261,10 +261,16 @@ test('create_asset_slots：按缺图单建资产槽——服装/光幕版式挂�
   assert.notEqual(byName('江澈公司办公室·上班满员').asset_id, archivedOld.id, '已归档的不复用');
   assert.equal(core.Assets.get(byName('金砖').asset_id).category, 'prop');
   assert.equal(byName('作废行').asset_id, undefined);
+  const sysRow = byName('系统');
+  assert.equal(sysRow.need_image, false); assert.equal(sysRow.asset_id, sys.id); assert.equal(sysRow.base_image_from, '系统·光幕A版·面板未检测到物品');
+  assert.equal(byName('江澈').base_image_from, '江澈·第一天9块9T恤装');
+  assert.deepEqual(r.parent_rows_added.sort(), ['江澈', '系统'].sort());
   // 再跑一次全部复用，不重建
   const n = core.Assets.list(p.id).length;
   const r2 = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'create_asset_slots', {}));
   assert.equal(r2.created, 0); assert.equal(core.Assets.list(p.id).length, n);
+  assert.deepEqual(r2.parent_rows_added, []);
+  assert.equal(G.getGapList(p.id).items.filter((x) => x.name === '系统').length, 1);
   assert.match(fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8'), /资产 ID/);
 });
 
