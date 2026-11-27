@@ -5,12 +5,13 @@
 // POST { action: 'start', allow?: [asset_id] } → 开始（allow 给了就只派这些）
 // POST { action: 'pause' }                     → 暂停派新单（在途的照常收图、审图）
 // POST { action: 'tick' }                      → 立刻走一拍（平时每分钟自动一拍）
+// POST { action: 'revoke', asset_id, reason }  → 撤图：恢复上一版（没有就清空），这一行标需人工
 // POST { action: 'broadcast', text }           → 口径变了，给每个线程发一句「之前的 X 作废，以本条为准」
 import { NextResponse } from 'next/server';
 import { Projects, withWriteContext } from '@/lib/core/index.js';
 import { loadWork, staleRows, threadsOf, rowsWithStatus, THREADS_KEY } from '@/lib/core/asset-image-work.js';
 import { getLocations } from '@/lib/core/locations.js';
-import { setRunning, ensureLoop, tick, summary, broadcast } from '@/lib/agent/asset-image.js';
+import { setRunning, ensureLoop, tick, summary, broadcast, revokeImage } from '@/lib/agent/asset-image.js';
 
 export const dynamic = 'force-dynamic';
 const LANES = ['person', 'scene', 'prop'];
@@ -48,10 +49,15 @@ export async function POST(req, { params }) {
   }
   if (action === 'pause') return NextResponse.json(setRunning(id, false));
   if (action === 'tick') return NextResponse.json(await tick(id));
+  if (action === 'revoke') {
+    const aid = String(body.asset_id || '');
+    if (!aid) return NextResponse.json({ error: 'revoke 要给 asset_id' }, { status: 400 });
+    try { return NextResponse.json(revokeImage(id, aid, String(body.reason || ''))); } catch (e) { return NextResponse.json({ error: e.message }, { status: 400 }); }
+  }
   if (action === 'broadcast') {
     const text = String(body.text || '').trim();
     if (!text) return NextResponse.json({ error: 'broadcast 要给 text（例：之前的「国漫」段作废，以本条为准）' }, { status: 400 });
     return NextResponse.json({ sent: await broadcast(id, text) });
   }
-  return NextResponse.json({ error: 'action 只能是 plan / threads / start / pause / tick / broadcast' }, { status: 400 });
+  return NextResponse.json({ error: 'action 只能是 plan / threads / start / pause / tick / broadcast / revoke' }, { status: 400 });
 }

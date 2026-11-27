@@ -237,3 +237,27 @@ test('阶段变体自动挂本项目 _MV 的 A 格做底图（V3 定稿优先）
   fs.writeFileSync(path.join(W.roundsDir(p.id, mv.id), 'imported_approved.json'), JSON.stringify({ source: W.IMPORTED_SOURCE, image_path: rel }));
   assert.equal(W.importedApprovedOf(p.id, mv.id).source, '手工线·站位审');
 });
+
+test('只有 pass 才写回：needs_human 不写资产；撤图恢复上一版（没有就清空）并标需人工', async () => {
+  const p = setup('aimg-8');
+  core.Projects.setContextKey(p.id, W.THREADS_KEY, [{ name: '场景1', session: 's-scene', lane: 'scene' }]);
+  const a = core.Assets.create(p.id, { category: 'scene', name: '公交·白天有乘客' });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: '公交·白天有乘客', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = a.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const am = fakeAm();
+  am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'needs_human', checks: {}, return_note: '取不到底图' })); };
+  AI.setRunning(p.id, true);
+  await AI.tick(p.id, am);
+  const it = W.loadWork(p.id).items[a.id];
+  am.outbox[it.prefix + '.png'] = png(path.join(tmp, 'nh.png'));
+  await AI.tick(p.id, am);
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[a.id].status === 'needs_human'));
+  assert.equal(core.Assets.get(a.id).image_path || '', '', 'needs_human 不写回');
+  // 撤图：先模拟一次误写回
+  const src = png(path.join(tmp, 'bad.png'));
+  W.writeAssetImage(p.id, a.id, src);
+  const r = AI.revokeImage(p.id, a.id, '误写回');
+  assert.equal(r.restored, ''); assert.equal(core.Assets.get(a.id).image_path, '');
+  assert.equal(W.loadWork(p.id).items[a.id].status, 'needs_human');
+  AI.setRunning(p.id, false);
+});

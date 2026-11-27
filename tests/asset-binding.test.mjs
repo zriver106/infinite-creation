@@ -31,8 +31,10 @@ function mk(binding) {
   return { p, ctx, jc, yz, scene, mv, lone, jcCos };
 }
 
-test('缺省 ag：set_storyboard 不写绑定，已有绑定原样保留', async () => {
+test('ag（外部绑）：set_storyboard 不写绑定，已有绑定原样保留，并在返回里写明', async () => {
   const { p, ctx, jc, scene } = mk();
+  core.Projects.setContextKey(p.id, 'asset_binding', 'ag'); // 新建项目默认已改成 ic（总导 11-26），这里显式设外部绑
+  core.Projects.setContextKey(p.id, 'asset_mode', 'auto');
   assert.equal(ac.icAutoBindOn(p.id), false);
   await tools.runTool(ctx, 'set_storyboard', { shots: [{ chapter: '第26章', idx: 1, visual: '画面', characters: ['甲'], scenes: ['餐厅'] }] });
   let s = core.Shots.list(p.id)[0];
@@ -115,4 +117,9 @@ test('基础形象豁免：豁免段内的人物不报 B/C，段外照报', () =
   assert.ok(!outRange.issues.some((i) => /乙/.test(i.detail) && i.kind === 'costume'));
   const otherCh = bc.checkShotBindings(shot(2, '第27章'));
   assert.ok(otherCh.issues.some((i) => /乙/.test(i.detail) && i.level === 'C'), '别的章不豁免');
+});
+
+test('新建项目默认 IC 自己绑', () => {
+  const p = core.Projects.create({ name: 'bind-default' });
+  assert.equal(ac.icAutoBindOn(p.id), true);
 });
