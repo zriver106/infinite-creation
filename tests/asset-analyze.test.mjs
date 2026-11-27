@@ -386,3 +386,17 @@ test('view_asset_image：只读看本项目已挂的图；没图、已归档的�
   core.Projects.setContextKey(p.id, AM.ARCHIVED_ASSETS_KEY, [a.id]);
   assert.equal(JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'view_asset_image', { asset_id: a.id })).found, 0);
 });
+
+test('update_asset_description：只改描述、记改动日志；要写原因；别的项目的资产不行', async () => {
+  const p = core.Projects.create({ name: 'aa-desc', auto_script: false });
+  const a = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·工位区', description: '三排约 20 个' });
+  const ctx = { projectId: p.id, jobId: 'jdesc' };
+  await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'update_asset_description', { asset_id: a.id, text: '4 排×4' }), /reason/);
+  const r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'update_asset_description', { asset_id: a.id, text: '4 排×4，全部面北', reason: '对齐定稿图' }));
+  assert.equal(r.updated, true);
+  assert.equal(core.Assets.get(a.id).description, '4 排×4，全部面北');
+  assert.equal(core.Assets.get(a.id).name, 'L01_MV·工位区');
+  const other = core.Projects.create({ name: 'aa-desc2', auto_script: false });
+  const b = core.Assets.create(other.id, { category: 'scene', name: 'x' });
+  await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'update_asset_description', { asset_id: b.id, text: 'y', reason: 'z' }), /不在本项目/);
+});

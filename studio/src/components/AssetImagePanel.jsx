@@ -57,6 +57,15 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
     try { setDetail({ row: r, ...(await api.get('/api/projects/' + projectId + '/asset-images/review?asset_id=' + r.asset_id)) }); }
     catch (e) { toast.error(e.message); }
   };
+  // 人工指定 D（总导 11-26）：_MV 行的 D 直接取同地点某张已定稿 _MV 的 D 格
+  const dSources = (r) => (data?.rows || []).filter((x) => x.asset_id !== r.asset_id && /_MV/.test(x.name) && x.location_id && x.location_id === r.location_id && x.has_image);
+  const setD = async (r, from) => {
+    if (!from) return;
+    setBusy('set_d');
+    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'set_d', asset_id: r.asset_id, from_asset_id: from }); toast.success(x.composed ? '已用指定的 D 拼板写回' : '已指定 D，等 A/B/C 审过后拼板'); await load(); }
+    catch (e) { toast.error(e.message); }
+    finally { setBusy(''); }
+  };
   const toggle = (id, v) => setSel((s) => { const n = new Set(s); if (v) n.add(id); else n.delete(id); return n; });
 
   if (!data) return null;
@@ -84,7 +93,7 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
       <div className="max-h-[360px] overflow-auto rounded border border-[var(--line)]">
         <table className="w-full text-[11.5px]">
           <thead className="sticky top-0 bg-[var(--bg-2,#111)] text-[var(--fg-3)]">
-            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">审图结论</th></tr>
+            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">D 格</th><th className="p-1.5 text-left">审图结论</th></tr>
           </thead>
           <tbody>
             {rows.map((r) => {
@@ -96,6 +105,12 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                   <td className="p-1.5 text-[var(--fg-3)]">{KIND[r.kind] || r.kind}</td>
                   <td className="p-1.5"><Badge tone={st.tone} dot={r.status === 'sent' || r.status === 'reviewing'}>{st.text}</Badge>{r.note && ALERT.has(r.status) ? <div className="mt-0.5 text-[10.5px] text-[var(--danger)]">{r.note}</div> : null}</td>
                   <td className="p-1.5 text-[var(--fg-3)]">{r.step && r.step !== 'main' ? r.step + ' 格 · ' : ''}{r.round ? 'r' + r.round : ''}</td>
+                  <td className="p-1.5">{/_MV/.test(r.name) && canGenerate && dSources(r).length ? (
+                    <select className="rounded border border-[var(--line)] bg-transparent p-0.5 text-[11px]" value="" disabled={!!busy} onChange={(e) => setD(r, e.target.value)}>
+                      <option value="">人工指定 D…</option>
+                      {dSources(r).map((x) => <option key={x.asset_id} value={x.asset_id}>取「{x.name}」的 D</option>)}
+                    </select>
+                  ) : <span className="text-[var(--fg-4)]">—</span>}</td>
                   <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
                 </tr>
               );

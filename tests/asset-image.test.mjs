@@ -261,3 +261,28 @@ test('只有 pass 才写回：needs_human 不写资产；撤图恢复上一版�
   assert.equal(W.loadWork(p.id).items[a.id].status, 'needs_human');
   AI.setRunning(p.id, false);
 });
+
+test('同地点第二张 _MV：派 D 时附已定稿 _MV 的 D 格、只加机位标注；人工指定 D 后 A/B/C 已审就拼板写回', async () => {
+  const p = setup('aimg-9');
+  const mv1 = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·工位区·多视角定义图' });
+  const mv2 = core.Assets.create(p.id, { category: 'scene', name: 'L01_MV·走廊·多视角定义图' });
+  G.mergeGapList(p.id, { items: [
+    { kind: 'scene', name: 'L01_MV·工位区·多视角定义图', location_id: 'L01', requirement: 'a' },
+    { kind: 'scene', name: 'L01_MV·走廊·多视角定义图', location_id: 'L01', requirement: 'b' },
+  ] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = mv1.id; doc.items[1].asset_id = mv2.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const rel = 'assets/scenes/mv1.png'; png(path.join(core.projectDir(p.id), rel), 'blue'); core.Assets.update(mv1.id, { image_path: rel });
+  const row2 = G.getGapList(p.id).items.find((x) => x.asset_id === mv2.id);
+  const d = W.locationDOf(p.id, row2);
+  assert.equal(d.asset_id, mv1.id); assert.ok(fs.existsSync(d.abs));
+  const t = W.buildDispatchText(row2, { step: 'D', round: 1, outFile: 'o.png', reuseD: 'workspace/ic_refs/x_locD.png（L01 工位区 的 D 格）', kind: 'scene' });
+  assert.match(t, /不重画/); assert.match(t, /只在上面加本张 A\/B\/C/);
+  // 人工指定 D：A/B/C 已审 → 拼板写回
+  const w = W.loadWork(p.id);
+  w.items[mv2.id] = { name: row2.name, lane: 'scene', steps: ['A', 'B', 'C', 'D'], stepIdx: 3, round: 3, status: 'needs_human', approved: { A: png(path.join(tmp, 'a.png'), 'red'), B: png(path.join(tmp, 'b.png'), 'green'), C: png(path.join(tmp, 'c.png'), 'white') }, returns: [], history: [], thread: '场景1' };
+  W.saveWork(p.id, w);
+  const r = AI.setManualD(p.id, mv2.id, mv1.id);
+  assert.equal(r.composed, true);
+  assert.equal(W.loadWork(p.id).items[mv2.id].status, 'passed');
+  assert.ok(core.Assets.get(mv2.id).image_path);
+});
