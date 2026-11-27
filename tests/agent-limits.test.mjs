@@ -86,3 +86,32 @@ test('set_storyboard（Muse 出图项目）：名字找不到、或有未归档�
   assert.match(String(out), /分镜已写入/);
   assert.deepEqual(core.Shots.list(p.id)[0].character_ids, [live.id], '绑到未归档的那个');
 });
+
+test('音色：只看本章出镜、说话的角色；从已归档的同名旧人物、参考项目导入音色（文件拷进本项目），找不到才交新设计', async () => {
+  const ST = await import('../lib/agent/stages.js');
+  const VI = await import('../lib/core/voice-import.js');
+  const p = core.Projects.create({ name: 'voice-v3' });
+  const v2 = core.Projects.create({ name: 'voice-v2' });
+  const wv = (pid, name) => { const rel = 'assets/voice/' + name + '.wav'; const abs = path.join(core.projectDir(pid), rel); fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, 'RIFF'); return rel; };
+  const jc = core.Assets.create(p.id, { category: 'character', name: '江澈' });
+  const other = core.Assets.create(p.id, { category: 'character', name: '路人甲' });
+  core.Shots.create(p.id, { idx: 1, chapter: '第1章', character_ids: [jc.id], dialogue: '江澈：你好' });
+  // 本章只有江澈：路人甲没音色不挡本章
+  const t1 = ST.pendingByStage(p.id, '第1章').tts.items;
+  assert.ok(t1.some((x) => x.includes('江澈'))); assert.ok(!t1.some((x) => x.includes('路人甲')));
+  // 参考项目里有同名江澈的音色 → 导入
+  const v2jc = core.Assets.create(v2.id, { category: 'character', name: '江澈', voice_desc: '年轻男声，略疲惫' });
+  core.Assets.update(v2jc.id, { voice_ref: wv(v2.id, 'v2jc') });
+  const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); cfg.assetAnalyze = { referenceProjects: { [p.id]: [v2.id] } }; fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+  const r = VI.importMissingVoices(p.id);
+  const got = r.find((x) => x.asset_id === jc.id);
+  assert.equal(got.imported, true); assert.match(got.from, /参考项目/);
+  const a = core.Assets.get(jc.id);
+  assert.equal(a.voice_desc, '年轻男声，略疲惫'); assert.ok(fs.existsSync(path.join(core.projectDir(p.id), a.voice_ref)), '文件拷进本项目');
+  assert.equal(r.find((x) => x.asset_id === other.id).skipped, '没找到同名的现成音色');
+  assert.equal(ST.pendingByStage(p.id, '第1章').tts.todo, 0);
+  // 已归档的同名旧人物优先
+  const old = core.Assets.create(p.id, { category: 'character', name: '路人甲' }); core.Assets.update(old.id, { voice_ref: wv(p.id, 'oldlr') });
+  core.Projects.setContextKey(p.id, 'archived_asset_ids', [old.id]);
+  assert.match(VI.importVoice(p.id, other.id).from, /已归档/);
+});

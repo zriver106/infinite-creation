@@ -228,6 +228,17 @@ export default function AssetsPage({ projectId, jobs = [], onRefresh, readOnly =
     }
   }
 
+  // 音色优先拿参考项目的（Andy 11-26）
+  async function importVoices() {
+    try {
+      const r = await api.post('/api/projects/' + projectId + '/voices/import', {});
+      const ok = (r.results || []).filter((x) => x.imported);
+      const miss = (r.results || []).filter((x) => !x.imported);
+      toast.success('导入音色 ' + ok.length + ' 个' + (ok.length ? '：' + ok.map((x) => x.name).join('、') : '') + (miss.length ? '；没找到 ' + miss.length + ' 个（交音色阶段新设计）' : ''));
+      await load();
+    } catch (e) { toast.error(e.message); }
+  }
+
   function primaryAction(a) {
     if (readOnly || !canGenerate || features.buttons?.generate === false) return null;
     const active = activeJobFor(a.id);
@@ -274,9 +285,14 @@ export default function AssetsPage({ projectId, jobs = [], onRefresh, readOnly =
         description="角色、场景、道具与音色全项目共用、跨章节复用；服装 / 年龄变体挂在角色下才能被生成流程引用。"
         actions={
           !canEdit ? null : (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <Plus size={14} /> 新建资产
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="md" onClick={importVoices} title="没音色的人物，按同名从本项目已归档的旧人物或参考项目（V2）里拿现成音色">
+                <Mic2 size={14} /> 从参考项目导入音色
+              </Button>
+              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+                <Plus size={14} /> 新建资产
+              </Button>
+            </div>
           )
         }
       />
