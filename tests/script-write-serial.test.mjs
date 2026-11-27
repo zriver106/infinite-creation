@@ -58,3 +58,21 @@ test('缺图单附 J-009 原文：规则书超过单次读取上限也能取到�
   assert.ok(t.length > 300);
   assert.doesNotMatch(t.split('\n').slice(1).join('\n'), /^### 〔J-010〕/m);
 });
+
+test('排队等前一章时取消：马上标已取消，这章能重交', async () => {
+  const JR = await import('../lib/agent/job-runner.js');
+  const p = core.Projects.create({ name: 'sws-cancel', auto_script: false });
+  const c1 = core.Chapters.list(p.id)[0];
+  core.Chapters.update(c1.id, { novel: '一' });
+  const c2 = core.Chapters.create(p.id, { title: '第2章', novel: '二' });
+  let release; const hold = new Promise((x) => { release = x; });
+  const r1 = SW.submitScriptWriteJob({ projectId: p.id, chapter: core.Chapters.get(c1.id), runAgentFn: async () => { await hold; core.Chapters.update(c1.id, { script: '新' }); } });
+  const r2 = SW.submitScriptWriteJob({ projectId: p.id, chapter: core.Chapters.get(c2.id), runAgentFn: async () => { throw new Error('不该跑'); } });
+  JR.stopJob(r2.job.id);
+  assert.equal((await wait(r2.job.id, ['cancelled'])).status, 'cancelled');
+  const r3 = SW.submitScriptWriteJob({ projectId: p.id, chapter: core.Chapters.get(c2.id), runAgentFn: async () => { core.Chapters.update(c2.id, { script: '第2章 新稿' }); } });
+  release();
+  assert.equal((await wait(r1.job.id, ['done', 'failed'])).status, 'done');
+  assert.equal((await wait(r3.job.id, ['done', 'failed'])).status, 'done');
+  assert.equal(core.Jobs.get(r2.job.id).status, 'cancelled');
+});
