@@ -36,6 +36,7 @@ test('checkScriptDraft：旁白多 / 旁白长 / 没有 [画面：] / 心声第�
   assert.deepEqual(SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n**场头锁定**\n- **地点：** 家\n- **在场：** 江澈\n- **服装：** 睡衣\n[画面：躺着。]' + END, '').map((x) => x.detail.replace(/^.*：/, '')), ['场头锁定缺 站位']);
   const noTr = SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n' + LOCK + '[画面：躺着。]\n## 【第2场｜夜｜家】\n' + LOCK + '[画面：坐起。]', '');
   assert.deepEqual(noTr.map((x) => x.code), ['NO_TRANSITION', 'NO_TRANSITION'], '场间没衔接 + 末场没【衔接→下一章】');
+  assert.deepEqual(SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n' + LOCK + '[画面：江澈躺着。]\n江澈（OS）：一。\n【表演说明：这里声音放轻，眼睛一直看着天花板，不要转头，也不要动手，保持三秒后再接下一句。】\n江澈（OS）：二。' + END, '').map((x) => x.code), [], '表演说明行不算画面行、不打断也不算心声');
   assert.deepEqual(SG.checkScriptDraft('## 本章节拍表\n## 【第1场｜夜｜家】\n' + LOCK + '[画面：江澈站在窗边看着楼下的车流慢慢散开。]' + END, '').map((x) => x.code), [], '两个逗号以内、80 字以内不报');
 });
 
@@ -51,6 +52,9 @@ test('get_chapter：本章还没剧本、规则没读完 → 不给原著正文�
   const rs = JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: ch.title }));
   assert.equal(rs.novel, ''); assert.match(rs.novel_withheld, /剧本样稿/);
   await tools.runTool(ctx, 'skill_reference', { name: 'adapt-rules', ref: '剧本样稿.md' });
+  const rm = JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: ch.title }));
+  assert.equal(rm.novel, ''); assert.match(rm.novel_withheld, /叙述转换方法/);
+  await tools.runTool(ctx, 'skill_reference', { name: 'adapt-rules', ref: '叙述转换方法.md' });
   const r2 = JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: ch.title }));
   const switchesOn = Object.values(core.Projects.get(p.id) ? (await import('../lib/shared/index.js')).expressionSwitchValues(core.Projects.get(p.id)) : {}).some(Boolean);
   if (switchesOn) {
@@ -87,6 +91,7 @@ test('一章一个写剧本回合：本任务存过一章剧本后，下一章�
   const ctx = tools.createToolRuntime({ projectId: p.id, jobId: 'jsc4' });
   SG.noteSkillServed(ctx, 'adapt-rules'); SG.noteSkillServed(ctx, 'sd-storyboard-engine'); SG.noteSkillLinesServed(ctx, 'adapt-rules', ['H2']);
   await tools.runTool(ctx, 'skill_reference', { name: 'adapt-rules', ref: '剧本样稿.md' });
+  await tools.runTool(ctx, 'skill_reference', { name: 'adapt-rules', ref: '叙述转换方法.md' });
   assert.equal(JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: c1.title })).novel, NOVEL);
   await new Promise((r) => setTimeout(r, 5));
   await tools.runTool(ctx, 'set_chapter_script', { chapter: c1.title, script: '## 【第1场｜上午｜办公室】\n[画面：x。]' });
