@@ -103,3 +103,25 @@ test('一章一个写剧本回合：本任务存过一章剧本后，下一章�
   await tools.runTool(ctx, 'skill_reference', { name: 'adapt-rules', ref: '剧本样稿.md' });
   assert.equal(JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: c2.title })).novel, NOVEL);
 });
+
+test('只写剧本（重写模式）：只有要写的那一章不给旧剧本；上一章照常给剧本，好对末场（R-006 第6条）', async () => {
+  const p = core.Projects.create({ name: 'sc-rw', auto_script: true });
+  const c1 = core.Chapters.list(p.id)[0];
+  const c2 = core.Chapters.create(p.id, { title: '第2章', novel: NOVEL });
+  core.Chapters.update(c1.id, { novel: NOVEL, script: '上一章末场：江澈在走廊接电话' });
+  core.Chapters.update(c2.id, { script: '旧第2章剧本' });
+  const ctx = tools.createToolRuntime({ projectId: p.id, jobId: 'jsc-rw', chapter: c2.title });
+  ctx.scriptRewrite = true;
+  const prev = JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: c1.title }));
+  assert.equal(prev.script, '上一章末场：江澈在走廊接电话');
+  assert.equal(prev.novel, NOVEL);
+  const self = JSON.parse(await tools.runTool(ctx, 'get_chapter', { chapter: c2.title }));
+  assert.equal(self.script, '');
+});
+
+test('只写剧本工具集：带读地点表和戏份说明（服装锁定照戏份说明抄）', async () => {
+  const SW = await import('../lib/agent/script-write.js');
+  const names = SW.scriptWriteToolDefinitions(tools.TOOL_DEFINITIONS).map((t) => t.function.name);
+  for (const n of ['get_locations', 'list_scene_notes', 'get_scene_note', 'get_chapter', 'set_chapter_script']) assert.ok(names.includes(n), n);
+  assert.match(SW.buildScriptWriteAgentPrompt({ project: { name: 'x' }, chapter: '第2章' }), /get_scene_note[\s\S]*上一章/);
+});
