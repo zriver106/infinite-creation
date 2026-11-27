@@ -313,3 +313,30 @@ test('人名对齐：get_name_alignment 列出剧本说话人里资产库没有�
   assert.ok(sn.cast[0].includes('大厦保安乙') && sn.cast[0].includes('花店店员'));
   assert.ok(jc.id);
 });
+
+test('view_reference_asset：只读登记过的参考项目；按编号前缀找、命中多个给候选；base_ref 进缺图单和地点表变体', async () => {
+  const v3 = core.Projects.create({ name: 'ref-v3', auto_script: false });
+  const v2 = core.Projects.create({ name: 'ref-v2', auto_script: false });
+  const other = core.Projects.create({ name: 'ref-other', auto_script: false });
+  const RA = await import('../lib/core/reference-assets.js');
+  const ctx = { projectId: v3.id, jobId: 'jref' };
+  await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'view_reference_asset', { name: 'S434_MV' }), /没有登记/);
+  const cfg = { assetAnalyze: { referenceProjects: { [v3.id]: [v2.id] } } };
+  const mv = core.Assets.create(v2.id, { category: 'scene', name: 'S434_MV·新公司整层·多视角定义图', description: '4排×4工位' });
+  core.Assets.create(v2.id, { category: 'scene', name: 'S179·海鲜自助·用餐区' });
+  core.Assets.create(v2.id, { category: 'scene', name: 'S179·海鲜自助·取餐区' });
+  const r = RA.viewReferenceAsset(v3.id, { name: 'S434_MV' }, cfg);
+  assert.equal(r.found, 1); assert.equal(r.asset_id, mv.id); assert.match(r.description, /4排×4/);
+  assert.equal(RA.viewReferenceAsset(v3.id, { name: 'S179' }, cfg).found, 2);
+  assert.throws(() => RA.viewReferenceAsset(v3.id, { name: 'x', project_id: other.id }, cfg), /没登记/);
+  assert.throws(() => RA.viewReferenceAsset(v2.id, { name: 'S434_MV' }, cfg), /没有登记/);
+  const G = await import('../lib/core/asset-gaps.js');
+  G.mergeGapList(v3.id, { items: [{ kind: 'scene', name: 'L01_MV·工位区', requirement: '空场', base_ref: { project_id: v2.id, asset_id: mv.id, name: 'S434_MV', cell: 'A' } }] });
+  const row = G.getGapList(v3.id).items[0];
+  assert.equal(row.base_ref.asset_id, mv.id);
+  G.mergeGapList(v3.id, { items: [{ kind: 'scene', name: 'L01_MV·工位区', requirement: '空场改' }] });
+  assert.equal(G.getGapList(v3.id).items[0].base_ref.asset_id, mv.id, '替换行时底图保留');
+  assert.match(G.renderGapListMd(G.getGapList(v3.id)), /【底图：S434_MV A/);
+  LOC.saveLocations(v3.id, { rows: [{ id: 'L01', name: '公司', first_chapter: 1, last_chapter: 2, variants: [{ name: 'L01_MV·工位区', base_ref: { asset_id: mv.id, name: 'S434_MV', cell: 'A' } }] }] });
+  assert.equal(LOC.getLocations(v3.id).rows[0].variants[0].base_ref.asset_id, mv.id);
+});
