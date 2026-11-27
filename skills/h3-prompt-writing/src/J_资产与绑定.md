@@ -22,7 +22,7 @@ When the bound scene reference image is a wide or establishing shot and this sho
 
 #### 〔J-003〕 J-003【待测】不用 IC 自建资产（G11）
 
-绑定的人物、场景、道具都要是我方登记过的资产（描述里有「我方资产ID…审核：final」）；没有的不绑，列进缺图单报管理会话补资产（导入定稿或派图），不让 IC 自己画一张顶上（与 adapt-rules J 段执行方、A-001 第4条同口径）。
+绑定的人物、场景、道具都要是我方登记过的资产（描述里有「我方资产ID…审核：final」）；没有的不绑，列进缺图单交 IC 资产出图补（派 am 出图，审图过了才入库）；写稿、绑定的 Agent 不自己画一张顶上（与 adapt-rules J 段执行方、A-001 第4条同口径）。
 
 #### 〔J-004〕 J-004【待测】已归档、勿用的资产不绑（G26）
 
