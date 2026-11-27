@@ -372,3 +372,17 @@ test('人物 / 人群出图要求带「中国人长相，当代中国城市普�
   assert.equal((by('围观者甲').match(/中国人长相/g) || []).length, 1, '不重复加');
   assert.match(G.renderGapListMd(G.getGapList(p.id), { style: '写实偏动漫3D' }), /人物和人群（含场景里的人群）：中国人长相/);
 });
+
+test('view_asset_image：只读看本项目已挂的图；没图、已归档的说明白', async () => {
+  const p = core.Projects.create({ name: 'aa-viewown', auto_script: false });
+  const a = core.Assets.create(p.id, { category: 'scene', name: 'L04_MV·用餐区', description: '定稿 r4' });
+  const ctx = { projectId: p.id, jobId: 'jvo' };
+  assert.match(JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'view_asset_image', { asset_id: a.id })).note, /还没有图/);
+  const rel = 'assets/scenes/l04.png'; const abs = path.join(core.projectDir(p.id), rel); fs.mkdirSync(path.dirname(abs), { recursive: true });
+  (await import('node:child_process')).execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=gray:s=64x36', '-frames:v', '1', abs]);
+  core.Assets.update(a.id, { image_path: rel });
+  const r = await AM.runAssetAnalyzeExtraTool(ctx, 'view_asset_image', { name: 'L04_MV' });
+  assert.ok(r.images && r.images.length === 1); assert.match(r.text, /定稿 r4/);
+  core.Projects.setContextKey(p.id, AM.ARCHIVED_ASSETS_KEY, [a.id]);
+  assert.equal(JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'view_asset_image', { asset_id: a.id })).found, 0);
+});
