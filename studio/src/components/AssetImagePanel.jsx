@@ -62,7 +62,8 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
   const setD = async (r, from) => {
     if (!from) return;
     setBusy('set_d');
-    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'set_d', asset_id: r.asset_id, from_asset_id: from }); toast.success(x.composed ? '已用指定的 D 拼板写回' : '已指定 D，等 A/B/C 审过后拼板'); await load(); }
+    const body = from.startsWith('v:') ? { action: 'set_d', asset_id: r.asset_id, from_version: from.slice(2) } : { action: 'set_d', asset_id: r.asset_id, from_asset_id: from };
+    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', body); toast.success(x.composed ? '已用指定的 D 拼板写回' : '已指定 D，等 A/B/C 审过后拼板'); await load(); }
     catch (e) { toast.error(e.message); }
     finally { setBusy(''); }
   };
@@ -72,6 +73,15 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
     if (!ret || !ret.note.trim()) return;
     setBusy('return');
     try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'return', asset_id: ret.row.asset_id, note: ret.note, step: ret.step }); toast.success('已退回：' + (x.step !== 'main' ? x.step + ' 格 ' : '') + 'r' + x.round); setRet(null); await load(); }
+    catch (e) { toast.error(e.message); }
+    finally { setBusy(''); }
+  };
+  // 人工审过（缺口第 21 条）：停住的这一格人工判过，写一句理由，接着往下走
+  const [apv, setApv] = useState(null);
+  const doApprove = async () => {
+    if (!apv || !apv.reason.trim()) return;
+    setBusy('approve');
+    try { const x = await api.post('/api/projects/' + projectId + '/asset-images', { action: 'approve', asset_id: apv.row.asset_id, reason: apv.reason }); toast.success(x.next === 'next_step' ? '已人工审过，排下一格' : x.next === 'compose_review' ? '已人工审过，拼板核对中' : '已人工审过并写回'); setApv(null); await load(); }
     catch (e) { toast.error(e.message); }
     finally { setBusy(''); }
   };
@@ -114,14 +124,15 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
                   <td className="p-1.5 text-[var(--fg-3)]">{KIND[r.kind] || r.kind}</td>
                   <td className="p-1.5"><Badge tone={st.tone} dot={r.status === 'sent' || r.status === 'reviewing'}>{st.text}</Badge>{r.note && ALERT.has(r.status) ? <div className="mt-0.5 text-[10.5px] text-[var(--danger)]">{r.note}</div> : null}</td>
                   <td className="p-1.5 text-[var(--fg-3)]">{r.step && r.step !== 'main' ? r.step + ' 格 · ' : ''}{r.round ? 'r' + r.round : ''}</td>
-                  <td className="p-1.5">{/_MV/.test(r.name) && canGenerate && dSources(r).length ? (
+                  <td className="p-1.5">{/_MV/.test(r.name) && canGenerate && (dSources(r).length || (r.versions || []).length) ? (
                     <select className="rounded border border-[var(--line)] bg-transparent p-0.5 text-[11px]" value="" disabled={!!busy} onChange={(e) => setD(r, e.target.value)}>
                       <option value="">人工指定 D…</option>
                       {dSources(r).map((x) => <option key={x.asset_id} value={x.asset_id}>取「{x.name}」的 D</option>)}
+                      {(r.versions || []).map((v, i) => <option key={v} value={'v:' + v}>取本张{i === 0 ? '当前图' : '旧版 ' + i}的 D</option>)}
                     </select>
                   ) : <span className="text-[var(--fg-4)]">—</span>}</td>
                   <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
-                  <td className="p-1.5">{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: /_MV/.test(r.name) ? (r.step && r.step !== 'compose' ? r.step : 'A') : '' })}>人工退回</Button> : null}</td>
+                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: /_MV/.test(r.name) ? (r.step && r.step !== 'compose' ? r.step : 'A') : '' })}>人工退回</Button> : null}</td>
                 </tr>
               );
             })}
@@ -137,6 +148,10 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
           ))}
         </div>
       ) : null}
+
+      <Modal open={!!apv} onOpenChange={(o) => !o && setApv(null)} title={apv ? '人工审过：' + apv.row.name + (apv.row.step && apv.row.step !== 'main' ? '（' + apv.row.step + ' 格）' : '') : ''} footer={<><Button variant="ghost" size="md" onClick={() => setApv(null)}>取消</Button><Button variant="primary" size="md" disabled={!apv || !apv.reason.trim() || !!busy} loading={busy === 'approve'} onClick={doApprove}>判过，接着往下走</Button></>}>
+        {apv ? <textarea className="min-h-[100px] w-full rounded border border-[var(--line)] bg-transparent p-2 text-[12px]" placeholder="理由（记成人工审核记录），例：审图误判，C 格和 A 是同一车厢，门在右侧" value={apv.reason} onChange={(e) => setApv((x) => ({ ...x, reason: e.target.value }))} /> : null}
+      </Modal>
 
       <Modal open={!!ret} onOpenChange={(o) => !o && setRet(null)} title={ret ? '人工退回：' + ret.row.name : ''} footer={<><Button variant="ghost" size="md" onClick={() => setRet(null)}>取消</Button><Button variant="primary" size="md" disabled={!ret || !ret.note.trim() || !!busy} loading={busy === 'return'} onClick={doReturn}>退回，原线程出下一轮</Button></>}>
         {ret ? (

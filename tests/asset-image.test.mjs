@@ -312,3 +312,28 @@ test('人工退回：指定格、原线程出 rN+1；拼板核对没过判需人
   assert.equal(core.Assets.get(mv.id).image_path || '', '', '核对没过不写回');
   assert.match(W.loadWork(p.id).items[mv.id].note, /拼板核对没过/);
 });
+
+test('人工审过：停在需人工的那一格判过（记人工审核记录），接着排下一格；D 可取本张旧版本', async () => {
+  const p = setup('aimg-11');
+  const mv = core.Assets.create(p.id, { category: 'scene', name: 'L05_MV·公交·多视角定义图' });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: 'L05_MV·公交·多视角定义图', location_id: 'L05', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = mv.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const w = W.loadWork(p.id);
+  const cFile = png(path.join(tmp, 'l05c.png'), 'green');
+  w.items[mv.id] = { name: 'L05_MV·公交·多视角定义图', lane: 'scene', steps: ['A', 'B', 'C', 'D'], stepIdx: 2, step: 'C', round: 3, status: 'needs_human', file: cFile, approved: { A: png(path.join(tmp, 'l05a.png'), 'red'), B: png(path.join(tmp, 'l05b.png'), 'blue') }, returns: [], history: [], thread: '场景1' };
+  W.saveWork(p.id, w);
+  assert.throws(() => AI.manualApprove(p.id, mv.id, { reason: '' }), /理由/);
+  const r = AI.manualApprove(p.id, mv.id, { reason: '审图误判，C 和 A 是同一车厢' }, fakeAm());
+  assert.equal(r.next, 'next_step');
+  const it = W.loadWork(p.id).items[mv.id];
+  assert.equal(it.approved.C, cFile); assert.equal(it.step, 'C'); assert.equal(it.stepIdx, 3); assert.equal(it.status, 'next_step');
+  assert.ok(fs.existsSync(path.join(W.roundsDir(p.id, mv.id), 'review_C_r3_manual.json')), '人工审核记录');
+  // D 取本张旧版本
+  const rel = 'assets/scenes/l05old.png'; png(path.join(core.projectDir(p.id), rel), 'white'); core.Assets.update(mv.id, { image_path: rel });
+  const am = fakeAm(); am.runReview = async ({ jobId }) => { const cp = core.Jobs.get(jobId).checkpoint; fs.writeFileSync(RV.reviewResultPath(p.id, cp), JSON.stringify({ verdict: 'pass', checks: CHECKS_OK, checklist: [{ item: 'a', expected: 'b', seen: 'b', ok: true }, { item: 'c', expected: 'd', seen: 'd', ok: true }, { item: 'e', expected: 'f', seen: 'f', ok: true }] })); };
+  const w2 = W.loadWork(p.id); w2.items[mv.id].approved.C = cFile; W.saveWork(p.id, w2);
+  const d = AI.setManualD(p.id, mv.id, '', am, { fromVersion: rel });
+  assert.equal(d.composed, true);
+  assert.ok(await waitFor(() => W.loadWork(p.id).items[mv.id].status === 'passed'));
+  assert.throws(() => AI.setManualD(p.id, mv.id, '', am, { fromVersion: 'assets/x.png' }), /不是这张资产的版本/);
+});

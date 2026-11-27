@@ -134,7 +134,7 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
       return started.length ? started[started.length - 1].id : defaultChapterId(c);
     });
     if (firstJobsLoadRef.current) firstJobsLoadRef.current = false;
-    else if (j.some((x) => !seenJobIdsRef.current.has(x.id))) setQueueOpen(true);
+    // 缺口 22（11-26）：有新任务不再自动弹出任务抽屉（挡住出图面板），只有点按钮才开
     seenJobIdsRef.current = new Set(j.map((x) => x.id));
   }, [id]);
 
@@ -318,7 +318,6 @@ export default function ProjectWorkspace({ id, initialTab = 'chapters', onBack, 
   const activityFor = (j) => liveRunning.find((it) => it.jobId === j.id);
 
   useEffect(() => {
-    if (activeJobs.length > 0 && prevActiveRef.current === 0) setQueueOpen(true);
     prevActiveRef.current = activeJobs.length;
   }, [activeJobs.length]);
 
