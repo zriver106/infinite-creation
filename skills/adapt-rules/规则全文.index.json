@@ -1,12 +1,12 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-e13c1972b6",
+ "version": "rules-114ee11228",
  "file": "规则全文.md",
- "file_md5": "3F908A86D80954162644844448614ED8",
- "total_lines": 564,
- "base_end_line": 536,
- "base_chars": 31985,
+ "file_md5": "5F8A8CABC14FCA94205528587039FE77",
+ "total_lines": 598,
+ "base_end_line": 570,
+ "base_chars": 33236,
  "base_budget_chars": 40000,
  "budget_chars": 92000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 879,
-   "checksum": "B5E983E0"
+   "checksum": "5E91DFA0"
   },
   {
    "id": "A",
@@ -41,19 +41,19 @@
    "title": "R 剧本（台词读法、心声长短）",
    "tier": "base",
    "start": 85,
-   "end": 197,
+   "end": 231,
    "when": [
     "always"
    ],
-   "chars": 6568,
-   "checksum": "DDC0BDC4"
+   "chars": 7819,
+   "checksum": "D650A735"
   },
   {
    "id": "S",
    "title": "S 分镜（同场锁、换装、站位、节奏、参考图）",
    "tier": "base",
-   "start": 199,
-   "end": 411,
+   "start": 233,
+   "end": 445,
    "when": [
     "always"
    ],
@@ -64,8 +64,8 @@
    "id": "C",
    "title": "C 分镜层心声",
    "tier": "base",
-   "start": 413,
-   "end": 427,
+   "start": 447,
+   "end": 461,
    "when": [
     "always"
    ],
@@ -76,8 +76,8 @@
    "id": "J",
    "title": "J 资产与逐镜绑定（每章写分镜必读）",
    "tier": "base",
-   "start": 429,
-   "end": 535,
+   "start": 463,
+   "end": 569,
    "when": [
     "always"
    ],
@@ -88,8 +88,8 @@
    "id": "H2",
    "title": "H2 表现手段（Q 版、特效、谐音；冷门）",
    "tier": "volume",
-   "start": 540,
-   "end": 564,
+   "start": 574,
+   "end": 598,
    "when": [
     "expression"
    ],
