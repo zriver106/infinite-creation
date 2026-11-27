@@ -270,6 +270,10 @@ test('create_asset_slots：按缺图单建资产槽——服装/光幕版式挂�
   const r2 = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'create_asset_slots', {}));
   assert.equal(r2.created, 0); assert.equal(core.Assets.list(p.id).length, n);
   assert.deepEqual(r2.parent_rows_added, []);
+  // 同名同类改出图要求：asset_id 保留
+  const keep = byName('金砖').asset_id;
+  G.mergeGapList(p.id, { items: [{ kind: 'prop', name: '金砖', requirement: '改：一公斤金砖，带编号' }] });
+  assert.equal(G.getGapList(p.id).items.find((x) => x.name === '金砖').asset_id, keep);
   assert.equal(G.getGapList(p.id).items.filter((x) => x.name === '系统').length, 1);
   assert.match(fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8'), /资产 ID/);
 });
