@@ -333,7 +333,7 @@ test('view_reference_asset：只读登记过的参考项目；按编号前缀找
   const other = core.Projects.create({ name: 'ref-other', auto_script: false });
   const RA = await import('../lib/core/reference-assets.js');
   const ctx = { projectId: v3.id, jobId: 'jref' };
-  await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'view_reference_asset', { name: 'S434_MV' }), /没有登记/);
+  assert.equal(JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'view_reference_asset', { name: 'S434_MV' })).no_reference_project, true, '没登记参考项目：不报错，按从零流程走');
   const cfg = { assetAnalyze: { referenceProjects: { [v3.id]: [v2.id] } } };
   const mv = core.Assets.create(v2.id, { category: 'scene', name: 'S434_MV·新公司整层·多视角定义图', description: '4排×4工位' });
   core.Assets.create(v2.id, { category: 'scene', name: 'S179·海鲜自助·用餐区' });
@@ -342,7 +342,7 @@ test('view_reference_asset：只读登记过的参考项目；按编号前缀找
   assert.equal(r.found, 1); assert.equal(r.asset_id, mv.id); assert.match(r.description, /4排×4/);
   assert.equal(RA.viewReferenceAsset(v3.id, { name: 'S179' }, cfg).found, 2);
   assert.throws(() => RA.viewReferenceAsset(v3.id, { name: 'x', project_id: other.id }, cfg), /没登记/);
-  assert.throws(() => RA.viewReferenceAsset(v2.id, { name: 'S434_MV' }, cfg), /没有登记/);
+  assert.equal(RA.viewReferenceAsset(v2.id, { name: 'S434_MV' }, cfg).no_reference_project, true);
   const G = await import('../lib/core/asset-gaps.js');
   G.mergeGapList(v3.id, { items: [{ kind: 'scene', name: 'L01_MV·工位区', requirement: '空场', base_ref: { project_id: v2.id, asset_id: mv.id, name: 'S434_MV', cell: 'A' } }] });
   const row = G.getGapList(v3.id).items[0];

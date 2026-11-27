@@ -3,13 +3,15 @@ import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import { Projects, Jobs, projectDir, withWriteContext, pickProjectFields } from '@/lib/core/index.js';
 import { applyDeleteProjectPolicy } from '@/lib/agent/index.js';
+import { reconcileProjectStatus } from '@/lib/agent/job-runner.js';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req, { params }) {
   const { id } = await params;
-  const p = Projects.get(id);
-  if (!p) return NextResponse.json({ error: '项目不存在' }, { status: 404 });
+  if (!Projects.get(id)) return NextResponse.json({ error: '项目不存在' }, { status: 404 });
+  // 项目状态按实际在跑的任务算（撤掉或结束后清掉 running）
+  const p = reconcileProjectStatus(id);
   return NextResponse.json(p);
 }
 
