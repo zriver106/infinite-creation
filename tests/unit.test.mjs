@@ -945,7 +945,7 @@ test('parseFrontmatter + routeSkill', () => {
   assert.equal(routeSkill('年代一致性优化', ''), 'era-consistency-optimizer');
   // 漫剧老李套装（新套装优先）
   assert.equal(routeSkill('漫剧老李全流程', ''), 'short-drama-director');
-  assert.equal(routeSkill('台词诊断', ''), 'sd-script-engine');
+  assert.notEqual(routeSkill('台词诊断', ''), 'sd-script-engine'); // 打分类技能 IC 不路由（Andy 11-26）
   assert.equal(routeSkill('故事板分镜图', ''), 'sd-storyboard-engine');
   assert.equal(routeSkill('拆资产三清单', ''), 'sd-asset-engine');
   assert.equal(routeSkill('玄幻打斗法术对轰', ''), 'sd-xuanhuan-engine');
@@ -953,7 +953,7 @@ test('parseFrontmatter + routeSkill', () => {
   assert.equal(routeSkill('投喂提示词包', ''), 'sd-feed-engine');
   assert.equal(routeSkill('质检连续性检查', ''), 'sd-qc-engine');
   assert.equal(routeSkill('对标爆款采风', ''), 'sd-recon-engine');
-  assert.equal(routeSkill('微短剧分集剧本', ''), 'short-drama-scriptwriting');
+  assert.notEqual(routeSkill('微短剧分集剧本', ''), 'short-drama-scriptwriting'); // 同上
 });
 
 test('collectSkillReferences：递归读取 references 子目录，忽略非 md/txt', () => {

@@ -18,7 +18,11 @@ export default function WorkflowPage({ projectId, chapters = [], progress, runni
   const [busy, setBusy] = useState(null);
 
   const activeJobs = progress?.activeJobs || [];
-  const busyStage = running || activeJobs.length > 0;
+  // 只锁选中那一章（总导 11-26：一章在跑 LLM 创作，其它章不该全灰）。选「全部章节」时：有不带章号的整项目任务才灰。
+  const jobChapter = (j) => (j.checkpoint && j.checkpoint.chapter) || j.chapter || '';
+  const busyStage = scope
+    ? activeJobs.some((j) => jobChapter(j) === scope || (!jobChapter(j) && (j.type === 'create' || j.type === 'stage')))
+    : activeJobs.some((j) => !jobChapter(j) && (j.type === 'create' || j.type === 'stage'));
 
   async function runStage(stageId) {
     setBusy('正在提交「' + (STAGE_META.find((s) => s.id === stageId)?.label || stageId) + '」阶段…');

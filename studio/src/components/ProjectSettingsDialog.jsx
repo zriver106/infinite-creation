@@ -35,6 +35,9 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   const [saving, setSaving] = useState(false);
   // am 线程表（资产出图：一个线程一个车道；总导 11-26）
   const [threads, setThreads] = useState([]);
+  // 写稿并行（各类型同时运行的 Agent 数，总导 11-26）
+  const [limits, setLimits] = useState(null);
+  const [limitKinds, setLimitKinds] = useState({});
 
   useEffect(() => {
     if (!open || !project) return;
@@ -53,6 +56,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setAutoScript(project.auto_script !== false);
     setExprSwitches(expressionSwitchValues(project));
     setThreads(((project.context && project.context.asset_image_threads) || []).map((t) => ({ ...t })));
+    api.get('/api/projects/' + project.id + '/agent-limits').then((r) => { setLimits(r.limits); setLimitKinds(r.kinds || {}); }).catch(() => setLimits(null));
   }, [open, project]);
 
   async function save() {
@@ -72,6 +76,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
         ...exprSwitches,
       });
       if (assetMode !== assetModeOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { mode: assetMode });
+      if (limits) await api.put('/api/projects/' + project.id + '/agent-limits', { limits });
       const cleanThreads = threads.filter((t) => String(t.name || '').trim() && String(t.session || '').trim());
       if (cleanThreads.length && JSON.stringify(cleanThreads) !== JSON.stringify((project.context && project.context.asset_image_threads) || [])) {
         await api.post('/api/projects/' + project.id + '/asset-images', { action: 'threads', threads: cleanThreads });
@@ -183,9 +188,9 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
             <div className="flex flex-col gap-1.5">
               {threads.map((t, i) => (
                 <div key={i} className="flex items-center gap-1.5">
-                  <Input className="w-[90px]" value={t.name || ''} placeholder="名称" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-                  <Input className="flex-1" value={t.session || ''} placeholder="am 会话 id" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, session: e.target.value } : x)))} />
-                  <Select className="w-[100px]" value={t.lane || 'person'} onChange={(v) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, lane: v } : x)))} items={[{ value: 'person', label: '人物' }, { value: 'scene', label: '场景' }, { value: 'prop', label: '道具UI' }]} />
+                  <div className="w-[96px] shrink-0"><Input value={t.name || ''} placeholder="名称" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /></div>
+                  <div className="min-w-0 flex-1"><Input value={t.session || ''} placeholder="am 会话 id" onChange={(e) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, session: e.target.value } : x)))} /></div>
+                  <div className="w-[110px] shrink-0"><Select value={t.lane || 'person'} onChange={(v) => setThreads((ts) => ts.map((x, j) => (j === i ? { ...x, lane: v } : x)))} items={[{ value: 'person', label: '人物' }, { value: 'scene', label: '场景' }, { value: 'prop', label: '道具UI' }]} /></div>
                   <Button variant="ghost" size="sm" onClick={() => setThreads((ts) => ts.filter((_, j) => j !== i))}>删</Button>
                 </div>
               ))}
@@ -196,7 +201,21 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
 
         <div className="hairline" />
 
-        <FormSection index="04" title="表现手段">
+        {limits ? (
+          <FormSection index="04" title="写稿并行" description="各类写稿 Agent 同时运行的个数（1–8）。GPU 出第 N 章时，后面几章的分镜和提示词并行写；同一章的剧本改写和分镜 / 提示词仍互斥。">
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(limitKinds).map(([k, v]) => (
+                <Field key={k} label={v.label} hint={'默认 ' + v.def}>
+                  <Input type="number" min={1} max={8} value={String(limits[k] ?? v.def)} onChange={(e) => setLimits((l) => ({ ...l, [k]: Math.max(1, Math.min(8, Math.floor(Number(e.target.value) || 1))) }))} />
+                </Field>
+              ))}
+            </div>
+          </FormSection>
+        ) : null}
+
+        <div className="hairline" />
+
+        <FormSection index="05" title="表现手段">
           <div className="flex flex-col gap-3 pt-1">
             {EXPRESSION_SWITCHES.map((s) => (
               <Switch
