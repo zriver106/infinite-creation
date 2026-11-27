@@ -14,6 +14,13 @@ const ASSET_MODE_ITEMS = [
   { value: 'gap-list', label: 'Muse 出图' },
   { value: 'auto', label: '本地模型（IC 生图）' },
 ];
+// 资产绑定方式（总导 11-26：项目设置里能只改当前项目；系统设置是新建项目的缺省）。存 projects.context.asset_binding（PUT /asset-settings { binding }）。
+const ASSET_BINDING_ITEMS = [
+  { value: 'inherit', label: '跟随系统设置' },
+  { value: 'ic', label: 'IC 自己绑（写分镜时按名字绑人物 / 场景 / 服装 / 道具）' },
+  { value: 'ag', label: '外部绑（IC 不写绑定，由外部 Agent 绑）' },
+];
+const assetBindingOf = (project) => { const v = (project && project.context && project.context.asset_binding) || ''; return v === 'ic' || v === 'ag' ? v : 'inherit'; };
 const assetModeOf = (project) => { const v = (project && project.context && project.context.asset_mode) || ''; return v === 'gap-list' || v === 'auto' ? v : 'inherit'; };
 
 export default function ProjectSettingsDialog({ open, onOpenChange, project, onSaved }) {
@@ -25,6 +32,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
   const [ratio, setRatio] = useState('16:9');
   const [imageRes, setImageRes] = useState('1K');
   const [assetMode, setAssetMode] = useState('inherit');
+  const [assetBinding, setAssetBinding] = useState('inherit');
   const [cw, setCw] = useState('');
   const [ch, setCh] = useState('');
   const [enableBgm, setEnableBgm] = useState(true);
@@ -49,6 +57,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
     setRatio(project.video_aspect_ratio || '16:9');
     setImageRes(project.image_resolution || '1K');
     setAssetMode(assetModeOf(project));
+    setAssetBinding(assetBindingOf(project));
     setCw(project.video_width ? String(project.video_width) : '');
     setCh(project.video_height ? String(project.video_height) : '');
     setEnableBgm(project.enable_bgm !== false);
@@ -76,6 +85,7 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
         ...exprSwitches,
       });
       if (assetMode !== assetModeOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { mode: assetMode });
+      if (assetBinding !== assetBindingOf(project)) await api.put('/api/projects/' + project.id + '/asset-settings', { binding: assetBinding });
       if (limits) await api.put('/api/projects/' + project.id + '/agent-limits', { limits });
       const cleanThreads = threads.filter((t) => String(t.name || '').trim() && String(t.session || '').trim());
       if (cleanThreads.length && JSON.stringify(cleanThreads) !== JSON.stringify((project.context && project.context.asset_image_threads) || [])) {
@@ -183,6 +193,9 @@ export default function ProjectSettingsDialog({ open, onOpenChange, project, onS
                 : '跟随「系统设置 → ComfyUI 服务 → 资产出图方式」。'}
           >
             <Select value={assetMode} onChange={setAssetMode} items={ASSET_MODE_ITEMS} />
+          </Field>
+          <Field label="资产绑定方式" hint="只改本项目；新建项目的缺省在「系统设置 → 资产绑定方式」。外部绑时 IC 写分镜会忽略绑定字段（并在返回里写明）。">
+            <Select value={assetBinding} onChange={setAssetBinding} items={ASSET_BINDING_ITEMS} />
           </Field>
           <Field label="am 线程" hint="资产出图派单用的 am 会话：一个线程一个车道（人物 / 场景 / 道具UI），线程数就是并行数。会话 id 用 muse-cli threads 查。">
             <div className="flex flex-col gap-1.5">

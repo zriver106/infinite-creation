@@ -31,8 +31,9 @@ export async function PUT(req, { params }) {
   }
   // 2026-11-25：项目级资产绑定方式（'ag' = 我方 Agent 绑定 | 'ic' = IC 按名字自动绑定），不设按系统设置。
   if (body.binding !== undefined) {
-    if (!['ag', 'ic'].includes(body.binding)) return NextResponse.json({ error: 'binding 只能是 ag / ic' }, { status: 400 });
-    writes.push([ASSET_BINDING_KEY, body.binding]);
+    // inherit = 跟随系统设置（清掉项目级覆盖）；系统设置仍是新建项目的缺省值（总导 11-26）
+    if (!['ag', 'ic', 'inherit'].includes(body.binding)) return NextResponse.json({ error: 'binding 只能是 ag / ic / inherit' }, { status: 400 });
+    writes.push([ASSET_BINDING_KEY, body.binding === 'inherit' ? '' : body.binding]);
   }
   if (body.gate !== undefined) {
     if (!['A', 'B'].includes(body.gate)) return NextResponse.json({ error: 'gate 只能是 A / B' }, { status: 400 });
