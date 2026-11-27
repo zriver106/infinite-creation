@@ -50,3 +50,11 @@ test('跳转式戏份说明：「见：系统」不要求进缺图单', async ()
   GAPS.mergeGapList(p.id, { items: [{ kind: 'character', name: '系统·光幕A版', note_key: '系统' }] });
   assert.deepEqual(GAPS.gapCoverage(p.id).missing, []);
 });
+
+test('缺图单附 J-009 原文：规则书超过单次读取上限也能取到整节', async () => {
+  const A = await import('../lib/agent/asset-analyze-mcp.js');
+  const t = A.j009Text();
+  assert.match(t, /^### 〔J-009〕/);
+  assert.ok(t.length > 300);
+  assert.doesNotMatch(t.split('\n').slice(1).join('\n'), /^### 〔J-010〕/m);
+});
