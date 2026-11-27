@@ -188,3 +188,11 @@ test('缺口 27：_MV 人工退回不默认选格，没选就拒；缺口 13：�
   assert.equal(it.status, 'sent', '作废那张不收'); assert.equal(it.step, 'A');
   await assert.rejects(AI.cancelInflight(p.id, 'nope', { reason: 'x' }, am), /没有在途/);
 });
+
+test('拼板核对：D 是复用的，提示词写明机位标注不算不一致、只核空间布局；非复用照旧核机位标注', () => {
+  const reused = RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'L01_MV', step: 'compose', round: 1, reused_d: true } });
+  assert.match(reused, /机位标注.*不算不一致/); assert.match(reused, /门窗的位置和数量、家具的数量和朝向、通道/);
+  assert.doesNotMatch(reused, /借来的 D 上标的是别张的机位就不对/);
+  const normal = RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'L01_MV', step: 'compose', round: 1 } });
+  assert.match(normal, /借来的 D 上标的是别张的机位就不对/);
+});
