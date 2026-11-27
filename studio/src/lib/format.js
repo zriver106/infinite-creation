@@ -66,11 +66,12 @@ export const STATUS_TEXT = {
   cancelled: '已取消',
   interrupted: '已中断',
   adopted: '接管中',
+  incomplete: '未完成',
 };
 
 export function statusTone(status) {
   if (status === 'done' || status === 'success') return 'success';
-  if (status === 'failed' || status === 'error') return 'danger';
+  if (status === 'failed' || status === 'error' || status === 'incomplete') return 'danger';
   if (status === 'running' || status === 'generating' || status === 'adopted') return 'accent';
   if (status === 'queued') return 'info';
   return 'neutral';

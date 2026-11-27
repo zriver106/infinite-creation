@@ -52,3 +52,20 @@ test('打分类技能：IC 目录里不列、skill() / skill_reference / skill_l
   await assert.rejects(tools.runTool(ctx, 'skill', { name: 'short-drama-scriptwriting' }), /打分/);
   await assert.rejects(tools.runTool(ctx, 'skill_reference', { name: 'sd-script-engine', ref: 'roundtable-review.md' }), /打分/);
 });
+
+test('LLM 阶段待办：缺提示词、没绑场景、有台词没绑人物都算；Muse 出图项目不算资产提示词', async () => {
+  const ST = await import('../lib/agent/stages.js');
+  const p = core.Projects.create({ name: 'llm-pending' });
+  core.Projects.setContextKey(p.id, 'asset_mode', 'gap-list');
+  core.Assets.create(p.id, { category: 'scene', name: '办公室' });
+  const sc = core.Assets.list(p.id)[0];
+  core.Shots.create(p.id, { idx: 1, chapter: '第1章', dialogue: '江澈：你好', video_prompt: '' });
+  core.Shots.create(p.id, { idx: 2, chapter: '第1章', scene_ids: [sc.id], video_prompt: 'x' });
+  const llm = ST.pendingByStage(p.id, '第1章').llm;
+  assert.ok(llm.items.includes('第1镜缺视频提示词'));
+  assert.ok(llm.items.includes('第1镜没绑场景'));
+  assert.ok(llm.items.includes('第1镜有台词但没绑人物'));
+  assert.ok(!llm.items.some((x) => x.startsWith('第2镜')));
+  assert.equal(llm.assetTodo, 0, 'Muse 出图不欠资产提示词');
+  assert.equal(ST.LLM_MAX_ROUNDS, 4);
+});
