@@ -217,14 +217,14 @@ test('合并缺图单：同名同类替换、voids 标作废不留冲突行、�
   assert.deepEqual(r.missing_notes, ['肥肠盖浇饭外卖']);
   r = JSON.parse(await AM.runAssetAnalyzeExtraTool({ ...ctx, jobId: 'jg2' }, 'save_gap_list', {
     items: [{ kind: 'character', name: '系统·光幕版式A', note_key: '系统', requirement: '原文全文' }, { kind: 'scene', name: '江澈公司办公室', location_id: 'L01', requirement: '工位区 + 人事部' }, { kind: 'prop', name: '肥肠盖浇饭外卖', note_key: '肥肠盖浇饭外卖', requirement: '外卖盒' }],
-    voids: [{ name: '光幕·不带可读文字', reason: 'J-012：系统是角色，母版字照原文' }],
+    voids: [{ name: '光幕·不带可读文字', replaced_by: '系统·光幕版式A', reason: 'J-012：系统是角色，母版字照原文' }],
   }));
   assert.deepEqual(r.voided, ['光幕·不带可读文字']); assert.equal(r.coverage, '全部戏份说明都已在缺图单里'); assert.equal(r.active, 3);
   const doc = (await import('../lib/core/asset-gaps.js')).getGapList(p.id);
   assert.equal(doc.items.filter((x) => x.name === '江澈公司办公室').length, 1, '同名同类只留一行');
   assert.equal(doc.items.find((x) => x.name === '江澈公司办公室').requirement, '工位区 + 人事部');
   const md = fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8');
-  assert.match(md, /## 要出图（3 项）/); assert.match(md, /## 已作废（1 项[\s\S]*光幕·不带可读文字[\s\S]*J-012/); assert.match(md, /J-009/);
+  assert.match(md, /## 要出图（3 项）/); assert.match(md, /## 已作废（1 项[\s\S]*光幕·不带可读文字 \| 作废，由「系统·光幕版式A」替代：J-012/); assert.match(md, /J-009/);
   const got = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'get_gap_list', {}));
   assert.deepEqual(got.coverage.missing, []);
   // 不出图的也算覆盖
