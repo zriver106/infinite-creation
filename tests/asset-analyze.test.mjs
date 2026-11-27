@@ -267,3 +267,29 @@ test('create_asset_slots：按缺图单建资产槽——服装/光幕版式挂�
   assert.equal(r2.created, 0); assert.equal(core.Assets.list(p.id).length, n);
   assert.match(fs.readFileSync(path.join(core.projectDir(p.id), 'asset_gaps', '当前缺图单.md'), 'utf8'), /资产 ID/);
 });
+
+test('人名对齐：get_name_alignment 列出剧本说话人里资产库没有的名字；rename_asset 以剧本叫法改资产名，asset_id 不变、子变体和缺图单同步', async () => {
+  const p = core.Projects.create({ name: 'aa-align', auto_script: false });
+  const ch = core.Chapters.list(p.id)[0];
+  core.Chapters.update(ch.id, { script: '## 【第1场｜上午｜江澈公司办公室】\n- 在场：江澈；男同事（左邻）\n男同事（不满）：我去，吓我一跳！\n江澈：没事。\n- 地点：江澈公司办公室\n' });
+  const jc = core.Assets.create(p.id, { category: 'character', name: '江澈' });
+  const nm = core.Assets.create(p.id, { category: 'character', name: '男同事（江澈左邻）' });
+  const nmCos = core.Assets.create(p.id, { category: 'costume', name: '男同事（江澈左邻）·上班装', parent_id: nm.id });
+  const G = await import('../lib/core/asset-gaps.js');
+  G.mergeGapList(p.id, { items: [{ kind: 'costume', name: '男同事（江澈左邻）·上班装', requirement: '深灰POLO' }] });
+  G.createAssetSlots(p.id, {});
+  const ctx = { projectId: p.id, jobId: 'jal' };
+  const a = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'get_name_alignment', {}));
+  assert.deepEqual(a.chapters[0].speakers_not_in_assets.map((s) => s.name), ['男同事']);
+  assert.ok(a.chapters[0].cast_lines[0].includes('男同事'));
+  const r = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'rename_asset', { asset_id: nm.id, new_name: '男同事', reason: '剧本叫法' }));
+  assert.equal(r.to, '男同事');
+  assert.equal(core.Assets.get(nm.id).name, '男同事');
+  assert.equal(core.Assets.get(nmCos.id).name, '男同事·上班装');
+  const row = G.getGapList(p.id).items.find((x) => x.asset_id === nmCos.id);
+  assert.equal(row.name, '男同事·上班装');
+  const a2 = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'get_name_alignment', {}));
+  assert.deepEqual(a2.chapters[0].speakers_not_in_assets, []);
+  await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'rename_asset', { asset_id: nm.id, new_name: '江澈' }), /同名/);
+  assert.ok(jc.id);
+});
