@@ -21,7 +21,7 @@ before(async () => {
 });
 
 const png = (f, color = 'gray') => { fs.mkdirSync(path.dirname(f), { recursive: true }); execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=' + color + ':s=64x36', '-frames:v', '1', f]); return f; };
-const CHECKS_OK = Object.fromEntries(Object.keys({ same_space: 1, style_vs_sample: 1, ethnicity: 1, base_image: 1, count_orientation: 1, no_text: 1, color_temp: 1 }).map((k) => [k, { ok: true, note: '看过' }]));
+const CHECKS_OK = Object.fromEntries(Object.keys({ same_space: 1, style_vs_sample: 1, ethnicity: 1, base_image: 1, count_orientation: 1, no_text: 1, color_temp: 1, appearance_vs_desc: 1 }).map((k) => [k, { ok: true, note: '看过' }]));
 
 // 假 am：记下发出的消息；回图靠测试往 outbox 放文件
 function fakeAm() {

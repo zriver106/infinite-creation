@@ -22,7 +22,7 @@ before(async () => {
 });
 
 const png = (f, color = 'gray', size = '64x36') => { fs.mkdirSync(path.dirname(f), { recursive: true }); execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=' + color + ':s=' + size, '-frames:v', '1', f]); return f; };
-const CHECKS_OK = Object.fromEntries(['same_space', 'style_vs_sample', 'ethnicity', 'base_image', 'count_orientation', 'no_text', 'color_temp'].map((k) => [k, { ok: true, note: '看过' }]));
+const CHECKS_OK = Object.fromEntries(['same_space', 'style_vs_sample', 'ethnicity', 'base_image', 'count_orientation', 'no_text', 'color_temp', 'appearance_vs_desc'].map((k) => [k, { ok: true, note: '看过' }]));
 const CHECKS_BAD = { ...CHECKS_OK, count_orientation: { ok: false, note: 'B 朝向和 D 对不上' } };
 const LIST = [{ item: '门', expected: '南', seen: '南', ok: true }, { item: '饮水机', expected: '东', seen: '东', ok: true }, { item: '机位标注', expected: '本张', seen: '本张', ok: true }];
 const waitFor = async (fn) => { for (let i = 0; i < 200; i++) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 20)); } return fn(); };
@@ -133,4 +133,23 @@ test('在途的不重审（写明跳过原因）；没图的跳过；参数要�
   assert.equal(RV.validateReview(bad, { step: 'compose', isMv: true, isScene: true }), '', '平常的拼板核对不要求 redo_step');
   assert.match(RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'L01_MV', step: 'compose', round: 1, rereview: 2 } }), /这一轮是重审[\s\S]*redo_step/);
   assert.doesNotMatch(RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'L01_MV', step: 'compose', round: 1, rereview: 2 } }), /这一轮是拼板核对/);
+});
+
+test('人物外形逐项核（韩志成·上班装）：人物 / 服装 / 年龄图 appearance_vs_desc 不能 na；场景可以 na；审图上下文带本资产和所属角色的描述', async () => {
+  const ok = { verdict: 'pass', checks: { ...CHECKS_OK, appearance_vs_desc: { ok: 'na', note: '不适用' } } };
+  assert.match(RV.validateReview(ok, { isPerson: true }), /appearance_vs_desc/);
+  assert.equal(RV.validateReview({ ...ok, checks: { ...ok.checks, same_space: { ok: 'na', note: '不适用' }, color_temp: { ok: 'na', note: '不适用' } } }, { isPerson: false }), '');
+  const bad = { verdict: 'pass', checks: { ...CHECKS_OK, appearance_vs_desc: { ok: false, note: '描述三十七八岁略发福后梳深灰裤 / 图里约三十偏瘦侧分藏青裤' } } };
+  assert.match(RV.validateReview(bad, { isPerson: true }), /只能是 return/);
+  const p = core.Projects.create({ name: 'rr-5', auto_script: false });
+  const han = core.Assets.create(p.id, { category: 'character', name: '韩志成', description: '三十七八岁，略发福，头发后梳' });
+  const cos = core.Assets.create(p.id, { category: 'costume', name: '韩志成·上班装', parent_id: han.id, description: '白衬衫，深灰西裤' });
+  G.mergeGapList(p.id, { items: [{ kind: 'costume', name: '韩志成·上班装', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = cos.id; fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  const j = core.Jobs.create({ projectId: p.id, type: AI.REVIEW_JOB, checkpoint: { asset_id: cos.id, name: '韩志成·上班装', step: 'main', round: 1, file: path.join(tmp, 'x.png') } });
+  const ctx = JSON.parse(await RV.runReviewExtraTool({ projectId: p.id, jobId: j.id }, 'get_review_context'));
+  assert.match(ctx.asset_description.self, /深灰西裤/); assert.match(ctx.asset_description.parent.description, /略发福/);
+  assert.ok(ctx.checks_required.appearance_vs_desc);
+  await assert.rejects(RV.runReviewExtraTool({ projectId: p.id, jobId: j.id }, 'submit_review', ok), /appearance_vs_desc/);
+  assert.match(RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'a', step: 'main', round: 1 } }), /年龄段、体型、发型和发际线/);
 });
