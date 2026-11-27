@@ -1111,6 +1111,7 @@ test('set_storyboard：对不上的资产名不再静默丢弃（随结果回报
   const p = mkProject('分镜资产名项目');
   Projects.setContextKey(p.id, 'asset_binding', 'ic'); // 测 IC 自动绑定（系统缺省已改为 Agent 绑定）
   Assets.create(p.id, { category: 'character', name: '小明' });
+  Projects.setContextKey(p.id, 'asset_mode', 'auto'); // 非 Muse 项目：对不上照旧只回报（Muse 项目整批拒，见 agent-limits.test）
   const ctx = createToolRuntime({ projectId: p.id, chapter: '第1章' });
   const r = await runTool(ctx, 'set_storyboard', { shots: [{ idx: 1, visual: '画面', characters: ['小明', '小铭'] }] });
   assert.match(r, /未找到同名资产/);

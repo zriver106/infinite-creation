@@ -63,8 +63,9 @@ test('补绑后不再提示缺场景或服装', async () => {
   assert.doesNotMatch(String(out), /未绑定 costumes/);
 });
 
-test('名字对不上仍按原口径回报，不推翻整批', async () => {
+test('非 Muse 项目：名字对不上仍按原口径回报，不推翻整批', async () => {
   const { ctx } = mk();
+  core.Projects.setContextKey(ctx.projectId, 'asset_mode', 'auto');
   const out = await tools.runTool(ctx, 'set_storyboard', {
     shots: [{ chapter: '第26章', idx: 1, visual: '画面', characters: ['不存在的人'], scenes: ['物业大厅'] }],
   });

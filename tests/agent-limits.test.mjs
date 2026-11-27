@@ -69,3 +69,20 @@ test('LLM 阶段待办：缺提示词、没绑场景、有台词没绑人物都�
   assert.equal(llm.assetTodo, 0, 'Muse 出图不欠资产提示词');
   assert.equal(ST.LLM_MAX_ROUNDS, 4);
 });
+
+test('set_storyboard（Muse 出图项目）：名字找不到、或有未归档的同名资产，整批拒并列出名字；已归档的同名不算歧义', async () => {
+  const p = core.Projects.create({ name: 'sb-strict' });
+  core.Projects.setContextKey(p.id, 'asset_mode', 'gap-list');
+  core.Projects.setContextKey(p.id, 'asset_binding', 'ic');
+  const old = core.Assets.create(p.id, { category: 'character', name: '江澈' });
+  const live = core.Assets.create(p.id, { category: 'character', name: '江澈' });
+  const ctx = tools.createToolRuntime({ projectId: p.id, chapter: '第1章' });
+  await assert.rejects(tools.runTool(ctx, 'set_storyboard', { shots: [{ idx: 1, visual: '画面', characters: ['江澈'] }] }), /多个同名资产[\s\S]*人物「江澈」/);
+  core.Projects.setContextKey(p.id, 'archived_asset_ids', [old.id]);
+  const ctx2 = tools.createToolRuntime({ projectId: p.id, chapter: '第1章' });
+  await assert.rejects(tools.runTool(ctx2, 'set_storyboard', { shots: [{ idx: 1, visual: '画面', characters: ['江澈', '小铭'] }] }), /找不到：人物「小铭」/);
+  assert.equal(core.Shots.list(p.id).length, 0, '整批未写入');
+  const out = await tools.runTool(ctx2, 'set_storyboard', { shots: [{ idx: 1, visual: '画面', characters: ['江澈'] }] });
+  assert.match(String(out), /分镜已写入/);
+  assert.deepEqual(core.Shots.list(p.id)[0].character_ids, [live.id], '绑到未归档的那个');
+});
