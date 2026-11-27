@@ -340,3 +340,22 @@ test('view_reference_asset：只读登记过的参考项目；按编号前缀找
   LOC.saveLocations(v3.id, { rows: [{ id: 'L01', name: '公司', first_chapter: 1, last_chapter: 2, variants: [{ name: 'L01_MV·工位区', base_ref: { asset_id: mv.id, name: 'S434_MV', cell: 'A' } }] }] });
   assert.equal(LOC.getLocations(v3.id).rows[0].variants[0].base_ref.asset_id, mv.id);
 });
+
+test('人物 / 人群出图要求带「中国人长相，当代中国城市普通市民穿着」；_MV 空场、道具不带；画风段也写', async () => {
+  const p = core.Projects.create({ name: 'aa-look', auto_script: false });
+  const G = await import('../lib/core/asset-gaps.js');
+  G.mergeGapList(p.id, { items: [
+    { kind: 'scene', name: '中海大厦门口·围观', requirement: '约25人围成半圈' },
+    { kind: 'scene', name: 'L03_MV·中海大厦门口·多视角定义图', requirement: '空场' },
+    { kind: 'character', name: '围观者甲', requirement: '中年男' },
+    { kind: 'prop', name: '金砖', requirement: '一公斤' },
+  ] });
+  const by = (n) => G.getGapList(p.id).items.find((x) => x.name === n).requirement;
+  assert.match(by('中海大厦门口·围观'), /中国人长相，当代中国城市普通市民穿着/);
+  assert.match(by('围观者甲'), /中国人长相/);
+  assert.doesNotMatch(by('L03_MV·中海大厦门口·多视角定义图'), /中国人长相/);
+  assert.doesNotMatch(by('金砖'), /中国人长相/);
+  G.mergeGapList(p.id, { items: [{ kind: 'character', name: '围观者甲', requirement: '中年男。中国人长相，当代中国城市普通市民穿着。' }] });
+  assert.equal((by('围观者甲').match(/中国人长相/g) || []).length, 1, '不重复加');
+  assert.match(G.renderGapListMd(G.getGapList(p.id), { style: '写实偏动漫3D' }), /人物和人群（含场景里的人群）：中国人长相/);
+});
