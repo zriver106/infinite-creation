@@ -79,6 +79,14 @@ test('先读规则才给原著；检索返回章号和句子；读章可分段�
   AM.noteAssetAnalyzeToolCall('skill', { name: 'adapt-rules' });
   await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'read_chapter_novel', { chapter: 1 }), /戏份说明模板/);
   for (const ref of AM.ASSET_ANALYZE_REFS) AM.noteAssetAnalyzeToolCall('skill_reference', { name: 'adapt-rules', ref });
+  // J2「资产制作」分卷没读完不给原著（分两段读也算）
+  const j2 = AM.j2Range();
+  if (j2) {
+    await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'search_novel', { keywords: ['金店'] }), /J2/);
+    AM.noteAssetAnalyzeToolCall('skill_lines', { name: 'adapt-rules', from: j2.from, to: j2.from + 10 });
+    await assert.rejects(AM.runAssetAnalyzeExtraTool(ctx, 'search_novel', { keywords: ['金店'] }), /J2/);
+    AM.noteAssetAnalyzeToolCall('skill_lines', { name: 'adapt-rules', from: j2.from + 11, to: j2.to });
+  }
   const s = JSON.parse(await AM.runAssetAnalyzeExtraTool(ctx, 'search_novel', { keywords: ['五缘金店'] }));
   assert.deepEqual(s.chapters_hit, [1, 2]); assert.equal(s.first_chapter, 1); assert.equal(s.last_chapter, 2);
   assert.match(s.hits[0].sentence, /五缘金店/);
