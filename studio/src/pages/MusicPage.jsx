@@ -111,6 +111,23 @@ export default function MusicPage({ projectId, chapters, running, onRefresh, rea
     }
   }
 
+  async function importLibrary() {
+    setBusy('library');
+    try {
+      const r = await api.post('/api/projects/' + projectId + '/music/library', {});
+      toast.success('曲库导入：新登记 ' + r.added + ' 首，已有 ' + r.existed + ' 首' + (r.failed && r.failed.length ? '，失败 ' + r.failed.length + ' 首' : ''));
+      if (r.failed && r.failed.length) toast.error(r.failed.slice(0, 3).map((f) => f.file + '：' + f.error).join('；'));
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // 首选在前，其余照原顺序
+  const sortedAssets = [...assets].sort((x, y) => (y.params?.bgm_library?.preferred ? 1 : 0) - (x.params?.bgm_library?.preferred ? 1 : 0));
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
@@ -119,9 +136,13 @@ export default function MusicPage({ projectId, chapters, running, onRefresh, rea
         description="纯音乐或带歌词均可；生成后选择章节合成，最终视频会写入音乐轨。"
         actions={
           (!canGenerate || features.buttons?.generate === false) ? null : (
-            <Button variant="primary" size="md" disabled={running} onClick={openNew}>
-              <Plus size={14} /> 生成背景音乐
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* 曲库导入（Andy 11-28）：kim-bgm 曲库全部曲目登记成本项目背景音乐（硬链接，不复制），首选标出来 */}
+              <Button variant="secondary" size="md" disabled={!!busy} onClick={importLibrary}>导入曲库</Button>
+              <Button variant="primary" size="md" disabled={running} onClick={openNew}>
+                <Plus size={14} /> 生成背景音乐
+              </Button>
+            </div>
           )
         }
       />
@@ -138,7 +159,7 @@ export default function MusicPage({ projectId, chapters, running, onRefresh, rea
         </div>
       ) : assets.length ? (
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
-          {assets.map((a) => {
+          {sortedAssets.map((a) => {
             const isGenerating = a.status === 'generating';
             return (
               <article key={a.id} className="panel panel-hover flex flex-col gap-3 p-4">
@@ -149,6 +170,7 @@ export default function MusicPage({ projectId, chapters, running, onRefresh, rea
                     </span>
                     <div className="min-w-0">
                       <h3 className="m-0 truncate text-[13px] font-medium text-[var(--fg)]" title={a.name}>
+                        {a.params?.bgm_library?.preferred ? <span className="mr-1 rounded bg-[color-mix(in_srgb,var(--accent)_25%,transparent)] px-1 text-[10px] text-[var(--accent)]">首选</span> : null}
                         {a.name}
                       </h3>
                       <p className="m-0 mt-0.5 flex items-center gap-1 text-[10px] text-[var(--fg-4)]">
