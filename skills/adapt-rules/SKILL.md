@@ -2,7 +2,7 @@
 name: adapt-rules
 description: 改编规则（原著→剧本、分镜）：地图 + 基础规则，按行号读分册。IC 加载剧本、分镜类技能时附上。
 ---
-<!-- rulebook:generated rules-2db3d51caf 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
+<!-- rulebook:generated rules-a73b6ca70d 本文件由 M\工具\rulebook_build.py 从 src/ 生成，不要手改 -->
 
 ## 地图（改编（原著→剧本、分镜））：使用方法
 
@@ -22,7 +22,7 @@ description: 改编规则（原著→剧本、分镜）：地图 + 基础规则�
 | J2 | J2 资产制作（资产分析、派图、审图时读） | 分册 | L595–L648 | 资产分析、派图、审图 |
 
 地图结束。下面是基础规则。
-本段校验码：55224CC8
+本段校验码：6E20C3A4
 
 ## A 铁律与流程
 
