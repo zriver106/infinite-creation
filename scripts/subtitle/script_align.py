@@ -263,9 +263,11 @@ def _strip_speaker_prefix(line):
 
 
 def shot_lines(shot):
-    """镜头字幕文本只取 ic.db shots.dialogue（去说话人前缀）。不从 <d>、narration 或其他字段取。"""
+    """镜头字幕文本取 ic.db shots.dialogue（去说话人前缀）；dialogue 为空、只有旁白的镜取 narration（11-28：R-004 允许每场 ≤1 句旁白，
+    只有旁白的镜不再整章拦下）。不从 <d>、sub_shots、ASR 或其他字段取。"""
     lines = []
-    for l in str(shot.get('dialogue') or '').splitlines():
+    src = str(shot.get('dialogue') or '').strip() or str(shot.get('narration') or '')
+    for l in src.splitlines():
         l = _strip_speaker_prefix(l)
         if l:
             lines.append(l)
@@ -532,7 +534,7 @@ class Energy:
 # ---------------- 对齐主体 ----------------
 
 def _dialogue_lines(shot):
-    """只取 dialogue（去说话人前缀）。narration 不再作为字幕来源。"""
+    """取 dialogue（去说话人前缀）；只有旁白的镜取 narration（见 shot_lines）。"""
     return list(shot_lines(shot))
 
 
@@ -564,12 +566,11 @@ def _display_map(shot, spoken_sents):
 
 
 def _missing_dialogue_shots(shots):
-    """有 <d> 或 narration、却取不到 dialogue 的镜头号（不得回退到其他来源）。"""
+    """有 <d>、却既没有 dialogue 也没有 narration 的镜头号（不得回退到 <d> 或 ASR）。只有旁白的镜按 narration 出字幕，不算缺。"""
     missing = []
     for s in shots:
-        raw = str(s.get('dialogue') or '').strip()
-        has_other = _has_d(s) or bool(str(s.get('narration') or '').strip())
-        if has_other and not raw:
+        raw = str(s.get('dialogue') or '').strip() or str(s.get('narration') or '').strip()
+        if _has_d(s) and not raw:
             missing.append(s.get('idx'))
     return missing
 
@@ -577,7 +578,7 @@ def _missing_dialogue_shots(shots):
 def _build_units(shots):
     missing = _missing_dialogue_shots(shots)
     if missing:
-        raise RuntimeError('下列镜头没有 dialogue，已拒绝回退 <d>/narration/ASR：#' + ', #'.join(str(x) for x in missing))
+        raise RuntimeError('下列镜头有 <d> 但没有 dialogue 也没有 narration，已拒绝回退 <d>/ASR：#' + ', #'.join(str(x) for x in missing))
     cues = []
     for si, s in enumerate(shots):
         sents = []

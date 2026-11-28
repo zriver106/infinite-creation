@@ -18,12 +18,11 @@ test('buildSrt: 逐镜累计时间轴，跳过无文本镜头但照常推进（�
     { duration: 3, dialogue: '', narration: '' },
     { duration: 4, narration: '夜色渐深' },
   ]);
-  // narration 不再作为字幕来源：第三镜即使有旁白也不出 cue，时间轴仍按 duration 推进。
+  // 11-28：dialogue 为空、只有旁白的镜按 narration 出字幕（第三镜从 8s 开始，4 字 0.8s）；空镜照常推进时间轴。
   assert.equal(
     srt,
-    '1\n00:00:00,000 --> 00:00:00,800\n你好\n',
+    '1\n00:00:00,000 --> 00:00:00,800\n你好\n\n2\n00:00:08,000 --> 00:00:08,800\n夜色渐深\n',
   );
-  assert.ok(!srt.includes('夜色渐深'));
 });
 
 test('buildSrt: 台词去掉说话人前缀，按语速估算显示时长且每句一条单行字幕', () => {
@@ -117,11 +116,9 @@ test('便携 Python：当前平台资产名符合 install_only 约定（不支�
   assert.match(asset, /^cpython-3\.\d+\.\d+\+\d+-.+-install_only\.tar\.gz$/);
 });
 
-test('assertDialogueSource: 有 narration 或 <d> 却没有 dialogue 时抛错，不得回退', () => {
-  assert.throws(
-    () => assertDialogueSource([{ idx: 3, dialogue: '', narration: '夜色渐深' }]),
-    /dialogue/,
-  );
+test('assertDialogueSource: 有 <d> 却既没有 dialogue 也没有 narration 时抛错；只有旁白的镜放行（11-28）', () => {
+  assert.doesNotThrow(() => assertDialogueSource([{ idx: 3, dialogue: '', narration: '夜色渐深' }]));
+  assert.doesNotThrow(() => assertDialogueSource([{ idx: 29, dialogue: '', narration: '许曼宁，他从大学谈到现在的女朋友。', video_prompt: 'x <d>许曼宁，他从大学谈到现在的女朋友。</d>' }]));
   assert.throws(
     () => assertDialogueSource([{ idx: 8, dialogue: '  ', video_prompt: 'foo <d>别又用胶带缠半个月。</d> bar' }]),
     /#8/,

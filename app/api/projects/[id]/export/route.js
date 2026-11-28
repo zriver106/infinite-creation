@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { Shots, ShotVideos, Projects, Chapters, Assets, resolveProjectPath, slugify, uid, mergeVideos, resolveSubtitles, deliverChapterExport, chapterMusicForMerge, logSubmitRequest } from '@/lib/core/index.js';
 import { assemblyInputsFor } from '@/lib/core/lead-in.js';
 import { runInlineJob } from '@/lib/agent/index.js';
+import { finalizeExport } from '@/lib/core/fps-finalize.js';
+import { withGpuAccess } from '@/lib/core/render-gate.js';
 import { broadcast } from '@/lib/ws.js';
 import { assertAssembleGate, assembleGateReport, assembleGateReportNeeded, assembleGateWarnText, pendingChaptersText, ASSEMBLE_GATE_CODE } from '@/lib/core/dialogue-d-gate.js';
 
@@ -76,6 +78,11 @@ export async function POST(req, { params }) {
           await mergeVideos(inputs, resolveProjectPath(id, nosubRel), { music });
           // 附带一份 SRT 字幕文件：不进成片列表，只作为「下载字幕」按钮的素材
           fs.writeFileSync(resolveProjectPath(id, srtRel), subtitles, 'utf8');
+        }
+        // 帧率收尾（11-28 跟进2 报：网页导出漏了这一步）：和 hAssembleVideo 同一个函数——裁 1088→1080，按项目设置 RIFE 插到 30 帧（过 GPU 闸门）；失败成片保持原样
+        for (const rel of [outRel, subtitles ? nosubRel : ''].filter(Boolean)) {
+          try { const f = await finalizeExport(id, resolveProjectPath(id, rel), { report: (d) => emit(d), runGpu: (fn) => withGpuAccess(fn, { what: 'RIFE 插帧' }) }); emit({ phase: '插帧', detail: f.note }); }
+          catch (fe) { emit({ phase: '插帧', detail: '帧率收尾失败（成片保持原样）：' + fe.message }); }
         }
         if (gateReportRel) fs.writeFileSync(resolveProjectPath(id, gateReportRel), JSON.stringify(assembleGateReport({ chapter, exportPath: outRel, warnings: gateRes.warnings, pendingChapters: gateRes.pendingChapters }), null, 1), 'utf8');
       },
