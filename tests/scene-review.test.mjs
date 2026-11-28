@@ -80,6 +80,24 @@ test('结论校验：比例不过强制 fail；有件 ok=false 强制该视图 f
   assert.equal(MCP.validateSceneReview(submitAll()).result.verdict, 'pass');
 });
 
+test('阈值集中在 REVIEW_LIMITS：位置差 >12% 改判不对、≤12% 不判；尺寸差 2 倍及以上才判；审图判的不对不会被改成对', () => {
+  assert.deepEqual({ ...SR.REVIEW_LIMITS }, { ratio_tol: 0.10, pos_tol_pct: 12, size_factor: 2, margin_judged: false });
+  const one = (exp, seen, ok = true) => MCP.validateSceneReview(submitAll({ front: { items: [{ id: 'T1', expected: exp, seen_pct: seen, ok }] } }));
+  assert.equal(one('17–23%', '28–34%').result.verdict, 'pass', '中心差 11%，不判');
+  let v = one('17–23%', '33–39%');
+  assert.equal(v.result.verdict, 'fail', '中心差 16%');
+  assert.equal(v.result.views.find((x) => x.view === 'front').items[0].ok, false);
+  assert.ok(v.forced.some((f) => /位置差/.test(f)));
+  assert.equal(one('40-60%', '42-58%').result.verdict, 'pass', '尺寸差 1.25 倍，不判（ASCII 连字符也能读）');
+  v = one('40–60%', '45–55%');
+  assert.equal(v.result.verdict, 'fail', '尺寸只剩一半');
+  assert.ok(v.forced.some((f) => /尺寸差 2\.0 倍/.test(f)));
+  assert.equal(one('100–100%', '98–100%').result.verdict, 'pass', '侧面成一条边的门窗不比尺寸');
+  assert.equal(one('17–23%', '18–23%', false).result.verdict, 'fail', '审图判不对的照旧不对（数量、朝向等）');
+  assert.equal(SR.itemLimitIssue('50%', '61%'), '');
+  assert.match(SR.itemLimitIssue('50%', '63%'), /位置差 13%/);
+});
+
 test('过：旧 art/ 备份到 art_history，四张写进 art/，拼白板_2x2.jpg', async () => {
   const p = setupScene('sr-pass');
   const ad = SR.artDir(p.id, MASTER.scene_id);
@@ -142,6 +160,7 @@ test('只交两张：没交的沿用已定稿 art/，四张一起审，过了只
   assert.equal(out.status, 'accepted');
   assert.deepEqual(ctxSeen.new_views, ['plan', 'left']);
   assert.ok(ctxSeen.checklist.some((x) => x.id === 'C1'));
+  assert.deepEqual(ctxSeen.limits, { ...SR.REVIEW_LIMITS }, '审图 Agent 看得到当前阈值');
   assert.deepEqual(fs.readFileSync(path.join(ad, '正视图.png')), before, '沿用的那张写回后不变');
   assert.notDeepEqual(fs.readFileSync(path.join(ad, '平面图.png')), before);
 });
@@ -157,4 +176,6 @@ test('受限工具集：只列场景审图工具；看图工具带图', async ()
     assert.equal(r.images.length, 1, n);
   }
   assert.match(MCP.buildSceneReviewAgentPrompt({ project: { name: 'V3' }, cp: { scene_id: MASTER.scene_id, round: reg.round } }), /submit_scene_review/);
+  const pr = MCP.buildSceneReviewAgentPrompt({ project: { name: 'V3' }, cp: { scene_id: MASTER.scene_id, round: reg.round } });
+  assert.match(pr, /12%/); assert.match(pr, /2 倍/); assert.match(pr, /透视/); assert.doesNotMatch(pr, /8%/);
 });
