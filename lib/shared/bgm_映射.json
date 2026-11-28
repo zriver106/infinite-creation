@@ -8,6 +8,13 @@
   "skill_reference": "skill_reference(name=\"ai-music-studio\", ref=\"康康合集-BGM情绪与使用指南.md\")"
  },
  "library_dir": "C:\\Users\\usazr\\Documents\\moviePro\\kim-bgm\\完整版",
+ "default_pool": [
+  "01",
+  "03",
+  "05",
+  "07"
+ ],
+ "default_pool_note": "Andy 11-28：本章没选定曲目、也没明确要求生成时，只在这几首里按本章情绪挑主曲；其他曲目点名才用；要换默认名单只改这里",
  "rules": [
   "曲子只能从 library_dir（kim-bgm\\完整版）里选，禁止选曲库外的文件；选库内曲时不调用 MiniMax 现场生成。",
   "先判断本章人物情绪变化（承受→决定→行动→结果），再查「情绪→曲目」落到类别，最后对照逐曲的情绪 / 适合场景 / 不宜套用定 1 首；不按曲名、不按节奏强弱选。",
