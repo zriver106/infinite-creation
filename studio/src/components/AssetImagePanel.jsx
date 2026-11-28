@@ -20,9 +20,10 @@ const STATUS = {
   review_failed: ['审图没交结论', 'danger'],
   needs_human: ['需人工', 'danger'],
   return_queued: ['排队退回（重审没过）', 'info'],
+  put_failed: ['参考图没传上（没派，稍后重试）', 'danger'],
   passed: ['已通过', 'success'],
 };
-const ALERT = new Set(['unconfirmed', 'stale_warn', 'stale', 'review_failed', 'needs_human']);
+const ALERT = new Set(['unconfirmed', 'stale_warn', 'stale', 'review_failed', 'needs_human', 'put_failed']);
 const KIND = { scene: '场景', character: '人物', costume: '服装', prop: '道具', age: '年龄' };
 const CHECK_LABEL = { same_space: '同一空间', style_vs_sample: '画风对比样张', ethnicity: '人种长相', base_image: '对照底图', count_orientation: '数量和朝向', no_text: '不带文字', color_temp: '色温一致', appearance_vs_desc: '人物外形逐项（年龄 / 体型 / 发型 / 衣服颜色）' };
 
