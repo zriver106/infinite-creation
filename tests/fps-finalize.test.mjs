@@ -44,3 +44,14 @@ test('RIFE 插帧跑失败（比如只跑文本的任务里不许用显卡）：
   const r = await F.finalizeExport(p.id, f, { runGpu: () => Promise.reject(new Error('分镜任务（只跑文本）不能使用显卡')) });
   assert.equal(r.interp, false); assert.match(r.note, /RIFE 插帧没跑成/); assert.equal((await F.probe(f)).height, 1080);
 });
+
+test('裁边按标准档：736→720、1088→1080、496→480；标准档和差太多的不动（11-28 跟进2 报 720P 出 736）', async () => {
+  assert.equal(F.cropTargetHeight(736), 720); assert.equal(F.cropTargetHeight(1088), 1080); assert.equal(F.cropTargetHeight(496), 480);
+  for (const h of [720, 1080, 480, 2160]) assert.equal(F.cropTargetHeight(h), 0);
+  assert.equal(F.cropTargetHeight(900), 0, '离下一档 180 行，不是对齐多出来的，不裁');
+  const f = path.join(tmp, 'h736.mp4');
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=320x736:rate=30', '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', f]);
+  const r = await F.finalizeExport(core.Projects.create({ name: 'fps736' }).id, f);
+  assert.equal(r.cropped, true); assert.match(r.note, /736→720/);
+  assert.equal((await F.probe(f)).height, 720);
+});
