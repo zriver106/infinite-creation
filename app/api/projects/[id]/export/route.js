@@ -6,6 +6,7 @@ import { assemblyInputsFor } from '@/lib/core/lead-in.js';
 import { runInlineJob } from '@/lib/agent/index.js';
 import { finalizeExport } from '@/lib/core/fps-finalize.js';
 import { withGpuAccess } from '@/lib/core/render-gate.js';
+import { staleLeadInsOf, staleLeadInText } from '@/lib/agent/lead-in-ctx.js';
 import { broadcast } from '@/lib/ws.js';
 import { assertAssembleGate, assembleGateReport, assembleGateReportNeeded, assembleGateWarnText, pendingChaptersText, ASSEMBLE_GATE_CODE } from '@/lib/core/dialogue-d-gate.js';
 
@@ -52,6 +53,9 @@ export async function POST(req, { params }) {
     const srtRel = outRel.replace(/\.[^.]+$/, '.srt');
     const gateReportRel = assembleGateReportNeeded(gateRes) ? outRel.replace(/\.[^.]+$/, '.合成闸提醒.json') : '';
     let subtitles = '';
+    // 11-28：承接过期的镜只提醒、不拦（要不要重出由出片的人定），导出过程和返回里都写明
+    let leadStale = [];
+    try { leadStale = staleLeadInsOf(id, done); } catch { /* 提醒失败不影响导出 */ }
     // 记成一条任务，使其出现在任务列表（识别 + ffmpeg 拼接都可能耗时数分钟）
     logSubmitRequest(req, { route: 'POST /api/projects/:id/export', projectId: id, chapter });
     await runInlineJob(
@@ -70,6 +74,7 @@ export async function POST(req, { params }) {
             emit({ phase: '字幕', detail: 'dialogue 为空，成片不烧录字幕' });
           }
         }
+        if (leadStale.length) emit({ phase: '承接过期', detail: staleLeadInText(leadStale) });
         if (gateRes.pendingChapters.length) emit({ phase: '待补镜', detail: pendingChaptersText(gateRes.pendingChapters) });
         if (gateRes.warnings.length) emit({ phase: '台词门提醒', detail: assembleGateWarnText(gateRes.warnings) });
         emit({ phase: '合并', detail: '合成成片' + (subtitles ? '（烧录字幕）' : '') });
@@ -96,7 +101,7 @@ export async function POST(req, { params }) {
         if (d.status === 'failed') broadcast({ projectId: id, type: 'export', phase: '交付失败', detail: 'EP' + (d.ep == null ? '?' : d.ep) + '：' + (d.error || '未知错误') });
       }
     }
-    return NextResponse.json({ export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
+    return NextResponse.json({ export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(leadStale.length ? { lead_in_stale: leadStale.map((x) => ({ chapter: x.chapter, idx: x.idx, shot_id: x.shot_id })) } : {}), ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

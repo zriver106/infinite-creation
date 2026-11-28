@@ -170,3 +170,27 @@ test('剧本【衔接】→ 承接开关：写「承接」的下一场第一镜�
   assert.deepEqual(plan.map((x) => [x.shot.idx, x.value]), [[1, 'off'], [3, 'on']], '第1镜看上一章末（闪回→不接），第3镜第2场开头接，第5镜手动设过不动');
   assert.deepEqual(L.planTransitionLeadIns(shots, '', '').map((x) => x.shot.idx), [], '没写衔接的不动');
 });
+
+test('承接过期提醒（11-28）：上一镜换了选中片，选片接口响应头和导出都报下一镜过期；没换不报', async () => {
+  const L = await import('../lib/agent/lead-in-ctx.js');
+  const p = core.Projects.create({ name: 'li-stale', auto_script: false });
+  const a = core.Shots.create(p.id, { chapter: '第1章', idx: 17, visual: 'v', dialogue: '' });
+  const b = core.Shots.create(p.id, { chapter: '第1章', idx: 18, visual: 'v', dialogue: '', first_frame_source: 'prev_clip22' });
+  const a1 = core.ShotVideos.create(p.id, a.id, { idx: 0, video_path: 'shots/a1.mp4' });
+  const a2 = core.ShotVideos.create(p.id, a.id, { idx: 1, video_path: 'shots/a2.mp4' });
+  core.ShotVideos.setSelected(a.id, a1.id); core.Shots.update(a.id, { video_path: 'shots/a1.mp4', status: 'done' });
+  const b1 = core.ShotVideos.create(p.id, b.id, { idx: 0, video_path: 'shots/b1.mp4', lead_in_frames: 22, lead_in_from: a1.id });
+  core.ShotVideos.setSelected(b.id, b1.id); core.Shots.update(b.id, { video_path: 'shots/b1.mp4', status: 'done' });
+  const nar = () => core.Shots.listInNarrativeOrder(p.id);
+  assert.deepEqual(L.staleLeadInsOf(p.id, nar()), [], '接的就是当前选中片，不报');
+  const { POST } = await import('../app/api/projects/[id]/shots/[sid]/videos/[vid]/select/route.js');
+  const r = await POST(new Request('http://x/', { method: 'POST' }), { params: Promise.resolve({ id: p.id, sid: a.id, vid: a2.id }) });
+  assert.ok(Array.isArray(await r.json()), '响应体照旧是候选列表');
+  assert.match(decodeURIComponent(r.headers.get('X-IC-Lead-In-Stale') || ''), /第1章第18镜 承接的上一镜换了选中片/);
+  const st = L.staleLeadInsOf(p.id, nar());
+  assert.deepEqual(st.map((x) => x.idx), [18]);
+  const r2 = await POST(new Request('http://x/', { method: 'POST' }), { params: Promise.resolve({ id: p.id, sid: a.id, vid: a1.id }) });
+  assert.equal(r2.headers.get('X-IC-Lead-In-Stale'), null, '换回去就不过期');
+  const route = fs.readFileSync(new URL('../app/api/projects/[id]/export/route.js', import.meta.url), 'utf8');
+  assert.match(route, /staleLeadInsOf\(id, done\)/); assert.match(route, /phase: '承接过期'/); assert.match(route, /lead_in_stale:/);
+});
