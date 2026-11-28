@@ -59,3 +59,19 @@ test('审图 checklist 放进 checks 里 / 传成字符串：挪回顶层再校�
   assert.equal(RV.validateReview(str, { step: 'compose', isMv: true, isScene: true }), '');
   assert.match(RV.validateReview({ verdict: 'pass', checks }, { step: 'compose', isMv: true, isScene: true }), /顶层字段，和 checks 并列.*现在收到 没有/);
 });
+
+test('底图优先级 V3 已审定稿 > V2 > 无：V2 查不到、本资产有 V3 已审定稿就拿它当底图，不交需人工；提示词写明', async () => {
+  const p = core.Projects.create({ name: 'pg-3', auto_script: false });
+  const a = core.Assets.create(p.id, { category: 'scene', name: '某地·阶段变体' });
+  const rel = 'assets/scenes/v3.png'; png(path.join(core.projectDir(p.id), rel), 'blue'); core.Assets.update(a.id, { image_path: rel });
+  G.mergeGapList(p.id, { items: [{ kind: 'scene', name: '某地·阶段变体', requirement: 'x' }] });
+  const doc = G.getGapList(p.id); doc.items[0].asset_id = a.id; doc.items[0].base_ref = { project_id: 'v2-project-gone', asset_id: 'nope', name: 'S999' };
+  fs.writeFileSync(path.join(core.projectDir(p.id), 'asset_gaps', 'gaps.json'), JSON.stringify(doc));
+  fs.mkdirSync(W.roundsDir(p.id, a.id), { recursive: true });
+  fs.writeFileSync(path.join(W.roundsDir(p.id, a.id), 'imported_approved.json'), JSON.stringify({ image_path: rel }));
+  const j = core.Jobs.create({ projectId: p.id, type: AI.REVIEW_JOB, checkpoint: { asset_id: a.id, name: '某地·阶段变体', step: 'main', round: 1, file: path.join(core.projectDir(p.id), rel) } });
+  const r = await RV.runReviewExtraTool({ projectId: p.id, jobId: j.id }, 'view_reference_asset', {});
+  const meta = JSON.parse(r.text || r);
+  assert.match(meta.base, /V3 已审定稿/); assert.equal(meta.own, true);
+  assert.match(RV.buildReviewAgentPrompt({ project: { name: 'x' }, cp: { name: 'a', step: 'main', round: 1 } }), /V3 已审定稿 > V2 底图 > 没有底图/);
+});
