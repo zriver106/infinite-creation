@@ -135,9 +135,11 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
       {noThreads ? <p className="m-0 text-[11.5px] text-[var(--danger)]">还没设 am 线程：到「项目设置 → 图片参数 → am 线程」里填好再出图。</p> : null}
 
       <div className="max-h-[360px] overflow-auto rounded border border-[var(--line)]">
-        <table className="w-full text-[11.5px]">
+        <table className="w-full min-w-[760px] table-fixed text-[11.5px]">
+          {/* 固定列宽（Andy 11-28「布局很乱」）：以前自动列宽，长的退回意见把「状态」列挤成一字一行、整行几百像素高；窄屏横向滚动，不再压扁列 */}
+          <colgroup><col className="w-8" /><col /><col className="w-11" /><col className="w-[200px]" /><col className="w-[78px]" /><col className="w-[96px]" /><col className="w-[52px]" /><col className="w-[112px]" /></colgroup>
           <thead className="sticky top-0 bg-[var(--bg-2,#111)] text-[var(--fg-3)]">
-            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">D 格</th><th className="p-1.5 text-left">审图结论</th><th className="p-1.5 text-left">人工</th></tr>
+            <tr><th className="w-8 p-1.5" /><th className="p-1.5 text-left">资产</th><th className="p-1.5 text-left">类别</th><th className="p-1.5 text-left">状态</th><th className="whitespace-nowrap p-1.5 text-left">格 / 轮</th><th className="p-1.5 text-left">D 格</th><th className="p-1.5 text-left">审图结论</th><th className="p-1.5 text-left">人工</th></tr>
           </thead>
           <tbody>
             {rows.map((r) => {
@@ -145,19 +147,19 @@ export default function AssetImagePanel({ projectId, canGenerate = true }) {
               return (
                 <tr key={r.asset_id} className={'border-t border-[var(--line)] ' + (ALERT.has(r.status) ? 'bg-[color-mix(in_srgb,var(--danger)_8%,transparent)]' : '')}>
                   <td className="p-1.5"><Checkbox checked={sel.has(r.asset_id)} onChange={(v) => toggle(r.asset_id, v)} /></td>
-                  <td className="p-1.5 text-[var(--fg)]" title={r.note || ''}>{r.name}{r.base_ref ? <span className="ml-1 text-[var(--fg-4)]">（底图 {r.base_ref.name || ''}）</span> : null}</td>
-                  <td className="p-1.5 text-[var(--fg-3)]">{KIND[r.kind] || r.kind}</td>
-                  <td className="p-1.5"><Badge tone={st.tone} dot={r.status === 'sent' || r.status === 'reviewing'}>{st.text}</Badge>{r.note && ALERT.has(r.status) ? <div className="mt-0.5 text-[10.5px] text-[var(--danger)]">{r.note}</div> : null}</td>
-                  <td className="p-1.5 text-[var(--fg-3)]">{r.step && r.step !== 'main' ? r.step + ' 格 · ' : ''}{r.round ? 'r' + r.round : ''}</td>
-                  <td className="p-1.5">{/_MV/.test(r.name) && !r.child && canGenerate && (dSources(r).length || (r.versions || []).length) ? (
-                    <select className="rounded border border-[var(--line)] bg-transparent p-0.5 text-[11px]" value="" disabled={!!busy} onChange={(e) => setD(r, e.target.value)}>
+                  <td className="break-words p-1.5 align-top text-[var(--fg)]" title={r.note || ''}>{r.name}{r.base_ref ? <span className="ml-1 text-[var(--fg-4)]">（底图 {r.base_ref.name || ''}）</span> : null}</td>
+                  <td className="p-1.5 align-top text-[var(--fg-3)]">{KIND[r.kind] || r.kind}</td>
+                  <td className="p-1.5 align-top"><Badge tone={st.tone} dot={r.status === 'sent' || r.status === 'reviewing'}>{st.text}</Badge>{r.note && ALERT.has(r.status) ? <button type="button" className="mt-0.5 block w-full cursor-pointer border-0 bg-transparent p-0 text-left text-[10.5px] leading-snug text-[var(--danger)]" title={r.note + '\n（点开看全文和审图记录）'} onClick={() => openDetail(r)}><span className="line-clamp-2">{r.note}</span></button> : null}</td>
+                  <td className="break-words p-1.5 align-top text-[var(--fg-3)]">{r.step && r.step !== 'main' ? r.step + ' 格 · ' : ''}{r.round ? 'r' + r.round : ''}</td>
+                  <td className="p-1.5 align-top">{/_MV/.test(r.name) && !r.child && canGenerate && (dSources(r).length || (r.versions || []).length) ? (
+                    <select className="w-full rounded border border-[var(--line)] bg-transparent p-0.5 text-[11px]" value="" disabled={!!busy} onChange={(e) => setD(r, e.target.value)}>
                       <option value="">人工指定 D…</option>
                       {dSources(r).map((x) => <option key={x.asset_id} value={x.asset_id}>取「{x.name}」的 D</option>)}
                       {(r.versions || []).map((v, i) => <option key={v} value={'v:' + v}>取本张{i === 0 ? '当前图' : '旧版 ' + i}的 D</option>)}
                     </select>
                   ) : <span className="text-[var(--fg-4)]">—</span>}</td>
-                  <td className="p-1.5">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
-                  <td className="p-1.5">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && ['sent', 'unconfirmed', 'stale_warn', 'stale', 'return_queued'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setCxl({ row: r, reason: '' })}>撤回</Button> : null}{canGenerate && !r.child && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: r.child ? r.step : '' })}>人工退回</Button> : null}</td>
+                  <td className="p-1.5 align-top">{r.last_verdict || r.round ? <Button variant="ghost" size="sm" onClick={() => openDetail(r)}>{r.last_verdict === 'pass' ? '审过' : r.last_verdict === 'return' ? '退回' : '看记录'}</Button> : <span className="text-[var(--fg-4)]">—</span>}</td>
+                  <td className="p-1.5 align-top"><div className="flex flex-wrap gap-1">{canGenerate && ['needs_human', 'review_failed', 'stale'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setApv({ row: r, reason: '' })}>人工审过</Button> : null}{canGenerate && ['sent', 'unconfirmed', 'stale_warn', 'stale', 'return_queued'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setCxl({ row: r, reason: '' })}>撤回</Button> : null}{canGenerate && !r.child && r.has_image && !['sent', 'reviewing', 'next_step', 'return_queued', 'unconfirmed', 'stale_warn'].includes(r.status) ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRr({ ids: [r.asset_id], name: r.name, ret: false })}>重审</Button> : null}{canGenerate ? <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => setRet({ row: r, note: '', step: r.child ? r.step : '' })}>人工退回</Button> : null}</div></td>
                 </tr>
               );
             })}
