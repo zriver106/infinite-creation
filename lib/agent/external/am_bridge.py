@@ -24,10 +24,9 @@ def put(gw, a):
     for i in range(0, max(len(data), 1), CHUNK_PUT):
         part = data[i:i + CHUNK_PUT]
         body = {'path': remote, 'data_base64': base64.b64encode(part).decode('ascii'), 'create_parent': True}
-        if i == 0:
-            body['overwrite'] = True
-        else:
-            body['append'] = True
+        # 网关 11-27 起 append 必填（缺了回 422，put 整个失败）：第一块覆盖写，后面追加
+        body['overwrite'] = i == 0
+        body['append'] = i > 0
         gw.call_json('fs.write', body=body)
     st = gw.call_json('fs.stat', body={'path': remote})
     size = int(st.get('size', -1))
