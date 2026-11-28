@@ -82,10 +82,33 @@ def default_people(M):
     return out
 
 
+def ref_colors(ref):
+    """从人物定妆图取上衣 / 裤子颜色（图中间竖条的上段、下段取中位色）：灰模占位按人上色，
+    出图时底图里就是「这个位置穿这身」，避免两个人物参考对调服装（试点第 3、4、18 镜）。"""
+    try:
+        im = Image.open(ref).convert('RGB'); W, H = im.size
+        a = np.asarray(im.crop((int(W * 0.42), int(H * 0.32), int(W * 0.58), int(H * 0.52)))).reshape(-1, 3)
+        b = np.asarray(im.crop((int(W * 0.44), int(H * 0.60), int(W * 0.56), int(H * 0.78)))).reshape(-1, 3)
+        top = tuple(int(v) for v in np.median(a, axis=0)); bottom = tuple(int(v) for v in np.median(b, axis=0))
+        return top, bottom
+    except Exception:
+        return None, None
+
+
 def person_faces(p):
     col = tuple(p.get('col') or SHIRT)
-    if p.get('pose') == 'stand': return standing(p['x'], p['y'], p.get('yaw', 0), col)
-    return seated(p['x'], p['y'], p.get('yaw', 0), col, arms=p.get('arms', p.get('role') != 'lead'))
+    pants = None
+    if p.get('ref') and not p.get('col'):
+        top, bottom = ref_colors(p['ref'])
+        if top: col = top
+        pants = bottom
+    if p.get('pose') == 'stand':
+        global PANTS
+        keep = PANTS
+        if pants: PANTS = pants
+        try: return standing(p['x'], p['y'], p.get('yaw', 0), col)
+        finally: PANTS = keep
+    return seated(p['x'], p['y'], p.get('yaw', 0), col, arms=p.get('arms', (p.get('role') or 'bg') == 'bg'))   # 只有背景人加前伸小臂
 
 
 def render_one(M, cam_spec, people, W, H, out):
@@ -119,8 +142,13 @@ def render_one(M, cam_spec, people, W, H, out):
 def main(mp, rp, out):
     M = json.load(open(mp, encoding='utf-8-sig')); R = json.load(open(rp, encoding='utf-8-sig'))
     W, H = int(R.get('W', 1280)), int(R.get('H', 720))
-    people = R.get('people')
-    if people is None: people = default_people(M)
+    # 背景同事永远按母本座位坐满；rig.people 只列剧中人物，叠上去，并把剧中人物坐着的那个座位让出来
+    named = [p for p in (R.get('people') or []) if (p.get('role') or 'bg') != 'bg']
+    bg = [p for p in (R.get('people') or []) if (p.get('role') or 'bg') == 'bg']
+    if R.get('bg_from_master', True): bg = default_people(M) + bg
+    taken = [p for p in named if p.get('pose') != 'stand']
+    bg = [b for b in bg if all(math.hypot(b['x'] - q['x'], b['y'] - q['y']) > 0.45 for q in taken)]
+    people = bg + named
     meta = {}
     for which in ('first', 'last'):
         spec = R.get(which)
