@@ -33,3 +33,31 @@ test('列出 / 读场景母本；有母本时没读过不让存剧本，读过�
   assert.ok(SW.SCRIPT_WRITE_EXTRA.has('get_scene_master') && SW.SCRIPT_WRITE_EXTRA.has('list_scene_masters'));
   assert.match(SW.buildScriptWriteAgentPrompt({ project: { name: 'V3' }, chapter: '第1章' }), /get_scene_master[\s\S]*R-006 第 4 条/);
 });
+
+test('场景结构资产：绑了母本里的 _MV 资产，参考图按「人物 → 平面 → 正 → 左 → 右」，_MV 旧图不送；超 9 张先去平面图', async () => {
+  const R = await import('../lib/core/refs.js');
+  const p = core.Projects.create({ name: 'sm-2', auto_script: false });
+  const pd = core.projectDir ? core.projectDir(p.id) : path.join(process.env.IC_DATA_DIR, 'projects', p.id);
+  const mk = (rel) => { const a = path.join(pd, rel); fs.mkdirSync(path.dirname(a), { recursive: true }); execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=gray:s=64x36', '-frames:v', '1', a]); return rel; };
+  const dir = SM.sceneMasterDir(p.id); fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'L02-金店店内.json'), JSON.stringify({ scene_id: 'L02-金店店内', name: '五缘金店·店内', asset_ids: ['mv1', 'st1'], items: [] }));
+  for (const n of ['平面图', '正视图', '左视图', '右视图']) mk('scene_master/L02-金店店内/art/' + n + '.png');
+  const assets = [
+    { id: 'c1', type: 'character', name: '江澈', image_path: mk('assets/c1.png') },
+    { id: 'mv1', type: 'scene', name: 'S095_MV 金店店内多视角定义图', image_path: mk('assets/mv1.png') },
+    { id: 'st1', type: 'scene', name: 'S095 金店店内·有客人', image_path: mk('assets/st1.png') },
+  ];
+  const run = async (sceneIds, extraChars = []) => (await R.assembleShotReferences({ cfg: {}, project: p, shot: { character_ids: ['c1', ...extraChars], scene_ids: sceneIds, prop_ids: [], dialogue: '' }, assets, upload: false })).references;
+  let refs = await run(['mv1']);
+  const imgs = refs.filter((r) => r.type === 'image');
+  assert.equal(imgs.length, 5);
+  assert.match(imgs[0].label, /江澈/);
+  assert.deepEqual(imgs.slice(1).map((r) => r.sceneView), ['plan', 'front', 'left', 'right']);
+  assert.ok(imgs.every((r) => !/多视角定义图/.test(r.label) || r.sceneView), '_MV 旧图不送');
+  refs = await run(['st1', 'mv1']);
+  assert.equal(refs.filter((r) => r.type === 'image').length, 6, '阶段变体照送 + 四视图只送一次');
+  for (let i = 0; i < 5; i++) assets.push({ id: 'x' + i, type: 'character', name: '路人' + i, image_path: mk('assets/x' + i + '.png') });
+  refs = await run(['st1'], ['x0', 'x1', 'x2', 'x3']);
+  const im2 = refs.filter((r) => r.type === 'image');
+  assert.equal(im2.length, 9); assert.ok(!im2.some((r) => r.sceneView === 'plan'), '超 9 张先去平面图');
+});
