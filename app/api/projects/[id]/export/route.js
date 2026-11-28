@@ -5,7 +5,8 @@ import { Shots, ShotVideos, Projects, Chapters, Assets, resolveProjectPath, slug
 import { assemblyInputsFor } from '@/lib/core/lead-in.js';
 import { runInlineJob } from '@/lib/agent/index.js';
 import { finalizeExport } from '@/lib/core/fps-finalize.js';
-import { withGpuAccess } from '@/lib/core/render-gate.js';
+import { startExportInterp, exportNeedsInterp } from '@/lib/agent/export-interp.js';
+import path from 'node:path';
 import { staleLeadInsOf, staleLeadInText } from '@/lib/agent/lead-in-ctx.js';
 import { broadcast } from '@/lib/ws.js';
 import { assertAssembleGate, assembleGateReport, assembleGateReportNeeded, assembleGateWarnText, pendingChaptersText, ASSEMBLE_GATE_CODE } from '@/lib/core/dialogue-d-gate.js';
@@ -16,6 +17,16 @@ export async function POST(req, { params }) {
   const { id } = await params;
   try {
     const body = await req.json().catch(() => ({}));
+    // 只重跑插帧（11-28）：{ action:'finalize', export_path:'exports/xxx.mp4', chapter? }——给已导出的成片补插 30 帧（同名 _nosub 一起），排在出片后面；
+    // 带 chapter 时插完重新交付。立即返回，进度看 export-interp 任务。
+    if (body && body.action === 'finalize') {
+      const rel = String(body.export_path || '').split(String.fromCharCode(92)).join('/');
+      if (!/^exports\/[^/]+\.mp4$/.test(rel) || !fs.existsSync(resolveProjectPath(id, rel))) return NextResponse.json({ error: 'export_path 要是本项目 exports/ 下存在的 mp4' }, { status: 400 });
+      const nos = rel.replace(/(\.[^.]+)$/, '_nosub$1');
+      const rels = [rel, !/_nosub\.mp4$/.test(rel) && fs.existsSync(resolveProjectPath(id, nos)) ? nos : ''].filter(Boolean);
+      startExportInterp(id, { chapter: String(body.chapter || ''), rels, onProgress: (x) => broadcast(x) });
+      return NextResponse.json({ queued: true, files: rels, note: '插帧任务已排队（export-interp），排在出片后面；插完' + (body.chapter ? '重新交付' : '不交付') });
+    }
     const url = new URL(req.url);
     const chapter = body?.chapter || url.searchParams.get('chapter') || '';
     // 顺序：先章节 seq 再章内 idx（多章合并按全局 idx 会交叉成「第1章第1镜、第2章第1镜…」）
@@ -84,10 +95,12 @@ export async function POST(req, { params }) {
           // 附带一份 SRT 字幕文件：不进成片列表，只作为「下载字幕」按钮的素材
           fs.writeFileSync(resolveProjectPath(id, srtRel), subtitles, 'utf8');
         }
-        // 帧率收尾（11-28 跟进2 报：网页导出漏了这一步）：和 hAssembleVideo 同一个函数——裁 1088→1080，按项目设置 RIFE 插到 30 帧（过 GPU 闸门）；失败成片保持原样
+        // 帧率收尾第一步（11-28 第二版）：当场只裁边到标准档（CPU，几十秒），不碰显卡；裁不成整个导出算失败，不报完成。
+        // 插到 30 帧另起 export-interp 任务（见下），走视频任务闸门排在出片后面——网页导出不在文本通道，按次借卡的那道闸会直接放行，
+        // 上一版因此和正在出的片同时占卡，RIFE 失败后又静默退回。
         for (const rel of [outRel, subtitles ? nosubRel : ''].filter(Boolean)) {
-          try { const f = await finalizeExport(id, resolveProjectPath(id, rel), { report: (d) => emit(d), runGpu: (fn) => withGpuAccess(fn, { what: 'RIFE 插帧' }) }); emit({ phase: '插帧', detail: f.note }); }
-          catch (fe) { emit({ phase: '插帧', detail: '帧率收尾失败（成片保持原样）：' + fe.message }); }
+          const f = await finalizeExport(id, resolveProjectPath(id, rel), { report: (d) => emit(d), interp: false });
+          emit({ phase: '裁边', detail: path.basename(rel) + '：' + f.note });
         }
         if (gateReportRel) fs.writeFileSync(resolveProjectPath(id, gateReportRel), JSON.stringify(assembleGateReport({ chapter, exportPath: outRel, warnings: gateRes.warnings, pendingChapters: gateRes.pendingChapters }), null, 1), 'utf8');
       },
@@ -101,7 +114,10 @@ export async function POST(req, { params }) {
         if (d.status === 'failed') broadcast({ projectId: id, type: 'export', phase: '交付失败', detail: 'EP' + (d.ep == null ? '?' : d.ep) + '：' + (d.error || '未知错误') });
       }
     }
-    return NextResponse.json({ export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(leadStale.length ? { lead_in_stale: leadStale.map((x) => ({ chapter: x.chapter, idx: x.idx, shot_id: x.shot_id })) } : {}), ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
+    // 插帧：另起任务排在出片后面（不等），插完换回原文件并重新交付主成片；返回里写明「插帧已排队」
+    let interpQueued = false;
+    if (exportNeedsInterp(id)) { startExportInterp(id, { chapter, rels: [outRel, subtitles ? nosubRel : ''], onProgress: (x) => broadcast(x) }); interpQueued = true; }
+    return NextResponse.json({ interp: interpQueued ? 'queued' : 'off', export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(leadStale.length ? { lead_in_stale: leadStale.map((x) => ({ chapter: x.chapter, idx: x.idx, shot_id: x.shot_id })) } : {}), ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
