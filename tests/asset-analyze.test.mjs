@@ -193,7 +193,7 @@ test('只写剧本：只能写本章且强制覆盖；重写模式 get_chapter �
   assert.equal((await wait(ok.job.id)).status, 'done');
   const same = SW.submitScriptWriteJob({ projectId: p.id, chapter: core.Chapters.get(c1.id), runAgentFn: async () => {} });
   const j = await wait(same.job.id); assert.equal(j.status, 'failed'); assert.match(j.error, /没有写入新剧本/);
-  assert.match(SW.buildScriptWriteAgentPrompt({ project: { name: 'V3' }, chapter: '第1章' }), /节拍表 → 叙述转换表/);
+  assert.match(SW.buildScriptWriteAgentPrompt({ project: { name: 'V3' }, chapter: '第1章' }), /节拍表 → 各场（第 1 场[\s\S]*【转换说明】。不写叙述转换表，不写自检/);
 });
 
 test('归档资产：资产分析的 list_assets 不列；接口只记 id、不删资产', async () => {
