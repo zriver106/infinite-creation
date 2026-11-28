@@ -53,6 +53,21 @@ test('机位校验：合格机位过；卡在桌子里、首尾差太远、画�
   assert.match(CR.validateRig(MASTER, outside).errors.join(''), /不在房间里/);
 });
 
+test('机位角度照分镜：俯拍要往下俯、仰拍要低机位往上仰、平视才许 0°；机位不能顶到天花板', () => {
+  assert.equal(CR.angleOf('特写拍桌切仰视中景，韩志成居高临下'), 'low');
+  assert.equal(CR.angleOf('高机位俯拍全场'), 'high');
+  assert.equal(CR.angleOf('中景，平视'), 'eye');
+  assert.equal(CR.angleOf('中景缓拉'), '');
+  const flat = { ...RIG_OK, angle: 'low' };
+  assert.match(CR.validateRig(MASTER, flat).errors.join(''), /角度和分镜不符：分镜是仰拍/);
+  const low = { ...RIG_OK, angle: 'low', first: { ...RIG_OK.first, eye: 0.8, pitch: 15 }, last: { ...RIG_OK.last, eye: 0.9, pitch: 12 } };
+  assert.ok(!/角度和分镜不符/.test(CR.validateRig(MASTER, low).errors.join('')));
+  const high = { ...RIG_OK, angle: 'high', first: { ...RIG_OK.first, eye: 2.5, pitch: -30 }, last: null };
+  assert.ok(!/角度和分镜不符/.test(CR.validateRig(MASTER, high).errors.join('')));
+  const roof = { ...RIG_OK, first: { ...RIG_OK.first, eye: 2.9 }, last: null };
+  assert.match(CR.validateRig(MASTER, roof).errors.join(''), /碰到天花板/);
+});
+
 test('承接上一镜 22 帧：首机位要接上上一镜尾机位；承接时只锚尾帧（S6）', () => {
   const prev = { last: { pos: [3.3, 4.0], yaw: 195 } };
   assert.equal(CR.validateRig(MASTER, RIG_OK, { prevRig: prev }).ok, true);
@@ -74,6 +89,11 @@ test('关键帧工作流：线稿 → 深度叠加 → 灰模底图重绘 0.9，
   const bare = KG.buildKeyframeWorkflow({ edge: 'e.png', prompt: 'p', seed: 1, W: 1024, H: 576 });
   assert.equal(bare['12'].inputs.denoise, 1.0); assert.deepEqual(bare['12'].inputs.latent_image, ['11', 0]); assert.equal(bare['9'].inputs.image1, undefined);
   assert.deepEqual(KG.targetSize(1280, 720), { W: 1360, H: 768 });
+  // 分步第二步：只在人物占位框里重画（SolidMask 黑底 + 白块 → SetLatentNoiseMask），框外保底图
+  const mk = KG.buildKeyframeWorkflow({ edge: 'e.png', gray: 'prev.png', refs: ['a.png'], prompt: 'p', seed: 8, W: 1000, H: 500, mask: [0.4, 0.2, 0.6, 0.8], denoise: 1.0 });
+  assert.equal(mk['42'].class_type, 'MaskComposite'); assert.deepEqual([mk['42'].inputs.x, mk['42'].inputs.y], [400, 100]);
+  assert.deepEqual([mk['41'].inputs.width, mk['41'].inputs.height], [200, 300]);
+  assert.deepEqual(mk['12'].inputs.latent_image, ['43', 0]); assert.equal(mk['12'].inputs.denoise, 1.0);
 });
 
 test('审图结论：五项缺一算不过；模型写 pass 但有一项不过按不过', () => {

@@ -118,7 +118,7 @@ def render_one(M, cam_spec, people, W, H, out):
     for p in people: fc += person_faces(p)
     hfov = math.degrees(2 * math.atan(18.0 / float(cam_spec.get('lens_mm', 28))))
     pos = cam_spec['pos']
-    cam = SS.Cam((pos[0], pos[1], cam_spec.get('eye', 1.45)), math_deg(cam_spec['yaw']), cam_spec.get('pitch', -6), W, H, hfov_deg=hfov)
+    cam = SS.Cam((pos[0], pos[1], cam_spec.get('eye', 1.45)), math_deg(cam_spec['yaw']), cam_spec.get('pitch', -6), W, H, hfov_deg=hfov, roll_deg=float(cam_spec.get('roll', 0) or 0))
     img = SS.raster(cam, sh, [x for x in fc if x[1] not in GL], transparent=[x for x in fc if x[1] in GL])
     zb = SS.LAST['zb']; ok = np.isfinite(zb); d = np.zeros(zb.shape, np.float32)
     if ok.any():
@@ -135,7 +135,18 @@ def render_one(M, cam_spec, people, W, H, out):
         if c[2] <= 0.05: continue
         u, v = cam.proj(c)
         if 0 <= u < W and 0 <= v < H:
-            seen.append({'role': p.get('role', 'bg'), 'x': p['x'], 'y': p['y'], 'u': round(u / W, 3), 'v': round(v / H, 3), 'dist': round(c[2], 2)})
+            # 占位在画面里的外框（0–1）：剧中人物分步局部重画时当遮罩
+            top = 1.8 if p.get('pose') == 'stand' else 1.42
+            us, vs = [], []
+            for dx in (-0.32, 0.32):
+                for dy in (-0.32, 0.32):
+                    for z in (0.0, top):
+                        cc = cam.to_cam((p['x'] + dx, p['y'] + dy, z))
+                        if cc[2] <= 0.05: continue
+                        a, b = cam.proj(cc); us.append(a); vs.append(b)
+            box = [max(0.0, min(us) / W), max(0.0, min(vs) / H), min(1.0, max(us) / W), min(1.0, max(vs) / H)] if us else None
+            seen.append({'role': p.get('role', 'bg'), 'x': p['x'], 'y': p['y'], 'u': round(u / W, 3), 'v': round(v / H, 3), 'dist': round(c[2], 2),
+                         'box': [round(t, 3) for t in box] if box else None})
     return {'size': [W, H], 'people_in_frame': seen}
 
 

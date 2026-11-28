@@ -25,13 +25,18 @@ def ang(v):
 
 class Cam:
     """透视或正交相机。yaw：水平朝向（东=0、北=90），pitch：俯仰（向下为负）。"""
-    def __init__(self, pos, yaw, pitch_deg, W, H, hfov_deg=None, ortho_scale=None):
+    def __init__(self, pos, yaw, pitch_deg, W, H, hfov_deg=None, ortho_scale=None, roll_deg=0.0):
         self.p, self.W, self.H = pos, W, H
         a, pt = ang(yaw), math.radians(pitch_deg)
         self.f = (math.cos(a) * math.cos(pt), math.sin(a) * math.cos(pt), math.sin(pt))
         self.r = (math.sin(a), -math.cos(a), 0.0)
         fx, fy, fz = self.f; rx, ry, rz = self.r
         self.u = (ry * fz - rz * fy, rz * fx - rx * fz, rx * fy - ry * fx)
+        if roll_deg:   # 绕镜头光轴转（荷兰角）：正数＝画面顺时针歪
+            rr = math.radians(roll_deg); c, s_ = math.cos(rr), math.sin(rr)
+            r0, u0 = self.r, self.u
+            self.r = tuple(c * r0[i] - s_ * u0[i] for i in range(3))
+            self.u = tuple(s_ * r0[i] + c * u0[i] for i in range(3))
         self.ortho = ortho_scale
         self.foc = (W / 2) / math.tan(math.radians(hfov_deg) / 2) if hfov_deg else None
 
