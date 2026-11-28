@@ -1,12 +1,12 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-b314018a18",
+ "version": "rules-5cf8af2ccf",
  "file": "规则全文.md",
- "file_md5": "55F2EB09081EF251ACDFCE3DDF65F18E",
+ "file_md5": "8E4BAC7760861F35B24B7B996C68B2EE",
  "total_lines": 652,
  "base_end_line": 569,
- "base_chars": 34381,
+ "base_chars": 34443,
  "base_budget_chars": 40000,
  "budget_chars": 92000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 940,
-   "checksum": "CE6CB2CA"
+   "checksum": "925C1684"
   },
   {
    "id": "A",
@@ -45,8 +45,8 @@
    "when": [
     "always"
    ],
-   "chars": 9030,
-   "checksum": "E2E1285B"
+   "chars": 9092,
+   "checksum": "6794FBBA"
   },
   {
    "id": "S",
@@ -105,8 +105,8 @@
    "when": [
     "asset"
    ],
-   "chars": 3580,
-   "checksum": "2432602C"
+   "chars": 3644,
+   "checksum": "571A76D8"
   }
  ]
 }
