@@ -82,7 +82,9 @@ def _project_file(pid, rel):
 
 
 def _narrative_shots(conn, pid, chapter):
-    sql = ('SELECT s.idx, s.chapter, s.dialogue, s.narration, s.video_prompt_used, s.video_prompt, s.video_path, s.duration '
+    sql = ('SELECT s.idx, s.chapter, s.dialogue, s.narration, s.video_prompt_used, s.video_prompt, s.video_path, s.duration, '
+           # 选中候选的承接帧数（导出合并前会剪掉开头这么多帧，口径同 lib/core/db.js leadInInfoOfShot）
+           '(SELECT v.lead_in_frames FROM shot_videos v WHERE v.shot_id = s.id AND v.video_path = s.video_path ORDER BY v.selected DESC LIMIT 1) '
            'FROM shots s WHERE s.project_id = ? AND s.video_path IS NOT NULL AND s.video_path != \'\' AND s.status = \'done\' '
            'ORDER BY COALESCE((SELECT MIN(c.seq) FROM chapters c WHERE c.project_id = s.project_id AND c.title = s.chapter), 999999) ASC, s.idx ASC')
     rows = conn.execute(sql, (pid,)).fetchall()
@@ -94,7 +96,8 @@ def _narrative_shots(conn, pid, chapter):
         if not ab:
             continue
         out.append({'idx': r[0], 'chapter': r[1], 'dialogue': r[2] or '', 'narration': r[3] or '',
-                    'prompt': r[4] or r[5] or '', 'path': ab, 'db_duration': float(r[7] or 0)})
+                    'prompt': r[4] or r[5] or '', 'path': ab, 'db_duration': float(r[7] or 0),
+                    'lead_in_frames': int(r[8] or 0)})
     return out
 
 
@@ -130,6 +133,8 @@ def _candidates(conn, pid_arg, chapter_arg):
 
 
 # ---------------- 时长测量 ----------------
+
+LEAD_IN_FPS = 24.0   # 承接帧按 24 帧/秒折秒（和 trimLeadIn 剪音频的口径一致）
 
 def _ffprobe_bin():
     b = shutil.which('ffprobe')
@@ -180,6 +185,9 @@ def load_script(wav_total, project_id='', chapter=''):
                 if d is None:
                     d = s['db_duration']
                     ok = ok and d > 0
+                # 承接上一镜的候选在导出合并前剪掉开头 lead_in_frames 帧（音频同样时长，lib/core/lead-in.js），成片里这一镜更短
+                if s.get('lead_in_frames', 0) > 0:
+                    d = max(0.0, d - s['lead_in_frames'] / LEAD_IN_FPS)
                 s['start'] = t
                 s['end'] = t + d
                 t += d
