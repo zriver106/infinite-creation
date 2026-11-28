@@ -1,12 +1,12 @@
 {
  "skill": "adapt-rules",
  "set": "改编（原著→剧本、分镜）",
- "version": "rules-93a0064db4",
+ "version": "rules-40fe63a6a7",
  "file": "规则全文.md",
- "file_md5": "E974678F982AD9F65CB078AD5D796C57",
+ "file_md5": "D8E2B8A780FC526FFBE38367A9549D3A",
  "total_lines": 653,
  "base_end_line": 570,
- "base_chars": 34668,
+ "base_chars": 34721,
  "base_budget_chars": 40000,
  "budget_chars": 92000,
  "budget_mode": "total",
@@ -22,7 +22,7 @@
     "always"
    ],
    "chars": 940,
-   "checksum": "57266749"
+   "checksum": "2EB57238"
   },
   {
    "id": "A",
@@ -45,8 +45,8 @@
    "when": [
     "always"
    ],
-   "chars": 9226,
-   "checksum": "2EFFA921"
+   "chars": 9279,
+   "checksum": "884EF526"
   },
   {
    "id": "S",
