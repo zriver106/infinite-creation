@@ -42,6 +42,12 @@ test('场景结构资产：绑了母本里的 _MV 资产，参考图按「人物
   const dir = SM.sceneMasterDir(p.id); fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'L02-金店店内.json'), JSON.stringify({ scene_id: 'L02-金店店内', name: '五缘金店·店内', asset_ids: ['mv1', 'st1'], items: [] }));
   for (const n of ['平面图', '正视图', '左视图', '右视图']) mk('scene_master/L02-金店店内/art/' + n + '.png');
+  // 审过记录（总导 11-28）：只有审过写入的 art/ 才送；先确认没记录时不送四视图、照旧送 _MV 图
+  const artDir = path.join(dir, 'L02-金店店内', 'art');
+  const noRec = (await R.assembleShotReferences({ cfg: {}, project: p, shot: { character_ids: ['c1'], scene_ids: ['mv1'], prop_ids: [], dialogue: '' }, assets: [{ id: 'c1', type: 'character', name: '江澈', image_path: mk('assets/c1.png') }, { id: 'mv1', type: 'scene', name: 'S095_MV 金店店内多视角定义图', image_path: mk('assets/mv1.png') }], upload: false })).references;
+  assert.ok(!noRec.some((r) => r.sceneView), '没有审过记录的 art/ 不送进出片');
+  const sizes = Object.fromEntries([['plan', '平面图'], ['front', '正视图'], ['left', '左视图'], ['right', '右视图']].map(([k, n]) => [k, fs.statSync(path.join(artDir, n + '.png')).size]));
+  fs.writeFileSync(path.join(artDir, '_审过记录.json'), JSON.stringify({ verdict: 'pass', round: 'r1', sizes }));
   const assets = [
     { id: 'c1', type: 'character', name: '江澈', image_path: mk('assets/c1.png') },
     { id: 'mv1', type: 'scene', name: 'S095_MV 金店店内多视角定义图', image_path: mk('assets/mv1.png') },
@@ -60,4 +66,36 @@ test('场景结构资产：绑了母本里的 _MV 资产，参考图按「人物
   refs = await run(['st1'], ['x0', 'x1', 'x2', 'x3']);
   const im2 = refs.filter((r) => r.type === 'image');
   assert.equal(im2.length, 9); assert.ok(!im2.some((r) => r.sceneView === 'plan'), '超 9 张先去平面图');
+});
+
+test('审过记录：图被换过（大小对不上记录）或结论不是 pass，就不算审过、不送', () => {
+  const p = core.Projects.create({ name: 'sm-3', auto_script: false });
+  const dir = SM.sceneMasterDir(p.id); const art = path.join(dir, 'L07-花店', 'art'); fs.mkdirSync(art, { recursive: true });
+  const sizes = {};
+  for (const [k, n] of [['plan', '平面图'], ['front', '正视图'], ['left', '左视图'], ['right', '右视图']]) { fs.writeFileSync(path.join(art, n + '.png'), 'x' + k); sizes[k] = fs.statSync(path.join(art, n + '.png')).size; }
+  assert.equal(SM.sceneMasterArtViews(p.id, 'L07-花店'), null, '没记录');
+  fs.writeFileSync(path.join(art, '_审过记录.json'), JSON.stringify({ verdict: 'pass', sizes }));
+  assert.equal(SM.sceneMasterArtViews(p.id, 'L07-花店').length, 4);
+  fs.writeFileSync(path.join(art, '左视图.png'), 'replaced-by-hand');
+  assert.equal(SM.sceneMasterArtViews(p.id, 'L07-花店'), null, '审过后被手工换图');
+  fs.writeFileSync(path.join(art, '左视图.png'), 'xleft');
+  fs.writeFileSync(path.join(art, '_审过记录.json'), JSON.stringify({ verdict: 'return', sizes }));
+  assert.equal(SM.sceneMasterArtViews(p.id, 'L07-花店'), null, '结论不是 pass');
+});
+
+test('母本标 send_scene_image:false：没有审过的四视图时，绑的 _MV 图不送（只靠空间约束文字）；阶段变体照送', async () => {
+  const R = await import('../lib/core/refs.js');
+  const p = core.Projects.create({ name: 'sm-4', auto_script: false });
+  const pd = core.projectDir ? core.projectDir(p.id) : path.join(process.env.IC_DATA_DIR, 'projects', p.id);
+  const mk = (rel) => { const a = path.join(pd, rel); fs.mkdirSync(path.dirname(a), { recursive: true }); execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=gray:s=64x36', '-frames:v', '1', a]); return rel; };
+  const dir = SM.sceneMasterDir(p.id); fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'L02-金店店内.json'), JSON.stringify({ scene_id: 'L02-金店店内', name: '五缘金店·店内', asset_ids: ['mv1', 'st1'], send_scene_image: false, items: [] }));
+  const assets = [
+    { id: 'c1', type: 'character', name: '江澈', image_path: mk('assets/c1.png') },
+    { id: 'mv1', type: 'scene', name: 'L02_MV·五缘金店·店内·多视角定义图', image_path: mk('assets/mv1.png') },
+    { id: 'st1', type: 'scene', name: '五缘金店·店内·有客人', image_path: mk('assets/st1.png') },
+  ];
+  const refs = (await R.assembleShotReferences({ cfg: {}, project: p, shot: { character_ids: ['c1'], scene_ids: ['mv1', 'st1'], prop_ids: [], dialogue: '' }, assets, upload: false })).references.filter((r) => r.type === 'image');
+  assert.equal(refs.length, 2, '人物 + 阶段变体，_MV 不送');
+  assert.ok(!refs.some((r) => /多视角定义图/.test(r.label || '')));
 });

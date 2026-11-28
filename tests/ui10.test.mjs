@@ -11,7 +11,7 @@ import { decideStoryboardLane, jobQueueOf, isLocalUrl } from '../lib/agent/queue
 import {
   chapterNumberFromTitle, readAutoNextSettings, readDeliverySettings, stripUiContextKeys, parseUntilInput, UI_CONTEXT_KEYS,
 } from '../lib/core/project-ui-settings.js';
-import { deliverFileToDir, validateDeliveryDir, DELIVERY_ARCHIVE_SUBDIR } from '../lib/core/delivery-copy.js';
+import { deliverFileToDir, validateDeliveryDir } from '../lib/core/delivery-copy.js';
 
 // ---------------- 章号 / 设置 ----------------
 
@@ -435,18 +435,21 @@ test('交付：首次写 EP1.mp4，sha 等于成片', async () => {
   }
 });
 
-test('交付：覆盖前先归档旧 EP1，归档 sha = 旧件；别的文件一概不动', async () => {
+test('交付：覆盖前先把旧 EP1 归档到交付目录外面（11-28），归档 sha = 旧件；交付目录里不多出东西、别的文件一概不动', async () => {
   const w = tmpWorld();
+  const arch = path.join(w.root, '交付归档');
   try {
     const old = fakeMp4(w.dir, 'EP1.mp4', 'old-EP1');
     const oldSha = sha(fs.readFileSync(old));
     const others = { 'readme.txt': 'r', 'EP1_v10_候选.mp4': 'cand', 'EP01.mp4': 'zero-one' };
     for (const [n, c] of Object.entries(others)) fakeMp4(w.dir, n, c);
     const b = fakeMp4(w.src, 'b.mp4', 'new-EP1-content');
-    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 1, srcAbs: b, now: new Date(2026, 10, 16, 18, 1, 2) });
+    const before = fs.readdirSync(w.dir).sort();
+    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 1, srcAbs: b, archiveDir: arch, now: new Date(2026, 10, 16, 18, 1, 2) });
     assert.equal(r.ok, true, r.error);
     assert.equal(r.previousSha, oldSha);
-    assert.equal(r.archivePath, path.join(w.dir, DELIVERY_ARCHIVE_SUBDIR, 'EP1_20261116-180102.mp4'));
+    assert.equal(r.archivePath, path.join(arch, 'EP1_20261116-180102.mp4'));
+    assert.deepEqual(fs.readdirSync(w.dir).sort(), before, '交付目录里只有原来那些文件，没有历史候选等子目录');
     assert.equal(sha(fs.readFileSync(r.archivePath)), oldSha);
     assert.equal(sha(fs.readFileSync(path.join(w.dir, 'EP1.mp4'))), sha(Buffer.from('new-EP1-content')));
     for (const [n, c] of Object.entries(others)) assert.equal(fs.readFileSync(path.join(w.dir, n), 'utf8'), c);
@@ -462,28 +465,35 @@ test('交付：内容相同 → 不归档不覆盖，算成功', async () => {
   try {
     fakeMp4(w.dir, 'EP2.mp4', 'same');
     const s = fakeMp4(w.src, 's.mp4', 'same');
-    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 2, srcAbs: s });
+    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 2, srcAbs: s, archiveDir: path.join(w.root, '交付归档') });
     assert.equal(r.ok, true);
     assert.equal(r.unchanged, true);
+    assert.equal(fs.existsSync(path.join(w.root, '交付归档')), false);
     assert.equal(fs.existsSync(path.join(w.dir, '历史候选')), false);
   } finally {
     fs.rmSync(w.root, { recursive: true, force: true });
   }
 });
 
-test('交付：归档目标已存在 → 失败，EP 文件保持原样', async () => {
+test('交付：归档目标已存在 / 没给归档目录 / 归档目录在交付目录里 → 失败，EP 文件保持原样', async () => {
   const w = tmpWorld();
+  const arch = path.join(w.root, '交付归档');
   try {
     fakeMp4(w.dir, 'EP3.mp4', 'old3');
     const now = new Date(2026, 10, 16, 18, 2, 3);
-    fs.mkdirSync(path.join(w.dir, DELIVERY_ARCHIVE_SUBDIR), { recursive: true });
-    fakeMp4(path.join(w.dir, DELIVERY_ARCHIVE_SUBDIR), 'EP3_20261116-180203.mp4', 'occupied');
+    fs.mkdirSync(arch, { recursive: true });
+    fakeMp4(arch, 'EP3_20261116-180203.mp4', 'occupied');
     const s = fakeMp4(w.src, 's.mp4', 'new3');
-    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 3, srcAbs: s, now });
+    const r = await deliverFileToDir({ deliveryDir: w.dir, ep: 3, srcAbs: s, archiveDir: arch, now });
     assert.equal(r.ok, false);
     assert.equal(r.step, 'archive');
     assert.equal(fs.readFileSync(path.join(w.dir, 'EP3.mp4'), 'utf8'), 'old3');
-    assert.equal(fs.readFileSync(path.join(w.dir, DELIVERY_ARCHIVE_SUBDIR, 'EP3_20261116-180203.mp4'), 'utf8'), 'occupied');
+    assert.equal(fs.readFileSync(path.join(arch, 'EP3_20261116-180203.mp4'), 'utf8'), 'occupied');
+    const noArch = await deliverFileToDir({ deliveryDir: w.dir, ep: 3, srcAbs: s, now });
+    assert.equal(noArch.ok, false); assert.match(noArch.error, /archiveDir/);
+    const inside = await deliverFileToDir({ deliveryDir: w.dir, ep: 3, srcAbs: s, archiveDir: path.join(w.dir, '历史候选'), now });
+    assert.equal(inside.ok, false); assert.match(inside.error, /不能在交付目录里/);
+    assert.equal(fs.readFileSync(path.join(w.dir, 'EP3.mp4'), 'utf8'), 'old3');
   } finally {
     fs.rmSync(w.root, { recursive: true, force: true });
   }

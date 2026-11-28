@@ -8,6 +8,7 @@ import { finalizeExport } from '@/lib/core/fps-finalize.js';
 import { startExportInterp, exportNeedsInterp } from '@/lib/agent/export-interp.js';
 import path from 'node:path';
 import { staleLeadInsOf, staleLeadInText } from '@/lib/agent/lead-in-ctx.js';
+import { pruneOlderChapterExports } from '@/lib/core/export-prune.js';
 import { broadcast } from '@/lib/ws.js';
 import { assertAssembleGate, assembleGateReport, assembleGateReportNeeded, assembleGateWarnText, pendingChaptersText, ASSEMBLE_GATE_CODE } from '@/lib/core/dialogue-d-gate.js';
 
@@ -117,7 +118,10 @@ export async function POST(req, { params }) {
     // 插帧：另起任务排在出片后面（不等），插完换回原文件并重新交付主成片；返回里写明「插帧已排队」
     let interpQueued = false;
     if (exportNeedsInterp(id)) { startExportInterp(id, { chapter, rels: [outRel, subtitles ? nosubRel : ''], onProgress: (x) => broadcast(x) }); interpQueued = true; }
-    return NextResponse.json({ interp: interpQueued ? 'queued' : 'off', export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(leadStale.length ? { lead_in_stale: leadStale.map((x) => ({ chapter: x.chapter, idx: x.idx, shot_id: x.shot_id })) } : {}), ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
+    // 清旧版（Andy 11-28）：按章导出、交付没失败时，同一章更早的导出删掉只留这一版；要插帧的等插帧任务成了再清（在 export-interp 里）
+    let pruned = null;
+    if (chapter && !interpQueued && !(delivery && delivery.status === 'failed')) pruned = pruneOlderChapterExports(id, outRel);
+    return NextResponse.json({ interp: interpQueued ? 'queued' : 'off', ...(pruned ? { pruned_exports: pruned.deleted, kept_old_exports: pruned.skipped } : {}), export_path: outRel, url: '/files/projects/' + id + '/' + outRel, shots: done.length, chapter, music: !!music, subtitled: !!subtitles, nosub_path: subtitles ? nosubRel : '', srt_path: subtitles ? srtRel : '', delivery, ...(leadStale.length ? { lead_in_stale: leadStale.map((x) => ({ chapter: x.chapter, idx: x.idx, shot_id: x.shot_id })) } : {}), ...(gateRes.warnings.length ? { dialogue_gate_warnings: gateRes.warnings.map((w) => ({ chapter: w.chapter, idx: w.idx, shot_id: w.shot_id })) } : {}), ...(gateRes.pendingChapters.length ? { pending_chapters: gateRes.pendingChapters.map((p) => ({ chapter: p.chapter, count: p.count, idx: p.shots.map((b) => b.idx) })) } : {}), ...(gateReportRel ? { dialogue_gate_report: gateReportRel } : {}) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
